@@ -1,258 +1,310 @@
 # synthetic evolution
 # allows: gene mutation with individual mutation rate, speciation events
-# not included: lgt, gene duplication, gene loss, different protein sizes
-# not included: different genome sizes
+# lgt, gene duplication, gene loss, group lgt, aa gain and loss
+# not included: different protein and genome sizes
 #
-# (c) Daniel Margadant, CBRG, 2005
+# Daniel Margadant, CBRG, 2005
+# changes: Sereina Riniker, 2006
 
-# description of main data structure evolution
-# evolution [mutation rate, sequence, time of speciation event];
+# description of main data structure evolution see below
 
 
 # initialisation
 livingOrgs := 1;         # number of living species
-treeData := CreateArray(1..cSpecies):
-for i to cSpecies do
-	treeData[i] := [];
-od:
+evolTime := 0;		 # number of iteration steps
+treeData := []:		 # for generating the tree
+treeData := append(treeData, []):
 treeEvo := '';
 totD := 0; totL := 0;
+spec := [];
 
-if not type(mutRatestdev,numeric) then mutRatestdev := 0.2*mutRate fi;
+CreateCodonMatrices();
+rate := max(geneDuplRate, geneLossRate, lgtRate, lgtGRate,
+    aaGainRate, aaLossRate);
+maxSteps := rate * aaStart * protStart / 50; # max. number of iteration steps
+specRate := cSpecies / maxSteps; 	# adjusted rate for speciation events
 
 # real genome as seed
-if realseed = true then
-	DB := ReadDb('/home/darwin/DB/genomes/PICTO/PICTO.db');
-	evolution := CreateArray(1..cSpecies, 1..DB[TotEntries], 1..6):
-	for i to DB[TotEntries] do
-		#evolution[1, i, 1] := Rand() * mutRate;
-		evolution[1, i, 1] := Rand(Normal(mutRate,mutRatestdev));
-		evolution[1, i, 2] := SearchTag('SEQ', Entry(i));
-		evolution[1, i, 3] := 'P'.string(i):
-		evolution[1, i, 4] := string(i).'-';
-		evolution[1, i, 5] := 'G';
-		evolution[1, i, 6] := SearchTag('DNA', Entry(i));
-	od:
-else
-	evolution := CreateArray(1..cSpecies, 1..protStart, 1..6):
-	for i to protStart do
-		prot := '';
-		#evolution[1, i, 1] := Rand() * mutRate;
-		evolution[1, i, 1] := Rand(Normal(mutRate,mutRatestdev));
-		evolution[1, i, 6] := Rand(CodingDNA(3 * aaStart));
-		evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]);
-		evolution[1, i, 3] := 'P'.string(i):
-		evolution[1, i, 4] := string(i).'-';
-		evolution[1, i, 5] := 'G';
-	od:
-fi;
-# evolution[organism#, gene#][mutRate, sequence, description, id, organism, dna]
-#                             1        2         3            4   5         6
+if realseed = true then # generates the first organism with real data
+    DB := ReadDb('/home/darwin/DB/genomes/PICTO/PICTO.db');
+    evolution := [];
+    evolution := append(evolution, CreateArray(1..DB[TotEntries], 1..6)):
+    for i to DB[TotEntries] do
+	evolution[1, i, 1] := Rand(Poisson(mutRate)) / maxSteps;
+	evolution[1, i, 2] := SearchTag('SEQ', Entry(i));
+	evolution[1, i, 3] := '1';
+	evolution[1, i, 4] := i;
+	evolution[1, i, 5] := '1';
+	evolution[1, i, 6] := SearchTag('DNA', Entry(i));
+    od:
+else	# generates the first organism
+    evolution := []:
+    evolution := append(evolution, CreateArray(1..protStart, 1..6)):
+    for i to protStart do
+	evolution[1, i, 1] := Rand(Poisson(mutRate)) / maxSteps;
+	evolution[1, i, 6] := Rand(CodingDNA(3 * aaStart));
+	evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]);
+	evolution[1, i, 3] := '1';
+	evolution[1, i, 4] := i;
+	evolution[1, i, 5] := '1';
+    od:
+fi:
+
+# main data structure:
+# evolution[organism#, gene#][mutRate, sequence, desc, id, organism, dna]
+#                             1        2         3     4   5         6
 
 
 # evolution!
-evolTime := 0:
 lastSpeciation := 1:
 print('\n\nEvolution!\n\n');
 OpenWriting(wdir.'logfile.txt'); 
 lprint('Synthetic evolution\n===================\n');
-printf('cSpecies := %i\tprotStart := %i\taaStart := %i\n', 
-	cSpecies, protStart, aaStart);      
+printf('maxSteps := %i\tprotStart := %i\taaStart := %i\n', 
+    maxSteps, protStart, aaStart);      
 printf('mutRate := %.2f\tspecRate := %.2f\n', 
-	mutRate, specRate);
+    mutRate, specRate);
 printf('geneDuplRate := %.2f\tgeneLossRate := %.2f\n', 
-	geneDuplRate, geneLossRate);
+    geneDuplRate, geneLossRate);
 printf('lgtRate := %.2f\tlgtGRate := %.2f\tlgtGSize := %.2f\n', 
-	lgtRate, lgtGRate, lgtGSize );
+    lgtRate, lgtGRate, lgtGSize );
 printf('aaGainRate := %.3f\t aaLossRate := %.3f\n\n', 
-	aaGainRate, aaLossRate);
+    aaGainRate, aaLossRate);
 
-while livingOrgs <= cSpecies do
-	evolTime := evolTime + 1:
-	for j to livingOrgs do
-		for k to length(evolution[j]) do
-		
-		# gene mutation
-		evolution[j, k, 6] :=
-			CodonMutate(evolution[j, k, 6], CodonLogPAM1, evolution[j, k, 1]);
-		evolution[j, k, 2] := ProteinSeq(evolution[j, k, 6]);
-				
-		# aa gain
-		if 100 * Rand() < aaGainRate then
-			dna_source := (trunc(Rand() * length(evolution[j, k, 2])) + 1) * 3;
-			dna_value := IntToCodon(trunc(Rand() * 20) + 1)[1];
-			if dna_source = 3 then
-				evolution[j, k, 6] := dna_value.string(evolution[j, k, 6]);
-			elif dna_source = length(evolution[j, k, 6]) then
-				evolution[j, k, 6] := string(evolution[j, k, 6]).dna_value;
-			else 
-				evolution[j, k, 6] := 
-					string(evolution[j, k, 6])[1..dna_source].dna_value.
-					string(evolution[j, k, 6])[dna_source + 1..-1];
-			fi;
-			evolution[j, k, 2] := ProteinSeq(evolution[j, k, 6]);
-		fi;
-		
-		# aa loss
-		if 100 * Rand() < aaLossRate then
-			dna_source := (trunc(Rand() * length(evolution[j, k, 2])) + 1) * 3;
-			if dna_source = 3 then
-				evolution[j, k, 6] := string(evolution[j, k, 6])[4..-1];
-			elif dna_source = length(evolution[j, k, 6]) then
-				evolution[j, k, 6] := string(evolution[j, k, 6])[1..-4];
-			else 
-				evolution[j, k, 6] := 
-					string(evolution[j, k, 6])[1..dna_source - 3].
-					string(evolution[j, k, 6])[dna_source + 1..-1];
-			fi;
-			evolution[j, k, 2] := ProteinSeq(evolution[j, k, 6]);
-		fi;
-		od;
-	od;
-	# speciation events
-	if 100 * Rand() < specRate then
-		if livingOrgs = cSpecies then break; fi;
-		orgSource := trunc(Rand() * livingOrgs) + 1;
-		evolution[livingOrgs + 1] := copy(evolution[orgSource]);
-		livingOrgs := livingOrgs + 1;
-		for l to length(evolution[livingOrgs]) do
-			evolution[livingOrgs, l, 5] := 
-				evolution[orgSource, l, 5].'2('.evolTime.')';
-			evolution[livingOrgs, l, 3] := 
-				evolution[orgSource, l, 3].
-				'-S['.copy(evolution[livingOrgs, l, 5]).']';
-		od;
-		for l to length(evolution[orgSource]) do
-			evolution[orgSource, l, 5] := 
-				evolution[orgSource, l, 5].'1('.evolTime.')';
-			evolution[orgSource, l, 3] := 
-				evolution[orgSource, l, 3].
-				'-S['.copy(evolution[orgSource, 1 ,5]).']';
-		od;
-		d := evolTime;
-		if treeData[orgSource] = [] then 
-			treeEvo[] := Tree(Leaf(orgSource, d), 
-				d, Leaf(livingOrgs, d));
-		else
-			treeEvo[op(treeData[orgSource])] := Tree(Leaf(orgSource, d), 
-				d, Leaf(livingOrgs, d));
-		fi;
-		treeData[livingOrgs] := append(copy(treeData[orgSource]), Right);
-		treeData[orgSource] := append(copy(treeData[orgSource]), Left);
-		lastSpeciation := evolTime;
-		printf ('time %0004i: speciation event of organism %i to organism %i\n', 
-			evolTime, orgSource, livingOrgs);	
-		OpenWriting(previous);
-		printf('species %i of %i was created at time %i\n', 
-			livingOrgs, cSpecies, evolTime);
-		OpenAppending(wdir.'logfile.txt'); 
-	fi;
+# evolution loop begins
+while evolTime <= maxSteps do
+    evolTime := evolTime + 1:
+    for j to livingOrgs do
 	
+	# factor for adjusting the geneLoss-, geneDupl- and lgtRate
+	Gfactor := length(evolution[j]) / maxSteps; 
+	
+	AAfactor := 0;
+	for k to length(evolution[j]) do
+	    # sums the total number of aa in the organism
+	    AAfactor := AAfactor + length(evolution[j, k, 2]);   
+		   
+	    # gene mutation for every gene in the current organism
+	    evolution[j, k, 6] := CodonMutate(evolution[j, k, 6], 
+	        evolution[j, k, 1]);
+ 	    evolution[j, k, 2] := ProteinSeq(evolution[j, k, 6]);
+	od; 
+	    
+	# factor for adjusting the aaGainRate and the aaLossRate
+	AAfactor := AAfactor / maxSteps;
+			
+	# aa gain
+	if 100 * Rand() < (aaGainRate * AAfactor) then
+	    # dna_source is dna piece in gene k of organism j
+	    k := trunc(Rand() * length(evolution[j])) + 1;
+	    dna_source := (trunc(Rand() * length(evolution[j, k, 2])) 
+		+ 1) * 3;
+	    dna_value := IntToCodon(trunc(Rand() * 20) + 1)[1];
+	    if dna_source = 3 then
+	        evolution[j, k, 6] := dna_value.string(evolution[j, k, 6]);
+	    elif dna_source = length(evolution[j, k, 6]) then
+	        evolution[j, k, 6] := string(evolution[j, k, 6]).dna_value;
+	    else 
+		evolution[j, k, 6] := string(evolution[j, k,6])
+		[1..dna_source].dna_value.string(evolution[j, k, 6])
+		[dna_source + 1..-1];
+	    fi;
+	    evolution[j, k, 2] := ProteinSeq(evolution[j, k, 6]);
+	fi;
+		
+	# aa loss 
+	# dna_source is dna piece in gene k of organism j
+	    k := trunc(Rand() * length(evolution[j])) + 1;
+	if 100 * Rand() < (aaLossRate * AAfactor) then
+	    dna_source := (trunc(Rand() * length(evolution[j, k, 2])) 
+		+ 1) * 3;
+	    if dna_source = 3 then
+		evolution[j, k, 6] := string(evolution[j, k, 6])[4..-1];
+	    elif dna_source = length(evolution[j, k, 6]) then
+		evolution[j, k, 6] := string(evolution[j, k, 6])[1..-4];
+	    else 
+		evolution[j, k, 6] := 
+		string(evolution[j, k, 6])[1..dna_source - 3].
+		string(evolution[j, k, 6])[dna_source + 1..-1];
+	    fi;
+	    evolution[j, k, 2] := ProteinSeq(evolution[j, k, 6]);
+	fi;
+
 	# gene duplication
-	if 100 * Rand() < geneDuplRate * livingOrgs then
-		orgSource := trunc(Rand() * livingOrgs) + 1;
-		geneSource := trunc(Rand() * length(evolution[orgSource])) + 1;
-		evolution[orgSource] := append(evolution[orgSource], 
-			copy(evolution[orgSource, geneSource]));
-		evolution[orgSource, -1, 3] := 
-			evolution[orgSource, -1, 3].'-D2('.evolTime.')';
-		evolution[orgSource, -1, 4] := evolution[orgSource, -1, 4].'2';
-		evolution[orgSource, geneSource, 3] := 
-			evolution[orgSource, geneSource, 3].'-D1('.evolTime.')';
-		evolution[orgSource, geneSource, 4] := 
-			evolution[orgSource, geneSource, 4].'1';
-		printf ('time %0004i: gene duplication in organism %i with gene %i\n', 
-			evolTime, orgSource, geneSource);
+	if 100 * Rand() < (geneDuplRate * Gfactor) then
+	    geneSource := trunc(Rand() * length(evolution[j])) + 1;
+	    evolution[j] := append(evolution[j], 
+		copy(evolution[j, geneSource]));
+		# new gene in organism j which is the duplicate of an other
+	    evolution[j, -1, 3] := evolution[j, -1, 3].'-('.copy(evolution
+		[j, geneSource, 4]).'D'.evolTime.')'.j;
+	    evolution[j, -1, 4] := copy(evolution[j, -2, 4]) + 1;
+	    printf ('time %0004i: gene duplication in organism %i with gene %i, now gene %i\n', 
+		evolTime, j, evolution[j, geneSource, 4], evolution[j, -1, 4]);
+	    Gfactor := length(evolution[j]) / maxSteps; 
+	    # the number of genes has increased so the Gfactor is different
 	fi;
 	
-	# gene loss
-	if 100 * Rand() < geneLossRate * livingOrgs then
-		orgSource := trunc(Rand() * livingOrgs) + 1;
-		geneSource := trunc(Rand() * length(evolution[orgSource])) + 1;
+	# gene loss	    
+	if 100 * Rand() < (geneLossRate * Gfactor) then
+	    geneSource := trunc(Rand() * length(evolution[j])) + 1;
+	    printf ('time %0004i: gene loss in organism %i with gene %i\n', 
+		evolTime, j, evolution[j, geneSource, 4]);
+	    if geneSource = 1 then
+		evolution[j] := evolution[j][2..-1];
+	    elif geneSource = length(evolution[j]) then
+		evolution[j] := evolution[j][1..-2];
+	    else 
+		evolution[j] := [op(evolution[j][1..geneSource - 1]),
+		    op(evolution[j][geneSource + 1..-1])];
+	    fi;
+	    Gfactor := length(evolution[j]) / maxSteps; 
+	    # the number of genes has increased so the Gfactor is different
+	fi;
+	
+	# single lateral gene transfer
+	if 100 * Rand() < (lgtRate * Gfactor) and livingOrgs > 1 then
+	    if 100 * Rand() < orthRep then	# orthologues replacement
+	        donors := {seq(i, i = 1..livingOrgs)} minus {j}; 
+		# so the recipient can't be chosen also as donor 
+	        orgDonor := Rand(donors);	# orgRecipient is organism j
+	        gd1 := {seq(evolution[orgDonor, i, 4], i=1..min(protStart, 
+		    length(evolution[orgDonor])))} minus
+		    {seq(i, i= protStart..length(evolution[orgDonor]))};
+		gd2 := {seq(evolution[j, i, 4], i=1..min(protStart,
+		    length(evolution[j])))} minus 
+                    {seq(i, i= protStart..length(evolution[j]))};
+		gD := Rand(gd1 intersect gd2);
+	        for l to length(evolution[j]) do
+                    if evolution[j, l, 4] = gD then
+                        geneSource := l;
+                    fi;
+                od;
+		for l to length(evolution[orgDonor]) do
+		    if evolution[orgDonor, l, 4] = gD then
+                        geneDonor := l;
+                    fi;
+                od;
+	        evolution[j] := append(evolution[j], 	# new gene
+		    copy(evolution[orgDonor, geneDonor]));
+	        evolution[j, -1, 3] := evolution[j, -1, 3].'-'.orgDonor.'('.
+		    copy(evolution[orgDonor, geneDonor, 4]).'Lo'.evolTime.')'.j;
+	        evolution[j, -1, 4] := copy(evolution[j, -2, 4]) + 1; # new ID
+	        evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
+	        printf ('time %0004i: lgt from organism %i with gene %i to organism %i, now gene %i\n',
+                    evolTime, orgDonor, evolution[orgDonor, geneDonor, 4],
+                    j, evolution[j, -1, 4]);
+		printf('\torthologues replacement, gene %i in organism %i deleted\n',
+		    evolution[j, geneSource, 4], j);
 		if geneSource = 1 then
-			evolution[orgSource] := evolution[orgSource][2..-1];
-		elif geneSource = length(evolution[orgSource]) then
-			evolution[orgSource] := evolution[orgSource][1..-2];
-		else 
-			evolution[orgSource] := 
-				[op(evolution[orgSource][1..geneSource - 1]),
-				op(evolution[orgSource][geneSource + 1..-1])];
-		fi;
-		printf ('time %0004i: gene loss in organism %i with gene %i\n', 
-			evolTime, orgSource, geneSource);
-	fi;
-	
-	# single lateral gene transfer		
-	#if evolTime > 100 and lgtonce = false then lgtonce := true; # just once
-	if 100 * Rand() < lgtRate * livingOrgs then
-		orgDonor := trunc(Rand() * livingOrgs) + 1;
-		orgRecipient := trunc(Rand() * livingOrgs) + 1;
-		if orgRecipient = orgDonor then next; fi;
-		geneDonor := trunc(Rand() * length(evolution[orgDonor])) + 1;
-		evolution[orgRecipient] := append(evolution[orgRecipient], 
-			copy(evolution[orgDonor, geneDonor]));
-		evolution[orgDonor, geneDonor, 3] := evolution[orgDonor, geneDonor, 3].
-			'-LD(['.copy(evolution[orgRecipient, -1, 5]).']('.evolTime.')';
-		evolution[orgRecipient, -1, 3] := 
-			evolution[orgRecipient, -1, 3].'-LR['.
-			copy(evolution[orgDonor, geneDonor, 5]).']('.evolTime.')';
-		evolution[orgRecipient, -1, 4] := 
-			evolution[orgRecipient, -1, 4].'L';
-		evolution[orgRecipient, -1, 5] :=
-			copy(evolution[orgRecipient, -2, 5]);
-		printf ('time %0004i: lgt from organism %i with gene %i to organism %i\n', 
-			evolTime, orgDonor, geneDonor, orgRecipient);
+                    evolution[j] := evolution[j][2..-1];
+                elif geneSource = length(evolution[j]) then
+                    evolution[j] := evolution[j][1..-2];
+                else
+                    evolution[j] := [op(evolution[j][1..geneSource - 1]),
+                        op(evolution[j][geneSource + 1..-1])];
+                fi;
+	    else	# normal LGT
+		donors := {seq(i, i = 1..livingOrgs)} minus {j};
+                # so the recipient can't be chosen also as donor 
+                orgDonor := Rand(donors);       # orgRecipient is organism j
+                geneDonor := trunc(Rand() * length(evolution[orgDonor])) + 1;
+                evolution[j] := append(evolution[j],        # new gene
+                    copy(evolution[orgDonor, geneDonor]));
+                evolution[j, -1, 3] := evolution[j, -1, 3].'-'.orgDonor.'('.
+                    copy(evolution[orgDonor, geneDonor, 4]).'L'.evolTime.')'.j;
+                evolution[j, -1, 4] := copy(evolution[j, -2, 4]) + 1; # new ID
+                evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
+                printf ('time %0004i: lgt from organism %i with gene %i to organism %i, now gene %i\n',
+                    evolTime, orgDonor, evolution[orgDonor, geneDonor, 4],
+                    j, evolution[j, -1, 4]);
+	        Gfactor := length(evolution[j]) / maxSteps; 
+	          # the number of genes has increased so the Gfactor is different
+	    fi;
 	fi;
 	
 	# groupwise lateral gene transfer	
-	# if evolTime > 100 and lgtonce = false then lgtonce := true; # just once
-	if 100 * Rand() < lgtGRate * livingOrgs then # event at given probability
-		orgDonor := trunc(Rand() * livingOrgs) + 1;
-		orgRecipient := trunc(Rand() * livingOrgs) + 1;
-		if orgRecipient = orgDonor then next; fi;
-		geneDonor := trunc(Rand() * (length(evolution[orgDonor]) - lgtGSize)) + 1;
-		
-		for i to lgtGSize do
-			evolution[orgRecipient] := append(evolution[orgRecipient], 
-				copy(evolution[orgDonor, geneDonor]));
-			evolution[orgDonor, geneDonor, 3] := evolution[orgDonor, geneDonor, 3].
-				'-LD(['.copy(evolution[orgRecipient, -1, 5]).']('.evolTime.')';
-			evolution[orgRecipient, -1, 3] := 
-				evolution[orgRecipient, -1, 3].'-LR['.
-				copy(evolution[orgDonor, geneDonor, 5]).']('.evolTime.')';
-			evolution[orgRecipient, -1, 4] := 
-				evolution[orgRecipient, -1, 4].'L';
-			evolution[orgRecipient, -1, 5] :=
-				copy(evolution[orgRecipient, -2, 5]);
-			printf ('time %0004i: lgt from organism %i with gene %i to organism %i\n', 
-				evolTime, orgDonor, geneDonor, orgRecipient);
-			geneDonor := geneDonor + 1;
-		od;
+	if 100 * Rand() < (lgtGRate * Gfactor) and livingOrgs > 1 then 
+	    donors := {seq(i, i = 1..livingOrgs)} minus {j};
+	    orgDonor := Rand(donors);		# orgRecipient is organism j
+	    geneDonor := trunc(Rand() * 
+		(length(evolution[orgDonor]) - lgtGSize)) + 1;	
+	    for i to lgtGSize do
+		evolution[j] := append(evolution[j], 
+		    copy(evolution[orgDonor, geneDonor]));
+		evolution[j, -1, 3] := 
+		    evolution[j, -1, 3].'-'.orgDonor.'('.copy(evolution
+		    [orgDonor, geneDonor, 4]).'L'.evolTime.')'.j;
+		evolution[j, -1, 4] := copy(evolution[j, -2, 4]) + 1;
+		evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
+		printf ('time %0004i: lgt from organism %i with gene %i to organism %i, now gene %i\n', 
+		    evolTime, orgDonor, evolution[orgDonor, geneDonor, 4], 
+		    j, evolution[j, -1, 4]);
+		geneDonor := geneDonor + 1;
+	    od;
+	    Gfactor := length(evolution[j]) / maxSteps;
 	fi;
+    od;
+
+    # speciation events
+    if Rand() < specRate then
+        orgSource := trunc(Rand() * livingOrgs) + 1; # randomly chosen parent
+        evolution := append(evolution, copy(evolution[orgSource]));
+        livingOrgs := livingOrgs + 1;
+        for l to length(evolution[livingOrgs]) do	# creates the history
+            evolution[livingOrgs, l, 5] :=		# for each gene
+                evolution[orgSource, l, 5].'-('.evolTime.')'.livingOrgs;
+            evolution[livingOrgs, l, 3] :=
+                evolution[orgSource, l, 3].'-('.evolTime.')'.livingOrgs;
+        od;
+
+	spec := append(spec, ['SE'.sprintf('%03i', orgSource), 
+	    'SE'.sprintf('%03i', livingOrgs), evolTime]);
+
+        treeData := append(treeData, []); # creates a new leaf in the tree
+        d := evolTime;
+        if treeData[orgSource] = [] then
+            treeEvo[] := Tree(Leaf(orgSource, d),
+                d, Leaf(livingOrgs, d));
+        else
+            treeEvo[op(treeData[orgSource])] := Tree(Leaf(orgSource, d),
+                d, Leaf(livingOrgs, d));
+        fi;
+        treeData[livingOrgs] := append(copy(treeData[orgSource]), Right);
+        treeData[orgSource] := append(copy(treeData[orgSource]), Left);
+
+        lastSpeciation := evolTime;
+        printf ('time %0004i: speciation event of organism %i to organism %i\n',
+            evolTime, orgSource, livingOrgs);
+        OpenWriting(previous);
+        printf('species %i was created at time %i\n',
+            livingOrgs, evolTime);
+        OpenAppending(wdir.'logfile.txt');
+    fi;
+
 od:
 OpenWriting(previous);
 
-for i to cSpecies do
+for i to livingOrgs do		# creates the tree
 	treeEvo[op(treeData[i])]:=Leaf('SE'.sprintf('%03d', i), evolTime); 
 od:
 DrawTree(treeEvo, BisectLines, OrderLeaves=LeftHeavy, Legend, 
 	Title = 'synthetic evolution');
-ViewPlot();
-
+#ViewPlot();
 
 printf('\n\nevolution was going on for %i iteration steps\n', evolTime):
-for i to cSpecies do
+
+for i to livingOrgs do			# calculation of total lgt ond dupl
 	for j to length(evolution[i]) do
-		if SearchString('-D', evolution[i, j, 3]) > 1 then
+		if SearchString('D', evolution[i, j, 3]) > -1 then
 			totD := totD + 1;
 		fi;
-		if SearchString('-L', evolution[i, j, 3]) > 1 then
+		if SearchString('L', evolution[i, j, 3]) > -1 then
 			totL := totL + 1;
 		fi;
 	od:
 od:
-totL := totL / 2; totD := totD / 2;
-printf('\n\t species:          %i', cSpecies);
+printf('\n\t species:          %i', livingOrgs);
 printf('\n\t gene duplication: %.01f', totD);
 printf('\n\t lgt:              %.01f\n\n', totL);
 
