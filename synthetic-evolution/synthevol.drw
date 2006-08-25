@@ -19,7 +19,6 @@ totD := 0; totL := 0;
 spec := [];
 GCratio := [];
 
-CreateCodonMatrices();
 GCplus := GCBiasMatrix(50);
 GCminus := GCBiasMatrix(-50);
 rate := max(geneDuplRate, geneLossRate, lgtRate, lgtGRate,
@@ -35,7 +34,8 @@ if realseed = true then # generates the first organism with real data
     evolution := append(evolution, CreateArray(1..DB[TotEntries], 1..6)):
     for i to DB[TotEntries] do
         protseq := SearchTag('SEQ', Entry(i));
-        evolution[1, i, 1] := makeAreas(length(protseq), areas, mutRate, maxSteps);
+        evolution[1, i, 1] := makeAreas(length(protseq), areas, 
+		mutRate, maxSteps);
         evolution[1, i, 2] := protseq;
         evolution[1, i, 3] := '1';
         evolution[1, i, 4] := i;
@@ -54,8 +54,8 @@ else	# generates the first organism
         evolution[1, i, 5] := '1';
     od:
 fi;
-gcrat := calGCcont(evolution[1]); 		#GCcont for the new organism
-gcw := Rand(30..70);                        #and the right matrix for it
+gcrat := calGCcont(evolution[1]); 		# GCcont for the new organism
+gcw := Rand(30..70);                            # and the right matrix for it
 if gcrat > gcw then
     GCratio := append(GCratio, [gcw, 'minus']);        
 elif gcrat < gcw then
@@ -326,9 +326,8 @@ while evolTime <= maxSteps do
         OpenWriting(previous);
         printf('species %i was created at time %i\n',
             livingOrgs, evolTime);
-        OpenAppending(wdir.'logfile.txt');
-
 	DBoutAnc(evolution[livingOrgs], orgSource, livingOrgs, evolTime);
+        OpenAppending(wdir.'logfile.txt');
     fi;
 od:
 lprint('main calculation finished');
