@@ -1,0 +1,470 @@
+# procedures for Synthetic evolution
+# Daniel Margadant, CBRG, 2005
+# changes: Sereina Riniker, 2006
+#
+# - necessary for compatibility with other algorithm (eg. LGT)
+# - additional features
+#
+
+# implemented: GS[SExxx] for Synthetic Evolution organism xxx
+#              GS[SExxx][TotEntries]
+#              GS[SExxx][Lineage]
+#              GS[SExxx][SCINAME]
+#              GS[SExxx][TotLGTNum]     total number of lgt happend in history
+#              GS[SExxx][TotLGT]       genes gained by lgt
+#              GS[SExxx][TotDupl]         genes undergone gene duplication
+#              GS[SExxx][TotDupNum]     total number of duplications happend in history
+#              genomes		             
+#	       GenomeFileName[genomes[j]]
+
+
+ReadProgram( '/home/darwin/v2/source/bio-recipes/Orthologues/lib/darwinit' );
+CreateCodonMatrices();
+
+# counts the total number of LGTs and duplications in an organism
+GenomeSummaries := proc(orgnumber: posint)
+    global genomes, GenomeFileName;
+    filepattern := 'DB/SE';
+    GS := table();
+    genomes := [];
+    GenomeFileName := table();
+    for i from 1 to orgnumber do
+	totL := 0; totD := 0; totLNum := 0; totDNum := 0;
+	genomes := append(genomes, 'SE'.sprintf('%03i', i));
+	GenomeFileName[genomes[-1]] := wdir.filepattern.
+	    sprintf('%03i', i).'.db';
+	DB := ReadDb(wdir.filepattern.sprintf('%03i', i).'.db');
+	t2 := table();
+	for j from 1 to DB[TotEntries] do
+	    e := Entry(j);
+	    a := SearchTag('DE', e);
+	    if SearchString('L', a) > -1 then	# searches for LGT in gene
+		totL := totL + 1;
+		for k to length(a) do		# counts all LGTs
+		    if a[k] = 'L' then 
+			totLNum := totLNum + 1;
+		    fi;
+		od;
+	    fi;
+	    if SearchString('D', SearchTag('DE', e)) > -1 then # dupl
+		totD := totD + 1;
+		for m to length(a) do		# counts all duplications
+                    if a[m] = 'D' then 
+			totDNum := totDNum + 1;
+                    fi;
+                od;
+	    fi;
+	od:
+	t2[TotEntries] := DB[TotEntries];	# filling of the table
+	t2[TotLGT] := totL;
+	t2[TotDupl] := totD;
+	t2[TotLGTNum] := totLNum;
+	t2[TotDupNum] := totDNum;
+	h := SearchTag('OS', DB[string]);
+	t2[Lineage] := SearchDelim('-', h);
+	t2[SCINAME] := genomes[-1];
+	GS[genomes[-1]] := t2;
+    od;
+    lprint('GS done');
+GS;
+end:
+
+
+# DB output
+DBout := proc()
+    if length(FileStat(wdir.dbname)) = 0 then 
+	TimedCallSystem('mkdir '.wdir.dbdir, 2);
+    fi;
+    for i to livingOrgs do
+	OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'.db');
+	for j to length(evolution[i]) do
+	    printf('<E><ID>'.evolution[i, j, 4].'</ID><DE>'.evolution[i, j, 3].
+		'</DE><OS>'.evolution[i, j, 5].'</OS><SEQ>'.evolution[i, j, 2].
+		'</SEQ><DNA>'.evolution[i, j, 6].'</DNA></E>\n');
+	od;
+	OpenWriting(previous);
+    od;
+    lprint('\n\n.db files written...\n\n');
+end:
+
+# DB output for the ancestral sequences
+DBoutAnc := proc(organism, parent, child, birth)
+    if length(FileStat(wdir.dbname)) = 0 then
+        TimedCallSystem('mkdir '.wdir.dbAncdir, 2);
+    fi;
+    OpenWriting(wdir.dbAncdir.'SE'.sprintf('%i-%i(%i)', parent, child, birth).'.db');
+    for j to length(organism) do
+        printf('<E><ID>'.organism[j, 4].'</ID><DE>'.organism[j, 3].
+                '</DE><OS>'.organism[j, 5].'</OS><SEQ>'.organism[j, 2].
+                '</SEQ><DNA>'.organsim[j, 6].'</DNA></E>\n');
+    od;
+    OpenAppending(wdir.'logfile.txt');
+    lprint('\n\n.ancestral db file  written...\n\n');
+end:
+
+
+# tranlates DNA to Protein
+# by Alexander Roth
+ProteinSeq := proc(dna:string)
+    prot := '';
+    for i to length(dna) by 3 do
+	prot := prot.CodonToA(dna[i..i + 2]);
+    od;
+end:
+
+
+# gives a summary of all organism and their numbers of proteins,
+# LGTs and duplications
+lgtReport := proc(a: string) 	# argument must be 'a' for array or
+                                # 'r' for report
+    summary := CreateArray(1..N,1..6);
+    prot := Stat('Proteins'); lgt := Stat('LGT');
+    lgtnum := Stat('LGTNum');
+    dup := Stat('Dupl'); dupnum := Stat('DuplNum');
+    for i to N do
+        summary[i,1] := genomes[i];	# name of the organism
+        summary[i,2] := GS[genomes[i]][TotEntries];	# number of genes 
+	prot + summary[i][2];	# sums number of genes in all organisms
+	summary[i,3] := GS[genomes[i]][TotLGT]; # number of single LGT
+	lgt + summary[i,3]; 	# sums all single LGTs in all organisms
+	summary[i,4] := GS[genomes[i]][TotLGTNum]; # all LGT in a genom
+	lgtnum + summary[i,4];	# sums total number  of LGTs
+	summary[i,5] := GS[genomes[i]][TotDupl]; # number of single dupl
+	dup + summary[i,5];	# sums all single duplications 
+	summary[i,6] := GS[genomes[i]][TotDupNum]; # all dupl in genome
+	dupnum + summary[i,6];	# sums total number of duplications
+    od;
+    if a = 'a' then		 	# gives back the summary as array
+	result := summary;
+    elif a = 'r' then		 	# prints a report to the screen
+	printf('genomes \t proteins \t lgt \t\t lgt total \t dupl \t\t dupl total \n\n');
+	for i to N do
+	    printf('%s \t\t %i \t\t %i (%.2f%%) \t %i (%.2f%%)\t %i (%.2f%%) \t %i (%.2f%%)\n', 
+		summary[i][1],summary[i][2],summary[i][3],
+		(summary[i][3]/summary[i][2]*100),summary[i][4],
+		(summary[i][4]/summary[i][2]*100),summary[i][5],
+		(summary[i][5]/summary[i][2]*100),summary[i][6],
+		(summary[i][6]/summary[i][2]*100));
+	od;
+	printf('\naverages \t %.0f\t\t %.0f (%.2f%%) \t %.0f (%.2f%%)\t %.0f (%.2f%%) \t %.0f (%.2f%%)\n',
+	    prot[Average], lgt[Average], (lgt[Average] / prot[Average] * 100),
+	    lgtnum[Average], (lgtnum[Average] / prot[Average]*100),
+	    dup[Average], (dup[Average] / prot[Average] * 100),	
+	    dupnum[Average], (dupnum[Average] / prot[Average] * 100));
+	printf('mean var \t %s \t %s \t\t\t %s\n',
+            prot[MeanVar],lgt[MeanVar],dup[MeanVar]);
+    else printf('wrong argument, must be a or r');
+    fi;
+end: 
+
+
+# gives a report of the ID numbers for an OMA group
+lgtM := proc(omanum: posint)	# omanum = OMA number for the report
+    filepattern := 'DB/SE';
+    ids := CreateArray(1..N);
+    for b to N do
+	ids[b] := '';
+    od;
+    for i to N do
+	DB := ReadDb(wdir.filepattern.sprintf('%03i',i).'.db');
+	if M[omanum, i] = 0 then 
+	    ids[i] := '0';
+	    next;
+	else
+	    e := Entry(M[omanum,i]);
+	    de := SearchTag('DE', e);
+	    posL := SearchString('L', de);
+	    posD := SearchString('D', de);
+	    # first event was a dupl
+	    if posD > -1 and (posL > posD or posL = -1) then
+	    	n := posD;
+           	while de[n] <> '(' do	# searches for ID number
+		    n := n-1;
+            	od;
+                for k from (n+1) to posD do   # writes ID number
+                    ids[i] := string(ids[i]).string(de[k]);
+                od;
+	        for j to length(de) do	# how many dupl and LGT occurred
+                    if de[j] = 'L' then
+			if de[j+1] = 'o' then
+			    ids[i] := string(ids[i]).'Lo';
+			else 
+			    ids[i] := string(ids[i]).'L';
+			fi;
+                    elif de[j] = 'D' then ids[i] := string(ids[i]).'D';
+                    fi;
+                od;
+	    # first event was a LGT
+	    elif posL > -1 and (posD > posL or posD = -1) then
+	        n := posL;
+                while de[n] <> '(' do	# searches for ID number
+                    n := n-1;
+                od;
+                for k from (n+1) to posL do  # writes ID number
+                    ids[i] := string(ids[i]).string(de[k]);
+                od;
+	        for j to length(de) do	#  how many dupl and LGT  occured
+                    if de[j] = 'L' then 
+			if de[j+1] = 'o' then
+                            ids[i] := string(ids[i]).'Lo';
+                        else
+                            ids[i] := string(ids[i]).'L';
+                        fi;
+                    elif de[j] = 'D' then ids[i] := ids[i].'D';
+                    fi;
+                od;
+	    # if no LGT or duplication has occured
+	    else ids[i] := SearchTag('ID', e); 
+	    fi;
+	fi;
+    od;
+    for j to N do
+	printf('%s\t', genomes[j]);
+    od;
+    printf('\n');
+    for k to N do
+	printf('%s\t', string(ids[k]));
+    od;
+    printf('\n');
+end:
+
+
+# checks set of OMA number if LGT was present and gives nice summary
+# (algorithm test)
+lgtMcheck := proc(liste: set)
+    lgtTrue := {};
+    lgtWrong := {};
+    lgtUnfound := {};
+    found := 0; notfound := 0; falsch := 0;
+    realLGT := lgtGroups();	# list with all OMA groups with LGT
+    lgtTrue := liste intersect realLGT;
+    lgtWrong := liste minus realLGT;
+    lgtUnfound := realLGT minus liste;
+    found := length(lgtTrue);	# total number of correct found groups
+    notfound := length(lgtUnfound);	# total number of unfound groups
+    falsch := length(lgtWrong);	# total number of wrong found groups
+
+    printf('correct found OMA-groups with LGT:\t%i\t(%.2f%%)\n', found,
+	(found/length(realLGT)*100));
+    printf('false found OMA-groups with LGT:\t%i\t(%.2f%%)\n', falsch,
+	(falsch/length(realLGT)*100));
+    printf('not found OMA-groups with LGT:\t%i\t(%.2f%%)\n\n', notfound,
+	(notfound/length(realLGT)*100));
+
+    printf('sensitivity:\t(%.2f%%)\n',(found/length(realLGT)*100));
+    printf('specifity:\t(%.2f%%)\n\n',(found/length(liste)*100));
+
+    lprint('correct ones:');
+    print(lgtTrue);
+    lprint('wrong ones:');
+    print(lgtWrong);
+    lprint('not found:');
+    print(lgtUnfound);
+end:
+
+
+# gives set of OMA groups in which lgt event had taken place
+lgtGroups := proc()
+    filepattern := 'DB/SE';
+    r := {};
+    for i to lM do
+	for j to N do
+	    if M[i, j] = 0 then 
+		next; 
+	    else
+		DB := ReadDb(wdir.filepattern.sprintf('%03i',j).'.db');
+		if SearchString('L', SearchTag('DE', Entry(M[i, j]))) > -1 then
+		    r := append(r, i); 
+		fi;
+	    fi;
+	od;	
+    od;
+    #lprint(string(length(r)).' number of OMA groups with LGT recipients');
+    result := r;
+end:
+
+# gives set of OMA groups in which LGT with orthologues replament had happend
+lgtGroupsOR := proc()
+    filepattern := 'DB/SE';
+    r := {};
+    for i to lM do
+        for j to N do
+            if M[i, j] = 0 then
+                next;
+            else
+                DB := ReadDb(wdir.filepattern.sprintf('%03i',j).'.db');
+                if SearchString('Lo', SearchTag('DE', Entry(M[i, j]))) > -1 then
+                    r := append(r, i);
+                fi;
+            fi;
+        od;
+    od;
+    #lprint(string(length(r)).' number of OMA groups with LGT recipients');
+    result := r;
+end:
+
+# gives an array with the names of the pairs for LGT
+LGTpairs := proc(omanum: integer, spec:array)
+    a := 1;
+    b := lM;
+    if omanum > 0 then
+	a := omanum;
+	b := omanum;
+    fi;
+    LGTrec := [];
+    filepattern := 'DB/SE';    
+    for i from 1 to N do        
+	DB := ReadDb(wdir.filepattern.sprintf('%03i',i).'.db');
+	for j from a to b do
+	    if M[j,i] <> 0 then
+		e := Entry(M[j,i]);
+		de := SearchTag('DE', e);
+		for k from 1 to length(de) do
+		    donor := '': rec := '': time:=''; gene:='';
+		    if de[k] = 'L' then
+			n := k;
+			while de[n] <> '-' do
+			    n := n-1;
+			od;
+			n := n+1;
+			while de[n] <> '(' do
+			    donor := string(donor).string(de[n]);
+			    n := n+1;
+			od;
+			n := n+1;
+			while n <k do
+			    gene := string(gene).string(de[n]);
+			    n := n+1;
+			od;
+			if de[k+1] = 'o' then
+			    n:= k+2;
+			else
+			    n := k+1;
+			fi;
+			while de[n] <> ')' do
+			    time := string(time).string(de[n]);
+			    n := n+1;
+                        od;
+			n := n+1;
+                        while de[n] <> '-' and n < length(de) do
+                            rec := string(rec).string(de[n]);
+			    n := n+1;
+                        od;
+			if n = length(de) then
+			    rec := string(rec).string(de[n]);
+			fi;
+			LGTrec := append(LGTrec, [genomes[parse(donor)],
+			    genomes[parse(rec)],time, gene]);
+		    fi;
+		od;
+	    fi;
+	od;
+    od;
+    LGTrec := {op(LGTrec)};
+    LGTpairs := CreateArray(1..length(LGTrec), 1..3);
+    for i to length(LGTrec) do
+	j := 1;
+	while parse(LGTrec[i,3]) > spec[j,3] and (j+1) <= length(spec) do
+	    j := j + 1;
+	od;
+	LGTpairs[i,1] := LGTrec[i,1];
+	LGTpairs[i,2] := LGTrec[i,2];
+	LGTpairs[i,3] := LGTrec[i,4].'-'.LGTrec[i,3];
+	if i <> length(spec) then
+	    searchSpec(i, j, LGTrec[i,1], 1, spec, LGTpairs);
+	    searchSpec(i, j, LGTrec[i,2], 2, spec, LGTpairs);
+	fi;
+    od;
+    result := LGTpairs;
+end:
+
+
+# searches the tree for children of the LGT parents
+searchSpec := proc(i: posint, j: posint, org: string, pos: posint, spec:array, LGTpairs:array)
+    for k from j to length(spec) do
+	if org = spec[k,1] then
+		LGTpairs[i,pos] := [op(LGTpairs[i,pos]),spec[k,2]];
+	    for a from k to length(spec) do
+		if spec[k,2] = spec[a,1] then
+		    searchSpec(i, a, spec[k,2], pos, spec, LGTpairs);
+		fi;
+	    od;
+	fi;                
+    od;
+end:
+
+# calculates the GC content for the genome of a given organism
+calGCcont := proc(org)
+    sumGC := 0;
+    for i to length(org) do
+	cont := BaseCount(org[i,6]);
+	cont := ((cont[2]+cont[3])/sum(cont[1..4]));
+        sumGC := sumGC + cont;
+    od;
+    return (sumGC/length(org)*100);
+end:
+
+# generates a CodonMatrix for GC amelioration (by adrian schneider)
+GCBiasMatrix := proc(bias:numeric;(lnM1=CodonLogPAM1):matrix)
+M1 := exp(lnM1);
+for i to 64 do for j to 64 do M1[i,j] := max(0,M1[i,j]) od od:
+f := 1+bias/100;
+GC := CreateArray(1..64):
+for i to 64 do
+    t := BaseCount(CIntToCodon(i));
+    GC[i] := t[2]+t[3];
+od;
+for i to 64 do  # mutation from i to j
+    for j to 64 do
+        if j=i then next fi;
+        d := GC[j]-GC[i];
+        M1[j,i] := M1[j,i]*f^d;
+    od;
+    s := sum(M1[j,i],j=1..64)-M1[i,i];
+    if s<0 or s>1 then error('invalid sum') fi;
+    M1[i,i] := 1-s;
+od:
+return(ln(M1));
+end:
+
+# makes the areas for rate heterogenity in a gene
+makeAreas := proc(aaStart, areas, mutRate, maxSteps)
+    hetero := CreateArray(1..Rand(1..areas));
+    numEnt := {};
+    for i to (length(hetero)-1) do
+        num1 := round(aaStart / (length(hetero)-1));
+    	numEnt := append(numEnt, Rand(((i-1)*num1+1)..(i*num1-1)));
+    od;    
+    numEnt := append(numEnt, 0);
+    numEnt := append(numEnt, aaStart);
+    for i to length(hetero) do        
+	    hetero[i] := [(numEnt[i]+1), numEnt[i+1], 
+            (Rand(Poisson(mutRate)) / maxSteps)];
+    od;
+    return(hetero);
+end:
+
+# updates the area borders after a AA gain or loss
+updateBorder := proc(hetero: array, value, event: string)
+    for i to length(hetero) do
+	if event = 'insert' then
+	   if hetero[i,1] > value then
+		hetero[i,1] := (hetero[i,1] + 1);
+	   fi;
+	   if hetero[i,2] >= value then
+		hetero[i,2] := (hetero[i,2] + 1);
+	   fi;
+	fi;
+	if event = 'delet' then
+	    if hetero[i,1] > value then
+                hetero[i,1] := (hetero[i,1] - 1);
+            fi;
+	    if hetero[i,2] >= value then
+                hetero[i,2] := (hetero[i,2] - 1);
+           fi;
+        fi;
+   od;
+   return(hetero);
+end:
+	
+lprint('Procedures for Synthetic Evolution sucessfully loaded\n\n');
