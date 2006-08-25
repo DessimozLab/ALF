@@ -72,15 +72,16 @@ end:
 
 # DB output
 DBout := proc()
-    if length(FileStat(wdir.dbname)) = 0 then 
+    if FileExists(wdir.dbdir) = false then 
 	TimedCallSystem('mkdir '.wdir.dbdir, 2);
     fi;
     for i to livingOrgs do
 	OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'.db');
 	for j to length(evolution[i]) do
-	    printf('<E><ID>'.evolution[i, j, 4].'</ID><DE>'.evolution[i, j, 3].
-		'</DE><OS>'.evolution[i, j, 5].'</OS><SEQ>'.evolution[i, j, 2].
-		'</SEQ><DNA>'.evolution[i, j, 6].'</DNA></E>\n');
+	printf('<E><ID>%a</ID><DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ>'.
+            '<DNA>%s</DNA></E>\n',
+            organism[j, 4], organism[j, 3], organism[j, 5],
+            organism[j, 2], organism[j, 6]);
 	od;
 	OpenWriting(previous);
     od;
@@ -89,19 +90,20 @@ end:
 
 # DB output for the ancestral sequences
 DBoutAnc := proc(organism, parent, child, birth)
-    if length(FileStat(wdir.dbname)) = 0 then
+    if FileExists(wdir.dbAncdir) = false then
         TimedCallSystem('mkdir '.wdir.dbAncdir, 2);
     fi;
     OpenWriting(wdir.dbAncdir.'SE'.sprintf('%i-%i(%i)', 
         parent, child, birth).'.db');
     for j to length(organism) do
-        printf('<E><ID>'.organism[j, 4].'</ID><DE>'.organism[j, 3].
-                '</DE><OS>'.organism[j, 5].'</OS><SEQ>'.organism[j, 2].
-                '</SEQ><DNA>'.organsim[j, 6].'</DNA></E>\n');
+	printf('<E><ID>%a</ID><DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ>'.
+	    '<DNA>%s</DNA></E>\n', 
+	    organism[j, 4], organism[j, 3], organism[j, 5], 
+	    organism[j, 2], organism[j, 6]);
     od;
     OpenWriting(previous);
     OpenAppending(wdir.'logfile.txt');
-    lprint('\n\n.ancestral db file  written...\n\n');
+    lprint('\n\nancestral db file written...\n\n');
     OpenWriting(previous);
 end:
 
