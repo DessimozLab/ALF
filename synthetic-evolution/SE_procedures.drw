@@ -76,14 +76,14 @@ DBout := proc()
 	TimedCallSystem('mkdir '.wdir.dbdir, 2);
     fi;
     for i to livingOrgs do
-	OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'.db');
-	for j to length(evolution[i]) do
-	printf('<E><ID>%a</ID><DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ>'.
-            '<DNA>%s</DNA></E>\n',
-            organism[j, 4], organism[j, 3], organism[j, 5],
-            organism[j, 2], organism[j, 6]);
-	od;
-	OpenWriting(previous);
+        OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'.db');
+        for j to length(evolution[i]) do
+            printf('<E><ID>%a</ID><DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ>'.
+                '<DNA>%s</DNA></E>\n',
+                evolution[i, j, 4], evolution[i, j, 3], evolution[i, j, 5],
+                evolution[i, j, 2], evolution[i, j, 6]);
+        od;
+        OpenWriting(previous);
     od;
     lprint('\n\n.db files written...\n\n');
 end:
@@ -96,8 +96,8 @@ DBoutAnc := proc(organism, parent, child, birth)
     OpenWriting(wdir.dbAncdir.'SE'.sprintf('%i-%i(%i)', 
         parent, child, birth).'.db');
     for j to length(organism) do
-	printf('<E><ID>%a</ID><DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ>'.
-	    '<DNA>%s</DNA></E>\n', 
+        printf('<E><ID>%a</ID><DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ>'.
+            '<DNA>%s</DNA></E>\n', 
 	    organism[j, 4], organism[j, 3], organism[j, 5], 
 	    organism[j, 2], organism[j, 6]);
     od;
