@@ -73,7 +73,7 @@ end:
 # DB output
 DBout := proc()
     if FileExists(wdir.dbdir) = false then 
-	TimedCallSystem('mkdir '.wdir.dbdir, 2);
+	    TimedCallSystem('mkdir '.wdir.dbdir, 2);
     fi;
     for i to livingOrgs do
         OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'.db');
@@ -87,6 +87,30 @@ DBout := proc()
     od;
     lprint('\n\n.db files written...\n\n');
 end:
+
+# FASTA output
+DBoutFASTA := proc()
+    if FileExists(wdir.dbdir) = false then
+        TimedCallSystem('mkdir '.wdir.dbdir, 2);
+    fi;
+    for i to livingOrgs do
+        for j to length(evolution[i]) do
+            OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'.fasta.aa');
+            printf('>%a (SE%03d)\n%s\n\n', evolution[i, j, 4], i, 
+                evolution[i, j, 2]);
+            OpenWriting(previous);
+            OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'.fasta.dna');
+            printf('>%a (SE%03d)\n%s\n\n', evolution[i, j, 4], i,
+                evolution[i, j, 6]);
+            OpenWriting(previous);
+        od;
+    od;
+    lprint('\n\n.fasta files written...\n\n');
+end:
+
+
+
+
 
 # DB output for the ancestral sequences
 DBoutAnc := proc(organism, parent, child, birth)
