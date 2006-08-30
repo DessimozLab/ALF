@@ -442,7 +442,6 @@ makeAreas := proc(aaStart, areas, mutRate, maxSteps)
         limithigh := min(aaStart - 1, (i * num1 - 1));
         numEnt := append(numEnt, Rand(limitlow..limithigh));
     od;    
-    lprint('loop1');
     numEnt := append(numEnt, 0);
     numEnt := append(numEnt, aaStart);
     for i to length(hetero) do        
