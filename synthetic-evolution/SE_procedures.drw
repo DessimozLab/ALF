@@ -436,10 +436,13 @@ end:
 makeAreas := proc(aaStart, areas, mutRate, maxSteps)
     hetero := CreateArray(1..Rand(1..areas));
     numEnt := {};
-    for i to (length(hetero)-1) do
-        num1 := round(aaStart / (length(hetero)-1));
-    	numEnt := append(numEnt, Rand(((i-1)*num1+1)..(i*num1-1)));
+    for i to (length(hetero) - 1) do
+        num1 := round(aaStart / (length(hetero) - 1));
+        limitlow := max(1, ((i - 1) * num1 + 1));
+        limithigh := min(aaStart - 1, (i * num1 - 1));
+        numEnt := append(numEnt, Rand(limitlow..limithigh));
     od;    
+    lprint('loop1');
     numEnt := append(numEnt, 0);
     numEnt := append(numEnt, aaStart);
     for i to length(hetero) do        
