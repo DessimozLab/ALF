@@ -34,8 +34,10 @@ if realseed = true then # generates the first organism with real data
     evolution := append(evolution, CreateArray(1..DB[TotEntries], 1..6)):
     for i to DB[TotEntries] do
         protseq := SearchTag('SEQ', Entry(i));
+        # switch for real domainfile
         evolution[1, i, 1] := makeAreas(length(protseq), areas, 
-		mutRate, maxSteps);
+    		mutRate, maxSteps);
+
         evolution[1, i, 2] := protseq;
         evolution[1, i, 3] := '1';
         evolution[1, i, 4] := i;
