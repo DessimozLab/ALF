@@ -37,14 +37,14 @@ if realseed = true then # generates the first organism with real data
         # switch for real domainfile
         evolution[1, i, 1] := makeAreas(length(protseq), areas, 
     		mutRate, maxSteps);
-
         evolution[1, i, 2] := protseq;
         evolution[1, i, 3] := '1';
         evolution[1, i, 4] := i;
         evolution[1, i, 5] := '1';
         evolution[1, i, 6] := SearchTag('DNA', Entry(i));
     od:
-else	# generates the first organism
+else	
+    # generates the first organism
     evolution := []:
     evolution := append(evolution, CreateArray(1..protStart, 1..6)):
     for i to protStart do
@@ -56,8 +56,8 @@ else	# generates the first organism
         evolution[1, i, 5] := '1';
     od:
 fi;
-gcrat := calGCcont(evolution[1]); 		# GCcont for the new organism
-gcw := Rand(30..70);                            # and the right matrix for it
+gcrat := calGCcont(evolution[1]); 	    	# GCcont for the new organism
+gcw := Rand(30..70);                        # and the right matrix for it
 if gcrat > gcw then
     GCratio := append(GCratio, [gcw, 'minus']);        
 elif gcrat < gcw then
@@ -69,13 +69,13 @@ fi;
 # main data structure:
 # evolution[organism#, gene#][mutRate, aa sequence, desc, id, organism, dna]
 #                             1        2            3     4   5         6
-
+#                  mutRate = [domain start, domain end, mutrate], ...]      
 
 # evolution!
 lastSpeciation := 1:
 print('\n\nEvolution!\n\n');
 OpenWriting(wdir.'logfile.txt'); 
-lprint('Synthetic evolution\n===================\n');
+lprint('Synthetic evolution\n-------------------\n');
 printf('maxSteps := %i\tprotStart := %i\taaStart := %i\n', 
     maxSteps, protStart, aaStart);      
 printf('mutRate := %.2f\tspecRate := %.2f\n', 
@@ -86,7 +86,16 @@ printf('lgtRate := %.2f\tlgtGRate := %.2f\tlgtGSize := %.2f\n',
     lgtRate, lgtGRate, lgtGSize );
 printf('aaGainRate := %.3f\t aaLossRate := %.3f\n', 
     aaGainRate, aaLossRate);
-
+lprint('\nmutation rates:\n\t gene <genenumber> : mutrate domain 1, mutrate domain 2, ...');
+for i to length(evolution[1]) do
+    printf('g %3i : ', i);
+    for j to length(evolution[1, i, 1]) do
+        printf('%.f ', evolution[1, i, 1, j, 3] * maxSteps);
+    od;
+    printf('\n');
+od;
+lprint();
+    
 # evolution loop begins
 while evolTime <= maxSteps do
     evolTime := evolTime + 1:
@@ -354,13 +363,13 @@ for i to livingOrgs do			# calculation of total lgt and dupl
     od:
 od:
 OpenAppending(wdir.'logfile.txt');
-printf('\n\t species:          %i', livingOrgs);
-printf('\n\t gene duplication: %.01f', totD);
-printf('\n\t lgt:              %.01f\n\n', totL);
-printf('\n\t GC amelioration:');
-printf('\n\t\t target GC content\tinitialized GC ratio'); 
+printf('\n\n\n\tspecies:          %i', livingOrgs);
+printf('\n\tgene duplication: %.01f', totD);
+printf('\n\tlgt:              %.01f\n\n', totL);
+printf('\n\tGC amelioration:');
+printf('\n\t\ttarget GC content\tinitialized GC ratio'); 
 for i to length(GCratio) do
-    printf('\n\t organism %i\t%.2f\t\t%.2f', 
+    printf('\n\torganism %i\t%.2f\t\t%.2f', 
 	i, GCratio[i,1], calGCcont(evolution[i])); 
 od;
 OpenWriting(previous);
