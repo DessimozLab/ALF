@@ -35,7 +35,7 @@ end:
 CompleteClass(Pair):
 
 RefinedMatches := proc(
-        ms:list( [posint,posint,numeric,numeric,posint,posint,positive]) )
+        ms:list( [posint,posint,numeric,numeric,posint..posint,posint..posint,positive]) )
 global BestMatch1, BestMatch2, g1, g2;
     t1+1;
     t2+length(ms);
@@ -45,6 +45,8 @@ global BestMatch1, BestMatch2, g1, g2;
         sco100 := round(100*z[3]);
         dist100 := round(100*z[4]);
         var10000 := round(10000*z[7]);
+        z[5] := z[5,2]-z[5,1]+1;
+        z[6] := z[6,2]-z[6,1]+1;
         suml := z[5] + z[6];
         if z[5] / minl >= LengthTol then BestMatch1[z[1]] :=
              append(BestMatch1[z[1]],Pair(sco100,z[2],dist100,var10000,suml)) 
