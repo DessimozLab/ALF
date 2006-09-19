@@ -1,0 +1,42 @@
+CreateDayMatrices();
+# From Phase0
+DMSprot := DMS:  DM := DayMatrix(224):
+##########################
+#  all x all alignments  #
+##########################
+if length(FileStat(wdir.allalldir)) = 0 then 
+		TimedCallSystem('mkdir '.wdir.allalldir, 2);
+	fi;
+for X to livingOrgs do
+	for Y from X to livingOrgs do
+		# retrieve Seqs:
+		db := ReadDb(wdir.dbdir.'SE'.sprintf('%03d',X).'.db');
+		Seqs1 := [];
+		for z in Entries() do Seqs1 := append(Seqs1,Sequence(z)); od;
+		db := ReadDb(wdir.dbdir.'SE'.sprintf('%03d',Y).'.db');
+		Seqs2 := [];
+		for z in Entries() do Seqs2 := append(Seqs2,Sequence(z)); od;
+		# perform AxA
+		OpenWriting(wdir.allalldir.sprintf('%d-%d.best',X,Y));
+		lprint( 'RefinedMatches(' );
+		res := []:
+		for i1 to length(Seqs1) do
+			for i2 to length(Seqs2) do
+                if X = Y and i1 >= i2 then next fi;
+    			dps := DynProgScore(Seqs1[i1],Seqs2[i2],DM,JustScore);
+    			if dps[1] >= 85 then
+        			a := Align(Seqs1[i1],Seqs2[i2],DMS);
+     			    if a[Score] < 110 or min(a[Length1],a[Length2]) <
+   				     0.3*min(length(Seqs1[i1]),length(Seqs2[i2])) then next fi;
+   					res := append(res,[i1, i2, a[Score], a[PamDistance],
+        				length(a[Seq1]), length(a[Seq2]), a[PamVariance]] );
+         		fi;
+    		od;
+		od:
+		# dump result in resfile
+		NumberFormat := '%.10g':
+		lprint( res, '):' );
+		OpenWriting(previous);
+		printf('Just finished %d-%d\n',X,Y);
+	od;
+od:

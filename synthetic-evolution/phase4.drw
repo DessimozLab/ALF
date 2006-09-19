@@ -1,0 +1,95 @@
+# Phase4 for Synthetic Evolution
+Set(quiet):
+Set(gc=5e7):
+#SetRandSeed():
+
+MinScore := 130.8764: LengthTol := 0.6278: 
+
+StablePairTol := 1.96;  VerifiedPairTol := 1.96;  MinSeqLen := 50:
+genomes := [seq(sprintf('SE%03d', i), i=1..livingOrgs)];
+#ReadProgram( '/home/darwin/v2/source/bio-recipes/Orthologues/lib/darwinit' );
+
+N := livingOrgs ;
+ns := CreateArray(1..N);
+Lengths := CreateArray(1..N);
+for i to N do
+	db := ReadDb(wdir.dbdir.'SE'.sprintf('%03d',i).'.db');
+	t := [];
+	for z in Entries() do t := append(t,length(Sequence(z))); od;
+	ns[i] := length(t);
+	Lengths[i] := t;
+od:
+
+t1 := Counter('RefinedMatches structures read'):
+t2 := Counter('Matches read'):
+t3 := Counter('files read'):
+t4 := Counter( sprintf('discarded for Score<%g', MinScore)):
+t5 := Counter( sprintf('discarded for LengthTol<%g', LengthTol)):
+t6 := Counter( 'empty all-all'):
+
+Pair := proc( Score100:posint, Entry:posint, PamDist100:posint,
+        PamVar10000:posint, SumLengths:posint ) option NoIndexing;
+if nargs = 5 then noeval(procname(args))
+else error(args,'invalid arguments') fi
+end:
+CompleteClass(Pair):
+
+RefinedMatches := proc(
+        ms:list( [posint,posint,numeric,numeric,posint,posint,positive]) )
+global BestMatch1, BestMatch2, g1, g2;
+    t1+1;
+    t2+length(ms);
+    for z in ms do
+        minl := min(Lengths[g1,z[1]],Lengths[g2,z[2]]);
+        if minl < MinSeqLen then next fi;
+        sco100 := round(100*z[3]);
+        dist100 := round(100*z[4]);
+        var10000 := round(10000*z[7]);
+        suml := z[5] + z[6];
+        if z[5] / minl >= LengthTol then BestMatch1[z[1]] :=
+             append(BestMatch1[z[1]],Pair(sco100,z[2],dist100,var10000,suml)) 
+        fi;
+        if z[6] / minl >= LengthTol then BestMatch2[z[2]] :=
+             append(BestMatch2[z[2]],Pair(sco100,z[1],dist100,var10000,suml)) 
+        fi;
+        od:
+end:
+
+Set(quiet=false):
+BestMatch := CreateArray(1..N,1..N):
+for i to N do for j from i to N do
+    BestMatch[i,j] := CreateArray(1..ns[i],[]);
+    BestMatch[j,i] := CreateArray(1..ns[j],[]);
+    g1 := i; g2 := j;
+    BestMatch1 := BestMatch[g1,g2];  BestMatch2 := BestMatch[g2,g1];
+	ReadProgram(wdir.allalldir.sprintf('%d-%d.best',i,j));
+	t3+1;
+    sij := sum(length(BestMatch[i,j,k]), k=1..length(BestMatch[i,j]));
+    sji := sum(length(BestMatch[j,i,k]), k=1..length(BestMatch[j,i]));
+    if sij=0 or sji=0 then
+        t6+1;
+	fi;
+    printf( '%s done, (%d/%d)\n', fn, sij, sji );
+od od:
+print(t1,t2,t3,t4,t5,t6);
+
+printlevel := 3:
+NumberFormat := '%.8g':
+params := [MinScore, LengthTol, StablePairTol, VerifiedPairTol]:
+Ort := OrthologousMatrix( op(params) ): 
+#fn := TimedCallSystem( 'date "+OMA-Matrix%b%d"' )[2,1..-2];
+fn := SearchDelim('/', TimedCallSystem('pwd',1)[2])[-1][1..-2];
+Set(quiet):
+OpenWriting( wdir . fn );
+printf( 'ProteinsInGroups := %d:\n', sum( histog[i]*i, i=1..N ));
+printf( 'params := %a:\n', params );
+printf( 'genomes := %a:\n', genomes );
+printf( 'histog := %a:\n', histog );
+printf( 'Class := Simulation:\n');
+tit := 'Simulation':
+printf( 'tit := ''%s, %s, %d species, %d orthologs'':\n', tit,
+    date(), length(genomes), length(Ort) );
+printf( 'Orthologous :=\n' );  lprint( Ort );  printf( ':\n' );
+printf('RealTree := %a;\n', treeEvo);
+printf('spec := %a;\n', spec);
+OpenWriting( previous );
