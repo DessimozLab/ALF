@@ -393,7 +393,7 @@ LGTpairs := proc(omanum: integer, spec:array)
     LGTpairs := CreateArray(1..length(LGTrec), 1..3);
     for i to length(LGTrec) do
 	j := 1;
-	while parse(LGTrec[i,3]) > spec[j,3] and (j+1) <= length(spec) do
+	while parse(LGTrec[i,3]) > parse(spec[j,3]) and (j+1) <= length(spec) do
 	    j := j + 1;
 	od;
 	LGTpairs[i,1] := LGTrec[i,1];
