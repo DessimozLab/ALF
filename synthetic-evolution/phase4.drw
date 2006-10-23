@@ -46,8 +46,8 @@ RefinedMatches := proc(ms:list({
         sco100 := round(100*z[3]);
         dist100 := round(100*z[4]);
         var10000 := round(10000*z[7]);
-        z[5] := z[5,2]-z[5,1]+1;
-        z[6] := z[6,2]-z[6,1]+1;
+        if type(z[5]) = range then z[5] := z[5,2]-z[5,1]+1; fi;
+        if type(z[6]) = range then z[6] := z[6,2]-z[6,1]+1; fi;
         suml := z[5] + z[6];
         if z[5] / minl >= LengthTol then BestMatch1[z[1]] :=
              append(BestMatch1[z[1]],Pair(sco100,z[2],dist100,var10000,suml)) 
