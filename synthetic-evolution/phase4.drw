@@ -34,9 +34,10 @@ else error(args,'invalid arguments') fi
 end:
 CompleteClass(Pair):
 
-RefinedMatches := proc(
-        ms:list( [posint,posint,numeric,numeric,posint..posint,posint..posint,positive]) )
-global BestMatch1, BestMatch2, g1, g2;
+RefinedMatches := proc(ms:list({
+    [posint,posint,numeric,numeric,posint..posint,posint..posint,positive],
+    [posint,posint,numeric,numeric,posint,posint,positive]}))
+    global BestMatch1, BestMatch2, g1, g2;
     t1+1;
     t2+length(ms);
     for z in ms do
