@@ -319,6 +319,8 @@ while evolTime <= maxSteps do
 	    fi;
 	od;
 
+	specRate := (cSpecies-livingOrgs) / (maxSteps-evolTime);
+
         treeData := append(treeData, []); # creates a new leaf in the tree
         d := evolTime;
         if treeData[orgSource] = [] then
