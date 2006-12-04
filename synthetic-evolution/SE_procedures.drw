@@ -126,9 +126,6 @@ DBoutAnc := proc(organism, parent, child, birth)
 	    organism[j, 2], organism[j, 6]);
     od;
     OpenWriting(previous);
-    OpenAppending(wdir.'logfile.txt');
-    lprint('\n\nancestral db file written...\n\n');
-    OpenWriting(previous);
 end:
 
 
