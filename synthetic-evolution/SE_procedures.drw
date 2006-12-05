@@ -21,8 +21,9 @@
 ReadProgram( '/home/darwin/v2/source/bio-recipes/Orthologues/lib/darwinit' );
 CreateCodonMatrices();
 
+
 # counts the total number of LGTs and duplications in an organism
-GenomeSummaries := proc(orgnumber: posint)
+GenomeSummariesOld := proc(orgnumber: posint)
     global genomes, GenomeFileName;
     filepattern := 'DB/SE';
     GS := table();
@@ -76,7 +77,21 @@ DBout := proc()
 	    TimedCallSystem('mkdir '.wdir.dbdir, 2);
     fi;
     for i to livingOrgs do
-        OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'.db');
+        # header output
+        orgname := sprintf('SE%03d', i);
+        OpenWriting(wdir.dbdir.orgname.'.db');
+        printf('<DBNAME>Synthetic organism %s</DBNAME>\n', orgname);
+        printf('<DBRELEASE>SE %s</DBRELEASE>\n', mname);
+        printf('<SOURCE>sequence simulation</SOURCE>\n');
+        printf('<DATE>%s</DATE>\n', date());
+        printf('<URL>http://www.cbrg.ethz.ch</URL>\n');
+        printf('<5LETTERNAME>%s</5LETTERNAME>\n', orgname);
+        printf('<SCINAME>Organismus syntheticus_%s</SCINAME>\n', orgname);
+        printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
+            'Organismus syntheticus_</OS>%s\n', orgname);
+        printf('<KINGDOM>Bacteria</KINGDOM>\n');
+        printf('<FIELDS>ID; DE; OS; SEQ; DNA</FIELDS>\n');
+        # entry output
         for j to length(evolution[i]) do
             printf('<E><ID>%a</ID><DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ>'.
                 '<DNA>%s</DNA></E>\n',
@@ -87,6 +102,7 @@ DBout := proc()
     od;
     lprint('\n\n.db files written...\n\n');
 end:
+
 
 # FASTA output
 DBoutFASTA := proc()
@@ -109,32 +125,40 @@ DBoutFASTA := proc()
 end:
 
 
-
-
-
 # DB output for the ancestral sequences
 DBoutAnc := proc(organism, parent, child, birth)
     if FileExists(wdir.dbAncdir) = false then
         TimedCallSystem('mkdir '.wdir.dbAncdir, 2);
     fi;
-    OpenWriting(wdir.dbAncdir.'SE'.sprintf('%i-%i(%i)', 
-        parent, child, birth).'.db');
+    orgname := sprintf('SE%i-%i(%i)', parent, child, birth);
+    OpenWriting(wdir.dbAncdir.orgname.'.db');
+    # header output
+    printf('<DBNAME>Synthetic organism %s</DBNAME>\n', orgname);
+    printf('<DBRELEASE>SE %s</DBRELEASE>\n', mname);
+    printf('<SOURCE>sequence simulation</SOURCE>\n');
+    printf('<DATE>%s</DATE>\n', date());
+    printf('<URL>http://www.cbrg.ethz.ch</URL>\n');
+    printf('<5LETTERNAME>%s</5LETTERNAME>\n', orgname);
+    printf('<SCINAME>Organismus syntheticus_%s</SCINAME>\n', orgname);
+    printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
+        'Organismus syntheticus_%s</OS>\n', orgname);
+    printf('<KINGDOM>Bacteria</KINGDOM>\n');
+    printf('<FIELDS>ID; DE; OS; SEQ; DNA</FIELDS>\n');
+    # entry output
     for j to length(organism) do
         printf('<E><ID>%a</ID><DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ>'.
-            '<DNA>%s</DNA></E>\n', 
-	    organism[j, 4], organism[j, 3], organism[j, 5], 
-	    organism[j, 2], organism[j, 6]);
+            '<DNA>%s</DNA></E>\n', organism[j, 4], organism[j, 3], 
+            organism[j, 5], organism[j, 2], organism[j, 6]);
     od;
     OpenWriting(previous);
 end:
 
 
-# tranlates DNA to Protein
-# by Alexander Roth
+# tranlates DNA to Protein (by Alexander Roth, CBRG)
 ProteinSeq := proc(dna:string)
     prot := '';
     for i to length(dna) by 3 do
-	prot := prot.CodonToA(dna[i..i + 2]);
+        prot := prot.CodonToA(dna[i..i + 2]);
     od;
 end:
 
