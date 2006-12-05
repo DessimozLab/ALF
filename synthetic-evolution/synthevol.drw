@@ -395,7 +395,7 @@ for i to livingOrgs do
     od:
 od:
 
-# logfile footer
+# logfile footer, DB output, GenomeSummaries
 OpenAppending(wdir.'logfile.txt');
 printf('\n\n\n\%i species generated\n', livingOrgs);
 printf('%.0f gene duplications and %.0f lgt events\n', totD, totL);
@@ -407,4 +407,16 @@ for i to length(GCratio) do
 od;
 OpenWriting(previous);
 DBout();
-
+OpenWriting(wdir.'Summaries.drw');
+printf('GenomeSummaries := table():\ngenomes := []:\n');
+for i to livingOrgs do
+    OpenWriting(previous);
+    orgname := sprintf('SE%03d', i):
+    DB := ReadDb(wdir.dbdir.orgname.'.db'):
+    OpenAppending(wdir.'Summaries.drw');
+    printf('genomes := append(genomes, %s):\n', orgname):
+    printf('GenomeSummaries[%s] :=', orgname );
+    dprint(copy(GenomeSummary(DB)));
+    printf(':\n');
+od;
+OpenWriting(previous);
