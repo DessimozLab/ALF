@@ -88,7 +88,7 @@ DBout := proc()
         printf('<5LETTERNAME>%s</5LETTERNAME>\n', orgname);
         printf('<SCINAME>Organismus syntheticus_%s</SCINAME>\n', orgname);
         printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
-            'Organismus syntheticus_</OS>%s\n', orgname);
+            'Organismus syntheticus_%s</OS>\n', orgname);
         printf('<KINGDOM>Bacteria</KINGDOM>\n');
         printf('<FIELDS>ID; DE; OS; SEQ; DNA</FIELDS>\n');
         # entry output
