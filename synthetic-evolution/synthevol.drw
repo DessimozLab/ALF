@@ -87,11 +87,11 @@ printf('%i iteration steps\n', maxSteps);
 printf('first organism (%s): %i proteins with %i aa (average)\n', 
     If(realseed = true, 'biological sequences', 'artificial sequences'), 
     Nprot, Naa);
-printf('mutation rate: %.2f, speciation rate: %.2f\n', 
+printf('Mutation rate: %.2f, Speciation rate: %.2f\n', 
     mutRate, specRate);
-printf('gene duplication rate: %.2f, gene loss rate: %.2f\n', 
+printf('Gene duplication rate: %.2f, Gene loss rate: %.2f\n', 
     geneDuplRate, geneLossRate);
-printf('lgt rate: %.2f, lgt rate for groups: %.2f, lgt group size: %.2f\n', 
+printf('LGT rate: %.2f, LGT rate for groups: %.2f, LGT group size: %.2f\n', 
     lgtRate, lgtGRate, lgtGSize );
 printf('aa gain rate: %.3f, aa loss rate= %.3f\n\n', aaGainRate, aaLossRate);
 lprint('mutation rates: g <genenumber> : <domain 1>, <domain 2>, ...');
