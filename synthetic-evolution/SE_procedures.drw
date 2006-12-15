@@ -21,8 +21,9 @@
 ReadProgram( '/home/darwin/v2/source/bio-recipes/Orthologues/lib/darwinit' );
 CreateCodonMatrices();
 
-# mutates organisms for a certain amount of time steps
+# mutates organisms for a certain amount of time steps, 15.12.06
 seqmutation := proc(org: posint, ts: posint)
+    global evolution;
     for k to length(evolution[org]) do
         seqTot := '';
         # loop over all domains for protein k
