@@ -347,7 +347,7 @@ end:
 
 # gives set of OMA groups in which lgt event (orthologous replacement) had 
 # taken place, 15.12.06
-lgtGroups := proc()
+lgtGroupsLo := proc()
     filepattern := 'DB/SE';
     r := {};
     for i to lM do
