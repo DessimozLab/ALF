@@ -156,7 +156,7 @@ DBoutAnc := proc(organism, parent, child, birth)
     if FileExists(wdir.dbAncdir) = false then
         TimedCallSystem('mkdir '.wdir.dbAncdir, 2);
     fi;
-    orgname := sprintf('SE%i-%i(%i)', parent, child, birth);
+    orgname := sprintf('SE%i-%i_%i', parent, child, birth);
     OpenWriting(wdir.dbAncdir.orgname.'.db');
     # header output
     printf('<DBNAME>Synthetic organism %s</DBNAME>\n', orgname);
@@ -173,8 +173,8 @@ DBoutAnc := proc(organism, parent, child, birth)
     # entry output
     for j to length(organism) do
         printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ>'.
-            '<DNA>%s</DNA></E>\n', organism[j, 4], geneR[i, j], organism[j, 3], 
-            organism[j, 5], organism[j, 2], organism[j, 6]);
+            '<DNA>%s</DNA></E>\n', organism[j, 4], geneR[child, j], 
+            organism[j, 3], organism[j, 5], organism[j, 2], organism[j, 6]);
     od;
     OpenWriting(previous);
 end:
