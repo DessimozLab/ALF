@@ -530,4 +530,51 @@ updateBorder := proc(hetero: array, value, event: string)
    return(hetero);
 end:
 	
+# performs the inversion of a gene group
+groupInvert := proc(org: posint, target: posint, iSize: posint)
+   global geneR;
+   j := target + iSize -1;
+   i := target;
+   while j >= i do
+       if j = i then
+       geneR[org, i] := -geneR[org, i];
+       else
+       t := geneR[org, i];
+           geneR[org, i] := -geneR[org, j];
+           geneR[org, j] := -t;
+       fi;
+       i := i+1;
+       j := j-1;
+   od;
+end:
+
+# performs the translocation of a single gene or a gene group
+transLoc := proc(org: posint, place: integer, target: posint, tSize: posint)
+    global geneR;
+    if place > target then
+        geneR[org] := [op(geneR[org, 1..target-1]),
+            op(geneR[org, target+tSize..place]),
+            op(geneR[org, target..(target+tSize-1)]),
+            op(geneR[org, place+1..-1])];
+    elif place < target then
+        geneR[org] := [op(geneR[org, 1..place]),
+            op(geneR[org, target..(target+tSize-1)]),
+            op(geneR[org, place+1..target-1]),
+            op(geneR[org, target+tSize..-1])];
+    fi;
+end:
+
+# deletes an item in the gene rearrangement array after gene loss
+deleteItem := proc(org: posint, target: posint)
+    global geneR;
+    if target = 1 then
+        geneR[org] := geneR[org, 2..-1];
+    elif target = length(geneR[org]) then
+        geneR[org] := geneR[org, 1..-2];
+    else
+        geneR[org] := [op(geneR[org, 1..(target-1)]),
+        op(geneR[org, (target+1)..-1])];
+    fi;
+end:
+  
 lprint('Procedures for Synthetic Evolution sucessfully loaded\n\n');
