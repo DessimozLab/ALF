@@ -115,13 +115,14 @@ DBout := proc()
         printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
             'Organismus syntheticus_%s</OS>\n', orgname);
         printf('<KINGDOM>Bacteria</KINGDOM>\n');
-        printf('<FIELDS>ID; LOC; DE; OS; SEQ; DNA</FIELDS>\n');
+        printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA</FIELDS>\n');
         # entry output
         for j to length(evolution[i]) do
-            printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS>'.
-                '<SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
-                evolution[i, j, 4], geneR[i, j], evolution[i, j, 3], 
-                evolution[i, j, 5], evolution[i, j, 2], evolution[i, j, 6]);
+            printf('<E><ID>%a</ID><LOC>%a</LOC><SYNLOC>%a</SYNLOC>'.
+            '<DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
+                evolution[i, j, 4], geneR[i, j], synloc[i, j], 
+                evolution[i, j, 3], evolution[i, j, 5], evolution[i, j, 2], 
+                evolution[i, j, 6]);
         od;
         OpenWriting(previous);
     od;
@@ -169,12 +170,14 @@ DBoutAnc := proc(organism, parent, child, birth)
     printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
         'Organismus syntheticus_%s</OS>\n', orgname);
     printf('<KINGDOM>Bacteria</KINGDOM>\n');
-    printf('<FIELDS>ID; LOC; DE; OS; SEQ; DNA</FIELDS>\n');
+    printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA</FIELDS>\n');
     # entry output
     for j to length(organism) do
-        printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ>'.
-            '<DNA>%s</DNA></E>\n', organism[j, 4], geneR[child, j], 
-            organism[j, 3], organism[j, 5], organism[j, 2], organism[j, 6]);
+        printf('<E><ID>%a</ID><LOC>%a</LOC><SYNLOC>%a</SYNLOC>'.
+            '<DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
+                evolution[i, j, 4], geneR[i, j], synloc[i, j],
+                evolution[i, j, 3], evolution[i, j, 5], evolution[i, j, 2],
+                evolution[i, j, 6]);
     od;
     OpenWriting(previous);
 end:
