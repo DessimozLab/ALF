@@ -175,9 +175,8 @@ DBoutAnc := proc(organism, parent, child, birth)
     for j to length(organism) do
         printf('<E><ID>%a</ID><LOC>%a</LOC><SYNLOC>%a</SYNLOC>'.
             '<DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
-                evolution[i, j, 4], geneR[i, j], synloc[i, j],
-                evolution[i, j, 3], evolution[i, j, 5], evolution[i, j, 2],
-                evolution[i, j, 6]);
+            organism[j, 4], geneR[child, j], synloc[child, j],
+            organism[j, 3], organism[j, 5], organism[j, 2], organism[j, 6]);
     od;
     OpenWriting(previous);
 end:
