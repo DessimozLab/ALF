@@ -171,11 +171,19 @@ DBoutAnc := proc(organism, parent, child, birth)
         'Organismus syntheticus_%s</OS>\n', orgname);
     printf('<KINGDOM>Bacteria</KINGDOM>\n');
     printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA</FIELDS>\n');
+    # preprocessing synloc information
+    h := copy(geneR[child]);
+    for k to length(h) do
+        if SearchArray(|h[k]|, transpose(dupllist)[2]) > 0 then
+            h[k] := dupllist[SearchArray(|h[k]|,
+                transpose(dupllist)[2]), 1] * sign(h[k]);
+        fi;
+    od;
     # entry output
     for j to length(organism) do
         printf('<E><ID>%a</ID><LOC>%a</LOC><SYNLOC>%a</SYNLOC>'.
             '<DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
-            organism[j, 4], geneR[child, j], synloc[child, j],
+            organism[j, 4], geneR[child, j], h[j],
             organism[j, 3], organism[j, 5], organism[j, 2], organism[j, 6]);
     od;
     OpenWriting(previous);
