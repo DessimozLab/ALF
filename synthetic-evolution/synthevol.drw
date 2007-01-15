@@ -375,7 +375,7 @@ lprint('main calculation finished');
 for i to livingOrgs do
     treeEvo[op(treeData[i])]:=Leaf('SE'.sprintf('%03d', i), evolTime); 
 od:
-DrawTree(treeEvo, BisectLines, OrderLeaves=LeftHeavy, Legend, 
+DrawTree(treeEvo, ArcRadial, OrderLeaves=LeftHeavy, Legend, 
     Title = 'synthetic evolution');
 TimedCallSystem('mv temp.ps RealTree.ps', 2);
 OpenWriting('RealTree.drw');
