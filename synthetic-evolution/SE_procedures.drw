@@ -54,17 +54,19 @@ testM := proc(oma:posint)
             for j to DB[TotEntries] do
                 if parse(SearchTag('ID', Entry(j))) = s then
                     b := j;
-                    allcorrect := false;
                     Mreal := SearchArray(b, transpose(M)[i]);
-                    h := countEvents([des[i]]);
-                    orthoFalse := append(orthoFalse, [i ,op(op(h))]);
+                    if Mreal > 0 then
+                        allcorrect := false;
+                        h := countEvents([des[i]]);
+                        orthoFalse := append(orthoFalse, [i ,op(op(h))]);
+                    fi;
                     break;
                 fi;
             od;
             h := countEvents([des[i]]);
             printf('org: %i\tLo: %i  L: %i  D: %i', i, op(op(h)));
             Mreal := SearchArray(b, transpose(M)[i]);
-            printf('%s\n', If(b>0,
+            printf('%s\n', If(Mreal>0,
                 sprintf('  real ortholog:  Entry %i in M[%i]', b, Mreal),''));
         fi;
     od;
