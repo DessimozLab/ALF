@@ -6,204 +6,79 @@
 # - additional features
 #
 
-# implemented: GS[SExxx] for Synthetic Evolution organism xxx
-#              GS[SExxx][TotEntries]
-#              GS[SExxx][Lineage]
-#              GS[SExxx][SCINAME]
-#              GS[SExxx][TotLGTNum]     total number of lgt happend in history
-#              GS[SExxx][TotLGT]       genes gained by lgt
-#              GS[SExxx][TotDupl]         genes undergone gene duplication
-#              GS[SExxx][TotDupNum]     total number of duplications happend in history
-#              genomes		             
-#	       GenomeFileName[genomes[j]]
-
-
 ReadProgram( '/home/darwin/v2/source/bio-recipes/Orthologues/lib/darwinit' );
 CreateCodonMatrices();
 
-# mutates organisms for a certain amount of time steps, 15.12.06
-seqmutation := proc(org: posint, ts: posint)
-    global evolution;
-    for k to length(evolution[org]) do
-        seqTot := '';
-        # loop over all domains for protein k
-        for i to length(evolution[org, k, 1]) do
-            sequence := evolution[org, k, 6][(evolution[org, k, 1][i, 1]
-                * 3 - 2)..evolution[org, k, 1][i, 2] * 3];
-            if GCratio[org, 2] = 'plus' then
-                sequence := CodonMutate(sequence,
-                    ts * evolution[org, k, 1][i, 3], GCplus);
-            elif GCratio[org, 2] = 'minus' then
-                sequence := CodonMutate(sequence,
-                    ts * evolution[org, k, 1][i, 3], GCminus);
-            fi;
-            seqTot := seqTot.string(sequence);
-        od;
-        evolution[org, k, 6] := string(seqTot);
-        evolution[org, k, 2] := ProteinSeq(evolution[org, k, 6]);
+
+########################################################################
+# procedures for analyses and reports on EVA data
+
+
+# counts L, Lo and D for a certain array of description strings
+# needed for testM()
+countEvents := proc(des:array)
+    r := [];
+    for i to length(des) do
+        lo := length(SearchAllString('Lo', des[i]));
+        l := length(SearchAllString('L', des[i])) - lo;
+        d := length(SearchAllString('D', des[i]));
+        r := append(r, [lo, l, d]);
     od;
+    Result := r;
 end:
 
 
-## obsolete for new sets (after 11.12.06)
-# counts the total number of LGTs and duplications in an organism
-GenomeSummariesOld := proc(orgnumber: posint)
-    global genomes, GenomeFileName;
-    filepattern := 'DB/SE';
-    GS := table();
-    genomes := [];
-    GenomeFileName := table();
-    for i from 1 to orgnumber do
-	totL := 0; totD := 0; totLNum := 0; totDNum := 0;
-	genomes := append(genomes, 'SE'.sprintf('%03i', i));
-	GenomeFileName[genomes[-1]] := wdir.filepattern.
-	    sprintf('%03i', i).'.db';
-	DB := ReadDb(wdir.filepattern.sprintf('%03i', i).'.db');
-	t2 := table();
-	for j from 1 to DB[TotEntries] do
-	    e := Entry(j);
-	    a := SearchTag('DE', e);
-	    if SearchString('L', a) > -1 then	# searches for LGT in gene
-		totL := totL + 1;
-		for k to length(a) do		# counts all LGTs
-		    if a[k] = 'L' then 
-			totLNum := totLNum + 1;
-		    fi;
-		od;
-	    fi;
-	    if SearchString('D', SearchTag('DE', e)) > -1 then # dupl
-		totD := totD + 1;
-		for m to length(a) do		# counts all duplications
-                    if a[m] = 'D' then 
-			totDNum := totDNum + 1;
-                    fi;
-                od;
-	    fi;
-	od:
-	t2[TotEntries] := DB[TotEntries];	# filling of the table
-	t2[TotLGT] := totL;
-	t2[TotDupl] := totD;
-	t2[TotLGTNum] := totLNum;
-	t2[TotDupNum] := totDNum;
-	h := SearchTag('OS', DB[string]);
-	t2[Lineage] := SearchDelim('-', h);
-	t2[SCINAME] := genomes[-1];
-	GS[genomes[-1]] := t2;
+# checks oma group for ortholog consitency, check for LGT and Paralogs
+testM := proc(oma:posint)
+    allcorrect := true;
+    IDs := CreateArray(1..N);
+    des := CreateArray(1..N);
+    for i to N do
+        if M[oma, i] = 0 then next; fi;
+        DB := ReadDb(GenomeFileName[genomes[i]]);
+        IDs[i] := parse(SearchTag('ID', Entry(M[oma, i])));
+        des[i] := SearchTag('DE', Entry(M[oma, i]));
     od;
-    lprint('GS done');
-GS;
-end:
-
-
-# DB output
-# 11.12.06/dm
-DBout := proc()
-    if FileExists(wdir.dbdir) = false then 
-	    TimedCallSystem('mkdir '.wdir.dbdir, 2);
-    fi;
-    for i to livingOrgs do
-        # header output
-        orgname := sprintf('SE%03d', i);
-        OpenWriting(wdir.dbdir.orgname.'.db');
-        printf('<DBNAME>Synthetic organism %s</DBNAME>\n', orgname);
-        printf('<DBRELEASE>SE %s</DBRELEASE>\n', mname);
-        printf('<SOURCE>sequence simulation</SOURCE>\n');
-        printf('<DATE>%s</DATE>\n', date());
-        printf('<URL>http://www.cbrg.ethz.ch</URL>\n');
-        printf('<5LETTERNAME>%s</5LETTERNAME>\n', orgname);
-        printf('<SCINAME>Organismus syntheticus_%s</SCINAME>\n', orgname);
-        printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
-            'Organismus syntheticus_%s</OS>\n', orgname);
-        printf('<KINGDOM>Bacteria</KINGDOM>\n');
-        printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA</FIELDS>\n');
-        # entry output
-        for j to length(evolution[i]) do
-            printf('<E><ID>%a</ID><LOC>%a</LOC><SYNLOC>%a</SYNLOC>'.
-            '<DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
-                evolution[i, j, 4], geneR[i, j], synloc[i, j], 
-                evolution[i, j, 3], evolution[i, j, 5], evolution[i, j, 2], 
-                evolution[i, j, 6]);
-        od;
-        OpenWriting(previous);
+    s := {op(IDs)} minus {0}; s:=s[1];
+    orthoFalse := [];
+    printf('\n\noma[%i]\n\n', oma);
+    for i to N do
+        if M[oma, i] = 0 then next; fi;
+        if IDs[i] = s then
+            h := countEvents([des[i]]);
+            printf('org: %i\tLo: %i  L: %i  D: %i\n', i, op(op(h)));
+            orthoTrue := op(h);
+        else
+            b := 0;
+            DB := ReadDb(GenomeFileName[genomes[i]]);
+            for j to DB[TotEntries] do
+                if parse(SearchTag('ID', Entry(j))) = s then
+                    b := j;
+                    allcorrect := false;
+                    Mreal := SearchArray(b, transpose(M)[i]);
+                    h := countEvents([des[i]]);
+                    orthoFalse := append(orthoFalse, [i ,op(op(h))]);
+                    break;
+                fi;
+            od;
+            h := countEvents([des[i]]);
+            printf('org: %i\tLo: %i  L: %i  D: %i', i, op(op(h)));
+            Mreal := SearchArray(b, transpose(M)[i]);
+            printf('%s\n', If(b>0,
+                sprintf('  real ortholog:  Entry %i in M[%i]', b, Mreal),''));
+        fi;
     od;
-    lprint('\n\n.db files written...\n\n');
-end:
-
-
-# FASTA output
-DBoutFASTA := proc()
-    if FileExists(wdir.dbdir) = false then
-        TimedCallSystem('mkdir '.wdir.dbdir, 2);
-    fi;
-    for i to livingOrgs do
-        for j to length(evolution[i]) do
-            OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'.fasta.aa');
-            printf('>%a (SE%03d)\n%s\n\n', evolution[i, j, 4], i, 
-                evolution[i, j, 2]);
-            OpenWriting(previous);
-            OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'.fasta.dna');
-            printf('>%a (SE%03d)\n%s\n\n', evolution[i, j, 4], i,
-                evolution[i, j, 6]);
-            OpenWriting(previous);
-        od;
+    for i to length(orthoFalse) do
+        orthoFalse[i] := [orthoFalse[i, 1],
+            op(orthoFalse[i][2..4] - orthoTrue)];
     od;
-    lprint('\n\n.fasta files written...\n\n');
-end:
-
-
-# DB output for the ancestral sequences
-# 11.12.06/dm
-DBoutAnc := proc(organism, parent, child, birth)
-    if FileExists(wdir.dbAncdir) = false then
-        TimedCallSystem('mkdir '.wdir.dbAncdir, 2);
-    fi;
-    orgname := sprintf('SE%i-%i_%i', parent, child, birth);
-    OpenWriting(wdir.dbAncdir.orgname.'.db');
-    # header output
-    printf('<DBNAME>Synthetic organism %s</DBNAME>\n', orgname);
-    printf('<DBRELEASE>SE %s</DBRELEASE>\n', mname);
-    printf('<SOURCE>sequence simulation</SOURCE>\n');
-    printf('<DATE>%s</DATE>\n', date());
-    printf('<URL>http://www.cbrg.ethz.ch</URL>\n');
-    printf('<5LETTERNAME>%s</5LETTERNAME>\n', orgname);
-    printf('<SCINAME>Organismus syntheticus_%s</SCINAME>\n', orgname);
-    printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
-        'Organismus syntheticus_%s</OS>\n', orgname);
-    printf('<KINGDOM>Bacteria</KINGDOM>\n');
-    printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA</FIELDS>\n');
-    # preprocessing synloc information
-    h := copy(geneR[child]);
-    if dupllist <> [] then
-        for k to length(h) do
-            if SearchArray(|h[k]|, transpose(dupllist)[2]) > 0 then
-                h[k] := dupllist[SearchArray(|h[k]|,
-                    transpose(dupllist)[2]), 1] * sign(h[k]);
-            fi;
-        od;
-    fi;
-    # entry output
-    for j to length(organism) do
-        printf('<E><ID>%a</ID><LOC>%a</LOC><SYNLOC>%a</SYNLOC>'.
-            '<DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
-            organism[j, 4], geneR[child, j], h[j],
-            organism[j, 3], organism[j, 5], organism[j, 2], organism[j, 6]);
-    od;
-    OpenWriting(previous);
-end:
-
-
-# tranlates DNA to Protein (by Alexander Roth, CBRG)
-ProteinSeq := proc(dna:string)
-    prot := '';
-    for i to length(dna) by 3 do
-        prot := prot.CodonToA(dna[i..i + 2]);
-    od;
+    Result := orthoFalse;
 end:
 
 
 # gives a summary of all organism and their numbers of proteins,
-# LGTs and duplications
-# argument must be 'a' for array or 'r' for report
+# LGTs and duplications, argument must be 'a' for array or 'r' for report
+# !!! obsolete! (does not work on new data structure)
 lgtReport := proc(a: string)
     summary := CreateArray(1..N,1..6);
     prot := Stat('Proteins'); lgt := Stat('LGT');
@@ -373,6 +248,140 @@ lgtGroupsLo := proc()
 end:
 
 
+########################################################################
+# internal procedures for data creation
+
+
+# mutates organisms for a certain amount of time steps, 15.12.06
+seqmutation := proc(org: posint, ts: posint)
+    global evolution;
+    for k to length(evolution[org]) do
+        seqTot := '';
+        # loop over all domains for protein k
+        for i to length(evolution[org, k, 1]) do
+            sequence := evolution[org, k, 6][(evolution[org, k, 1][i, 1]
+                * 3 - 2)..evolution[org, k, 1][i, 2] * 3];
+            if GCratio[org, 2] = 'plus' then
+                sequence := CodonMutate(sequence,
+                    ts * evolution[org, k, 1][i, 3], GCplus);
+            elif GCratio[org, 2] = 'minus' then
+                sequence := CodonMutate(sequence,
+                    ts * evolution[org, k, 1][i, 3], GCminus);
+            fi;
+            seqTot := seqTot.string(sequence);
+        od;
+        evolution[org, k, 6] := string(seqTot);
+        evolution[org, k, 2] := ProteinSeq(evolution[org, k, 6]);
+    od;
+end:
+
+
+# DB output
+# 11.12.06/dm
+DBout := proc()
+    if FileExists(wdir.dbdir) = false then
+        TimedCallSystem('mkdir '.wdir.dbdir, 2);
+    fi;
+    for i to livingOrgs do
+        # header output
+        orgname := sprintf('SE%03d', i);
+        OpenWriting(wdir.dbdir.orgname.'.db');
+        printf('<DBNAME>Synthetic organism %s</DBNAME>\n', orgname);
+        printf('<DBRELEASE>SE %s</DBRELEASE>\n', mname);
+        printf('<SOURCE>sequence simulation</SOURCE>\n');
+        printf('<DATE>%s</DATE>\n', date());
+        printf('<URL>http://www.cbrg.ethz.ch</URL>\n');
+        printf('<5LETTERNAME>%s</5LETTERNAME>\n', orgname);
+        printf('<SCINAME>Organismus syntheticus_%s</SCINAME>\n', orgname);
+        printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
+            'Organismus syntheticus_%s</OS>\n', orgname);
+        printf('<KINGDOM>Bacteria</KINGDOM>\n');
+        printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA</FIELDS>\n');
+        # entry output
+        for j to length(evolution[i]) do
+            printf('<E><ID>%a</ID><LOC>%a</LOC><SYNLOC>%a</SYNLOC>'.
+            '<DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
+                evolution[i, j, 4], geneR[i, j], synloc[i, j],
+                evolution[i, j, 3], evolution[i, j, 5], evolution[i, j, 2],
+                evolution[i, j, 6]);
+        od;
+        OpenWriting(previous);
+    od;
+    lprint('\n\n.db files written...\n\n');
+end:
+
+
+# FASTA output
+DBoutFASTA := proc()
+    if FileExists(wdir.dbdir) = false then
+        TimedCallSystem('mkdir '.wdir.dbdir, 2);
+    fi;
+    for i to livingOrgs do
+        for j to length(evolution[i]) do
+            OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'.fasta.aa');
+            printf('>%a (SE%03d)\n%s\n\n', evolution[i, j, 4], i,
+                evolution[i, j, 2]);
+            OpenWriting(previous);
+            OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'.fasta.dna');
+            printf('>%a (SE%03d)\n%s\n\n', evolution[i, j, 4], i,
+                evolution[i, j, 6]);
+            OpenWriting(previous);
+        od;
+    od;
+    lprint('\n\n.fasta files written...\n\n');
+end:
+
+
+# DB output for the ancestral sequences
+# 11.12.06/dm
+DBoutAnc := proc(organism, parent, child, birth)
+    if FileExists(wdir.dbAncdir) = false then
+        TimedCallSystem('mkdir '.wdir.dbAncdir, 2);
+    fi;
+    orgname := sprintf('SE%i-%i_%i', parent, child, birth);
+    OpenWriting(wdir.dbAncdir.orgname.'.db');
+    # header output
+    printf('<DBNAME>Synthetic organism %s</DBNAME>\n', orgname);
+    printf('<DBRELEASE>SE %s</DBRELEASE>\n', mname);
+    printf('<SOURCE>sequence simulation</SOURCE>\n');
+    printf('<DATE>%s</DATE>\n', date());
+    printf('<URL>http://www.cbrg.ethz.ch</URL>\n');
+    printf('<5LETTERNAME>%s</5LETTERNAME>\n', orgname);
+    printf('<SCINAME>Organismus syntheticus_%s</SCINAME>\n', orgname);
+    printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
+        'Organismus syntheticus_%s</OS>\n', orgname);
+    printf('<KINGDOM>Bacteria</KINGDOM>\n');
+    printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA</FIELDS>\n');
+    # preprocessing synloc information
+    h := copy(geneR[child]);
+    if dupllist <> [] then
+        for k to length(h) do
+            if SearchArray(|h[k]|, transpose(dupllist)[2]) > 0 then
+                h[k] := dupllist[SearchArray(|h[k]|,
+                    transpose(dupllist)[2]), 1] * sign(h[k]);
+            fi;
+        od;
+    fi;
+    # entry output
+    for j to length(organism) do
+        printf('<E><ID>%a</ID><LOC>%a</LOC><SYNLOC>%a</SYNLOC>'.
+            '<DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
+            organism[j, 4], geneR[child, j], h[j],
+            organism[j, 3], organism[j, 5], organism[j, 2], organism[j, 6]);
+    od;
+    OpenWriting(previous);
+end:
+
+
+# tranlates DNA to Protein (by Alexander Roth, CBRG)
+ProteinSeq := proc(dna:string)
+    prot := '';
+    for i to length(dna) by 3 do
+        prot := prot.CodonToA(dna[i..i + 2]);
+    od;
+end:
+
+
 # gives an array with the names of the pairs for LGT
 LGTpairs := proc(omanum: integer, spec:array)
     a := 1;
@@ -498,6 +507,7 @@ od:
 return(ln(M1));
 end:
 
+
 # makes the areas for rate heterogenity in a gene
 makeAreas := proc(aaStart, areas, mutRate, maxSteps)
     hetero := CreateArray(1..Rand(1..areas));
@@ -516,6 +526,7 @@ makeAreas := proc(aaStart, areas, mutRate, maxSteps)
     od;
     return(hetero);
 end:
+
 
 # updates the area borders after a AA gain or loss
 updateBorder := proc(hetero: array, value, event: string)
@@ -539,7 +550,8 @@ updateBorder := proc(hetero: array, value, event: string)
    od;
    return(hetero);
 end:
-	
+
+
 # performs the inversion of a gene group
 groupInvert := proc(org: posint, target: posint, iSize: posint)
    global geneR;
@@ -558,6 +570,7 @@ groupInvert := proc(org: posint, target: posint, iSize: posint)
    od;
 end:
 
+
 # performs the translocation of a single gene or a gene group
 transLoc := proc(org: posint, place: integer, target: posint, tSize: posint)
     global geneR;
@@ -573,6 +586,7 @@ transLoc := proc(org: posint, place: integer, target: posint, tSize: posint)
             op(geneR[org, target+tSize..-1])];
     fi;
 end:
+
 
 # deletes an item in the gene rearrangement array after gene loss
 deleteItem := proc(org: posint, target: posint)
