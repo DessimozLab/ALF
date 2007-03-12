@@ -30,7 +30,6 @@ end:
 
 # checks oma group for ortholog consitency, check for LGT and Paralogs
 testM := proc(oma:posint)
-    allcorrect := true;
     IDs := CreateArray(1..N);
     des := CreateArray(1..N);
     for i to N do
@@ -48,26 +47,31 @@ testM := proc(oma:posint)
             h := countEvents([des[i]]);
             printf('org: %i\tLo: %i  L: %i  D: %i\n', i, op(op(h)));
             orthoTrue := op(h);
+        # a second id is present in oma
         else
-            b := 0;
-            DB := ReadDb(GenomeFileName[genomes[i]]);
-            for j to DB[TotEntries] do
-                if parse(SearchTag('ID', Entry(j))) = s then
-                    b := j;
-                    Mreal := SearchArray(b, transpose(M)[i]);
-                    if Mreal > 0 then
-                        allcorrect := false;
-                        h := countEvents([des[i]]);
-                        orthoFalse := append(orthoFalse, [i ,op(op(h))]);
-                    fi;
-                    break;
-                fi;
+            # check if id is present in another group (=paralog)
+            paralog := false;
+            for j to N do
+                DB := ReadDb(GenomeFileName[genomes[j]]);
+                for k to DB[TotEntries] do
+                    if parse(SearchTag('ID', Entry(k))) = IDs[i] then
+                        #print(j, k);
+                        if SearchArray(k, transpose(M)[j]) > 0 and 
+                            SearchArray(k, transpose(M)[j]) <> oma then
+                            paralog := true;
+                            oma2 := SearchArray(k, transpose(M)[j]); 
+                        fi;
+                     fi;
+                 od;
             od;
             h := countEvents([des[i]]);
-            printf('org: %i\tLo: %i  L: %i  D: %i', i, op(op(h)));
-            Mreal := SearchArray(b, transpose(M)[i]);
-            printf('%s\n', If(Mreal>0,
-                sprintf('  real ortholog:  Entry %i in M[%i]', b, Mreal),''));
+            if paralog = true then
+                orthoFalse := append(orthoFalse, [i ,op(op(h))]);
+                printf('org: %i\tLo: %i  L: %i  D: %i'.
+                    '  orthologs also in M[%i]\n', i, op(op(h)), oma2);
+            else
+                printf('org: %i\tLo: %i  L: %i  D: %i\n', i, op(op(h)));
+            fi;
         fi;
     od;
     for i to length(orthoFalse) do
