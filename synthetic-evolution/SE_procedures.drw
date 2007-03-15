@@ -55,7 +55,6 @@ testM := proc(oma:posint)
                 DB := ReadDb(GenomeFileName[genomes[j]]);
                 for k to DB[TotEntries] do
                     if parse(SearchTag('ID', Entry(k))) = IDs[i] then
-                        #print(j, k);
                         if SearchArray(k, transpose(M)[j]) > 0 and 
                             SearchArray(k, transpose(M)[j]) <> oma then
                             paralog := true;
@@ -253,6 +252,43 @@ lgtGroupsLo := proc()
     result := r;
 end:
 
+# gives array with entry and ID number of an organism in the real order
+# the organism is the argument (e.g. SE001)
+getGenomeOrder := proc(org:string)
+    DB := ReadDb(GenomeFileName[org]);
+    geneR := CreateArray(1..DB[TotEntries]);
+    for i to DB[TotEntries] do
+        e := Entry(i);
+        loc := SearchTag('LOC', e);
+        geneR[parse(loc)] := [i, SearchTag('ID', e)];   # Entry and ID number
+    od;
+    result := geneR;
+end:
+
+# gives array with all orthologues between two organisms as entry numbers
+# arguments are the organisms (e.g. SE001)
+getOrthoSet := proc(org1:string, org2:string)
+    orthoSet := [];
+    DB := ReadDb(GenomeFileName[org1]);
+    ortho1 := CreateArray(1..DB[TotEntries]);
+    for i to DB[TotEntries] do
+        ortho1[i] := SearchTag('ID', Entry(i));
+    od;
+    DB := ReadDb(GenomeFileName[org2]);
+    ortho2 := CreateArray(1..DB[TotEntries]);
+    for i to DB[TotEntries] do
+        ortho2[i] := SearchTag('ID', Entry(i));
+    od;    
+    all1 := copy(ortho1);
+    all2 := copy(ortho2);
+    ortho1 := {op(ortho1)};
+    ortho2 := {op(ortho2)};
+    a := ortho1 intersect ortho2;
+    for i in a do
+        orthoSet := append(orthoSet, [SearchArray(i, all1), SearchArray(i, all2)]);
+    od;
+    result := orthoSet;
+end:
 
 ########################################################################
 # internal procedures for data creation
@@ -305,11 +341,14 @@ DBout := proc()
         printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA</FIELDS>\n');
         # entry output
         for j to length(evolution[i]) do
-            printf('<E><ID>%a</ID><LOC>%a</LOC><SYNLOC>%a</SYNLOC>'.
-            '<DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
-                evolution[i, j, 4], geneR[i, j], synloc[i, j],
-                evolution[i, j, 3], evolution[i, j, 5], evolution[i, j, 2],
-                evolution[i, j, 6]);
+            loc := SearchArray(evolution[i, j, 4], abs(geneR[i]));
+            if (geneR[i, loc] < 0) then
+                loc := -loc;
+            fi;
+            printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS>'.
+                '<SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
+                evolution[i, j, 4], loc, evolution[i, j, 3], 
+                evolution[i, j, 5], evolution[i, j, 2], evolution[i, j, 6]);
         od;
         OpenWriting(previous);
     od;
@@ -358,22 +397,16 @@ DBoutAnc := proc(organism, parent, child, birth)
         'Organismus syntheticus_%s</OS>\n', orgname);
     printf('<KINGDOM>Bacteria</KINGDOM>\n');
     printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA</FIELDS>\n');
-    # preprocessing synloc information
-    h := copy(geneR[child]);
-    if dupllist <> [] then
-        for k to length(h) do
-            if SearchArray(|h[k]|, transpose(dupllist)[2]) > 0 then
-                h[k] := dupllist[SearchArray(|h[k]|,
-                    transpose(dupllist)[2]), 1] * sign(h[k]);
-            fi;
-        od;
-    fi;
     # entry output
     for j to length(organism) do
-        printf('<E><ID>%a</ID><LOC>%a</LOC><SYNLOC>%a</SYNLOC>'.
-            '<DE>%a</DE><OS>%a</OS><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
-            organism[j, 4], geneR[child, j], h[j],
-            organism[j, 3], organism[j, 5], organism[j, 2], organism[j, 6]);
+        loc := SearchArray(organism[j, 4], abs(geneR[child]));
+        if (geneR[child, loc] < 0) then
+            loc := -loc;
+        fi;
+        printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS>'.
+            '<SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
+            organism[j, 4], loc, organism[j, 3], organism[j, 5], 
+            organism[j, 2], organism[j, 6]);
     od;
     OpenWriting(previous);
 end:
