@@ -21,7 +21,6 @@ GCplus := GCBiasMatrix(50);
 GCminus := GCBiasMatrix(-50);
 timesteps := CreateArray(1..1);
 geneR := [];        # gene rearrangement array
-dupllist := [];     # conversion list id <-> synloc
 c := 0;
 aat := 0; # counts number of aa events
 smt := 0; # counts number of sequence mutation calls
@@ -218,15 +217,6 @@ while evolTime <= maxSteps do
                     ' %i, now gene %i\n', evolTime, j, evolution[j, 
                     geneSource + k, 4], evolution[j, -1, 4]);
                 h := evolution[j, geneSource + k, 4];
-                if dupllist = [] then
-                    dupllist := append(dupllist, [h, evolution[j, -1, 4]])
-                elif SearchArray(h, transpose(dupllist)[2]) > 0 then
-                    dupllist := append(dupllist, 
-                    [dupllist[SearchArray(h, transpose(dupllist)[2]), 1], 
-                    evolution[j, -1, 4]]);
-                else
-                    dupllist := append(dupllist, [h, evolution[j, -1, 4]])
-                fi;
             od;
             # gene rearrangement
             dl := 'gene dupl - rearrangement';
@@ -499,18 +489,6 @@ for i to length(GCratio) do
 od;
 OpenWriting(previous);
 
-# preprocessing synloc information
-synloc := copy(geneR);
-for j to length(synloc) do
-    if dupllist = [] then break; fi;
-    for k to length(synloc[j]) do
-        if SearchArray(|synloc[j, k]|, transpose(dupllist)[2]) > 0 then
-            synloc[j, k] := dupllist[SearchArray(|synloc[j, k]|, 
-                transpose(dupllist)[2]), 1] * sign(synloc[j, k]);
-        fi;
-    od;
-od;
-    
 DBout();
 OpenWriting(wdir.'Summaries.drw');
 printf('GenomeSummaries := table():\ngenomes := []:\n');
