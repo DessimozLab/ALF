@@ -41,7 +41,18 @@ else
     Nprot := protStart;
 fi;
 maxSteps := rate * max(Naa, Nprot);
-specTime := [seq(Rand(1..maxSteps), k=1..cSpecies - 1)];
+
+# calculation for the speciation time points
+minSpecTime := maxSteps / 5 / cSpecies;
+specTime := {seq(Rand(1..maxSteps), k=1..cSpecies - 1)};
+for i to cSpecies - 2 do
+    if specTime[i + 1] - specTime[i] < minSpecTime then
+        specTime[i + 1] := specTime[i] + minSpecTime;
+    fi;
+od:
+if specTime[-1] > maxSteps then maxSteps := specTime[-1]; fi;
+    
+    
 AAfactor := Nprot * Naa / maxSteps;
 Gfactor := Nprot / maxSteps;
 
