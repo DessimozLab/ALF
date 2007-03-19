@@ -295,6 +295,7 @@ while evolTime <= maxSteps do
 
         # lateral gene transfer of single genes
         if 100 * Rand() < (lgtRate * Gfactor) and livingOrgs > 1 then
+
             # lgt - orthologous replacement
             if 100 * Rand() < orthRep then
                 dl := 'lgt orth repl';
@@ -324,7 +325,7 @@ while evolTime <= maxSteps do
                     evolution[orgDonor, geneDonor, 4], j, evolution[j, -1, 4]);
                 printf('\torthologues replacement, gene %i in organism %i '.
                     'deleted\n', evolution[j, geneSource, 4], j);
-                geneR[j, SearchArray(gD, abs(geneR[j]))] := evolution[j, -1, 4];
+                geneR[j, SearchArray(gD, abs(geneR[j]))] := maxID;
                 # deletes own version of gene in recipient
                 if geneSource = 1 then
                     evolution[j] := evolution[j][2..-1];
@@ -361,7 +362,7 @@ while evolTime <= maxSteps do
                     'to organism %i, now gene %i\n', evolTime, orgDonor, 
                     evolution[orgDonor, geneDonor, 4], j, evolution[j, -1, 4]);
                 # gene rearrangement
-                geneR[j] := append(geneR[j], evolution[j, -1, 4]);
+                geneR[j] := append(geneR[j], maxID);
                 place := Rand(0..length(geneR[j]) - 1);
                 transLoc(j, place, length(geneR[j]), 1);
             fi;
