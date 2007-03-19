@@ -598,14 +598,14 @@ groupInvert := proc(org: posint, target: posint, iSize: posint)
    i := target;
    while j >= i do
        if j = i then
-       geneR[org, i] := -geneR[org, i];
+           geneR[org, i] := -geneR[org, i];
        else
-       t := geneR[org, i];
+           t := geneR[org, i];
            geneR[org, i] := -geneR[org, j];
            geneR[org, j] := -t;
        fi;
-       i := i+1;
-       j := j-1;
+       i := i + 1;
+       j := j - 1;
    od;
 end:
 
