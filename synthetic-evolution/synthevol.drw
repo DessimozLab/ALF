@@ -22,8 +22,6 @@ GCminus := GCBiasMatrix(-50);
 timesteps := CreateArray(1..1);
 geneR := [];        # gene rearrangement array
 c := 0;
-aat := 0; # counts number of aa events
-smt := 0; # counts number of sequence mutation calls
 if specialAreas = true then
   ReadProgram(areaPath);
 fi;
@@ -149,8 +147,8 @@ while evolTime <= maxSteps do
         dl := '% out';
         c := c + 1;
         OpenWriting(previous);
-        printf('evolution progress in time steps:\t%i%%\t%i aa\t %i sm\n', 
-            c, aat, smt);
+        printf('  evolution progress in time steps:\t%i%%\t (%i of %i)\n', 
+            c, evolTime, maxSteps);
         OpenAppending(wdir.'logfile.txt');
     fi;
     
@@ -177,7 +175,6 @@ while evolTime <= maxSteps do
             evolution[j, k, 2] := ProteinSeq(evolution[j, k, 6]);
             evolution[j, k, 1] := updateBorder(evolution[j, k, 1], 
                 (dna_source / 3), 'insert'); 
-            aat := aat + 1;
         fi;
 
 
@@ -200,7 +197,6 @@ while evolTime <= maxSteps do
             evolution[j, k, 2] := ProteinSeq(evolution[j, k, 6]);
             evolution[j, k, 1] := updateBorder(evolution[j, k, 1],
                 (dna_source / 3), 'delet');
-            aat := aat + 1;
         fi;
 
 
@@ -211,7 +207,6 @@ while evolTime <= maxSteps do
             geneSource := Rand(1..length(evolution[j]) - ndupl + 1); 
             seqmutation(j, max(1, evolTime - timesteps[j]));
             timesteps[j] := evolTime;
-            smt := smt + 1;
             for k from 0 to ndupl - 1 do 
                 evolution[j] := append(evolution[j], 
                     copy(evolution[j, geneSource + k]));
@@ -249,7 +244,6 @@ while evolTime <= maxSteps do
             geneSource := trunc(Rand() * length(evolution[j])) + 1;
             seqmutation(j, max(1, evolTime - timesteps[j]));
             timesteps[j] := evolTime;
-            smt := smt + 1;
             printf ('time %0004i: gene loss in organism %i with gene %i\n', 
                 evolTime, j, evolution[j, geneSource, 4]);
 	    # gene rearrangement
@@ -306,7 +300,6 @@ while evolTime <= maxSteps do
                 timesteps[j] := evolTime;
                 seqmutation(orgDonor, max(1, evolTime - timesteps[orgDonor]));
                 timesteps[orgDonor] := evolTime;
-                smt := smt + 2;
                 gd1 := {op(transpose(evolution[orgDonor])[4])};
                 gd2 := {op(transpose(evolution[j])[4])};
                 gD := Rand(gd1 intersect gd2);
@@ -347,7 +340,6 @@ while evolTime <= maxSteps do
                 timesteps[j] := evolTime;
                 seqmutation(orgDonor, max(1, evolTime - timesteps[orgDonor]));
                 timesteps[orgDonor] := evolTime;
-                smt := smt + 2;
                 geneDonor := trunc(Rand() * 
                     length(evolution[orgDonor])) + 1;
                 # copies entry and updates description
@@ -378,7 +370,6 @@ while evolTime <= maxSteps do
             timesteps[j] := evolTime;
             seqmutation(orgDonor, max(1, evolTime - timesteps[orgDonor]));
             timesteps[orgDonor] := evolTime;
-            smt := smt + 2;
             geneDonor := trunc(Rand() * (length(evolution[orgDonor]) - 
                 lgtGSize)) + 1;	
             source := geneDonor;
@@ -412,11 +403,10 @@ while evolTime <= maxSteps do
         # organism which will have offspring is randomly chosen
         orgSource := trunc(Rand() * livingOrgs) + 1;
         seqmutation(orgSource, max(1, evolTime - timesteps[orgSource]));
-        smt := smt + 2;
         timesteps[orgSource] := evolTime;
         timesteps := append(timesteps, evolTime);
         evolution := append(evolution, copy(evolution[orgSource]));
-        geneR := append(geneR, geneR[orgSource]);
+        geneR := append(geneR, copy(geneR[orgSource]));
         livingOrgs := livingOrgs + 1;
         # updates history in gene descriptions
         for l to length(evolution[livingOrgs]) do
