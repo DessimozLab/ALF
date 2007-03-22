@@ -449,7 +449,7 @@ while evolTime <= maxSteps do
     fi;
 od:
 OpenWriting(previous);
-lprint('main calculation finished');
+lprint('...main calculation finished.');
 
 
 # saves real tree, updates all organisms
@@ -465,7 +465,7 @@ OpenWriting(previous);
 for j to livingOrgs do
     seqmutation(j, max(1, evolTime - timesteps[j]));
 od:
-printf('\n\nevolution was going on for %i iteration steps\n', evolTime):
+lprint('...real genome tree saved.');
 
 # calculates total number of lgt and duplication
 for i to livingOrgs do
@@ -491,7 +491,10 @@ for i to length(GCratio) do
 od;
 OpenWriting(previous);
 
-DBout();
+DBout():
+DBoutFASTA():
+lprint('...genome DBs saved.');
+
 OpenWriting(wdir.'Summaries.drw');
 printf('GenomeSummaries := table():\ngenomes := []:\n');
 for i to livingOrgs do
@@ -503,5 +506,7 @@ for i to livingOrgs do
     printf('GenomeSummaries[%s] :=', orgname );
     dprint(copy(GenomeSummary(DB)));
     printf(':\n');
-od;
+od:
 OpenWriting(previous);
+lprint('\n   simulation finished!'):
+
