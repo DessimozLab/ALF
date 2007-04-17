@@ -20,12 +20,11 @@ GCratio := [];
 GCplus := GCBiasMatrix(50);
 GCminus := GCBiasMatrix(-50);
 timesteps := CreateArray(1..1);
-geneR := [];        # gene rearrangement array
+geneR := [];
 c := 0;
 if specialAreas = true then
   ReadProgram(areaPath);
 fi;
-dl := '';            # contains information at which position the program breaks
 
 # calculation of the needed iteration steps
 rate := max(geneDuplRate, geneLossRate, lgtRate, lgtGRate,
@@ -38,7 +37,7 @@ else
     Naa := (aaStart1+aaStart2)/2;
     Nprot := protStart;
 fi;
-maxSteps := rate * max(Naa, Nprot);
+maxSteps := max(rate * max(Naa, Nprot), 1000);
 
 # calculation for the speciation time points
 minSpecTime := maxSteps / 5 / cSpecies;
@@ -63,8 +62,8 @@ if realseed = true then # generates the first organism with real data
         protseq := SearchTag('SEQ', Entry(i));
         # switch for real domainfile
         if (specialAreas = true) then
-	    for j to length(areaSet[i]) do
-	        areaSet[i, j, 3] := areaSet[i, j, 3] / maxSteps;
+	        for j to length(areaSet[i]) do
+	            areaSet[i, j, 3] := max(areaSet[i, j, 3] / maxSteps, 1/DBL_MAX);
             od;
             evolution[1, i, 1] := areaSet[i];
         else
@@ -144,7 +143,6 @@ lprint();
 while evolTime <= maxSteps do
     evolTime := evolTime + 1:
     if (c + 1) * round(maxSteps / 100) = evolTime then
-        dl := '% out';
         c := c + 1;
         OpenWriting(previous);
         printf('  evolution progress in time steps:\t%i%%\t (%i of %i)\n', 
@@ -155,54 +153,122 @@ while evolTime <= maxSteps do
     # loop over all current existing organisms
     for j to livingOrgs do
         
-        # aa gain
-        # dna_source is dna domain in gene k of organism j
+        # indel: aa gain
         if 100 * Rand() < (aaGainRate * AAfactor) then
-            dl := 'aa gain';
-            k := trunc(Rand() * length(evolution[j])) + 1;
-            dna_source := (trunc(Rand() * length(evolution[j, k, 2])) 
-                + 1) * 3;
-            dna_value := IntToCodon(trunc(Rand() * 20) + 1)[1];
-            if dna_source = 3 then
-                evolution[j, k, 6] := dna_value.string(evolution[j, k, 6]);
-            elif dna_source = length(evolution[j, k, 6]) then
-                evolution[j, k, 6] := string(evolution[j, k, 6]).dna_value;
-            else 
-                evolution[j, k, 6] := string(evolution[j, k,6])
-                    [1..dna_source].dna_value.string(evolution[j, k, 6])
-                    [dna_source + 1..-1];
-            fi;
+            # calculates sum of all domain/gene probabilities
+            indelSum := indelPos := 0;
+            for k to length(evolution[j]) do
+                for m to length(evolution[j, k, 1]) do
+                    indelSum := indelSum + evolution[j, k, 1, m, 3] * (1 + 
+                    evolution[j, k, 1, m, 2] - evolution[j, k, 1, m, 1]);
+                od;
+            od;
+            # assignes a random value between 0..indelSum
+            indelPos := Rand() * indelSum;
+            # finds the domain/gene for indel event
+            h := l := 0;
+            k := 1; 
+            while h < indelPos do
+                l := l + 1;
+                if l > length(evolution[j, k, 1]) then 
+                    l := 1; 
+                    k := k + 1; 
+                fi;
+                h := h + evolution[j, k, 1, l, 3] * (1 +
+                    evolution[j, k, 1, l, 2] - evolution[j, k, 1, l, 1]);
+            od;
+            # finds the indel length out of a Zipfian distribution
+            # (exponent 1.821 comes from (Chang and Benner 2004))
+            L := 0; r := 1;
+            lr := Rand();
+            while r > lr and L < maxIndelLength do
+                L := L + 1;
+                r := L^(-1.821);
+            od;
+            indelLength := L - 1;
+            # searches a random start position for the insertion
+            indelStart := 3 * Rand(evolution[j, k, 1, l, 1]..
+                evolution[j, k, 1, l, 2]);
+            # performs aa gain
+            for h from indelStart to indelStart + 3 * indelLength by 3 do
+                dna_value := Rand(CodingDNA(3));
+                if h = 0 then
+                    evolution[j, k, 6] := dna_value.string(evolution[j, k, 6]);
+                elif h = length(evolution[j, k, 6]) then
+                    evolution[j, k, 6] := string(evolution[j, k, 6]).dna_value;
+                else
+                    evolution[j, k, 6] := string(evolution[j, k,6])
+                    [1..h].dna_value.string(evolution[j, k, 6])[h + 1..-1];
+                fi;
+                evolution[j, k, 1] := updateBorder(evolution[j, k, 1],
+                    (h / 3), 'insert');
+            od:
             evolution[j, k, 2] := ProteinSeq(evolution[j, k, 6]);
-            evolution[j, k, 1] := updateBorder(evolution[j, k, 1], 
-                (dna_source / 3), 'insert'); 
         fi;
 
 
-        # aa loss 
-        # dna_source is dna domain in gene k of organism j
+        # indel: aa loss 
         if 100 * Rand() < (aaLossRate * AAfactor) then
-            dl := 'aa loss';
-            k := trunc(Rand() * length(evolution[j])) + 1;
-            dna_source := (trunc(Rand() * length(evolution[j, k, 2])) 
-                + 1) * 3;
-            if dna_source = 3 then
-                evolution[j, k, 6] := string(evolution[j, k, 6])[4..-1];
-            elif dna_source = length(evolution[j, k, 6]) then
-                evolution[j, k, 6] := string(evolution[j, k, 6])[1..-4];
-            else 
+            # calculates sum of all domain/gene probabilities
+            indelSum := indelPos := 0;
+            for k to length(evolution[j]) do
+                for m to length(evolution[j, k, 1]) do
+                    indelSum := indelSum + evolution[j, k, 1, m, 3] * (1 +
+                    evolution[j, k, 1, m, 2] - evolution[j, k, 1, m, 1]);
+                od;
+            od;
+            # assignes a random value between 0..indelSum
+            indelPos := Rand() * indelSum;
+            # finds the domain/gene for indel event 
+            h := l := 0;
+            k := 1;
+            while h < indelPos do
+                l := l + 1;
+                if l > length(evolution[j, k, 1]) then
+                    l := 1;
+                    k := k + 1;
+                fi;
+                h := h + evolution[j, k, 1, l, 3] * (1 +
+                    evolution[j, k, 1, l, 2] - evolution[j, k, 1, l, 1]);
+            od;
+            # finds the indel length out of a Zipfian distribution
+            # (exponent 1.821 comes from (Chang and Benner 2004))
+            L := 0; r := 1;
+            lr := Rand();
+            while r > lr and L < maxIndelLength do
+                L := L + 1;
+                r := L^(-1.821);
+            od;
+            indelLength := L - 1;
+            # searches a random start position for the deletion
+            L := min(L, evolution[j, k, 1, l, 2] - evolution[j, k, 1, l, 1]);
+            indelStart := 3 * Rand(evolution[j, k, 1, l, 1]..
+                evolution[j, k, 1, l, 2] - L);
+            # performs aa loss 
+            if L = 0 then 
                 evolution[j, k, 6] := 
-                    string(evolution[j, k, 6])[1..dna_source - 3].
-                    string(evolution[j, k, 6])[dna_source + 1..-1];
-            fi;
+                    string(evolution[j, k, 6])[1..indelStart - 3].
+                    string(evolution[j, k, 6])[indelStart + 1..-1];
+                evolution[j, k, 1] := updateBorder(evolution[j, k, 1],
+                    indelStart / 3, 'delet');
+            fi;    
+            for h from indelStart + 3 * L to indelStart + 3 by -3 do
+                if h = length(evolution[j, k, 6]) then
+                    evolution[j, k, 6] := string(evolution[j, k, 6])[1..-4];
+                else
+                    evolution[j, k, 6] :=
+                    string(evolution[j, k, 6])[1..h - 3].
+                    string(evolution[j, k, 6])[h + 1..-1];
+                fi;
+                evolution[j, k, 1] := updateBorder(evolution[j, k, 1],
+                    (h / 3), 'delet');
+            od:
             evolution[j, k, 2] := ProteinSeq(evolution[j, k, 6]);
-            evolution[j, k, 1] := updateBorder(evolution[j, k, 1],
-                (dna_source / 3), 'delet');
         fi;
 
 
         # gene duplication
         if 100 * Rand() < (geneDuplRate * Gfactor) then
-            dl := 'gene dupl';
     	    ndupl := Rand(1..numberDupl);
             geneSource := Rand(1..length(evolution[j]) - ndupl + 1); 
             seqmutation(j, max(1, evolTime - timesteps[j]));
@@ -225,7 +291,6 @@ while evolTime <= maxSteps do
                 h := evolution[j, geneSource + k, 4];
             od;
             # gene rearrangement
-            dl := 'gene dupl - rearrangement';
             if 100 * Rand() < transDupl then
                 place := Rand(1..length(geneR[j]) - 1 - ndupl);
                 transLoc(j, place, SearchArray(evolution[j, -ndupl, 4], 
@@ -239,7 +304,6 @@ while evolTime <= maxSteps do
         fi;
         
         # gene loss	    
-        dl := 'gene loss';
         if 100 * Rand() < (geneLossRate * Gfactor) then
             geneSource := trunc(Rand() * length(evolution[j])) + 1;
             seqmutation(j, max(1, evolTime - timesteps[j]));
@@ -262,7 +326,6 @@ while evolTime <= maxSteps do
 
         # inversion of single or multiple genes
         if 100 * Rand() < (invers * Gfactor) then
-            dl := 'inversion';
             iSize := Rand(1..invSize);
                 target := Rand(1..length(geneR[j]) - iSize - 1);
             if iSize = 1 then
@@ -272,7 +335,6 @@ while evolTime <= maxSteps do
             fi;
             # inverted translocation
             if 100 * Rand() < invtrans then
-                dl := 'inv trans';
                 place := Rand(1..length(geneR[j]) - iSize - 1);
                 transLoc(j, place, target, iSize);
             fi;
@@ -280,7 +342,6 @@ while evolTime <= maxSteps do
 
         # translocation of single or multiple genes
         if 100 * Rand() < (transloc * Gfactor) then
-            dl := 'translocation';
             tSize := Rand(1..transSize);
             target := Rand(1..length(geneR[j]) - tSize - 1);
             place := Rand(1..length(geneR[j]) - tSize - 1);
@@ -292,7 +353,6 @@ while evolTime <= maxSteps do
 
             # lgt - orthologous replacement
             if 100 * Rand() < orthRep then
-                dl := 'lgt orth repl';
                 # finds donor (recipient is current organism j)
                 donors := {seq(i, i = 1..livingOrgs)} minus {j}; 
                 orgDonor := Rand(donors);
@@ -332,7 +392,6 @@ while evolTime <= maxSteps do
 
             # lgt - novel gene acquisition
             else
-                dl := 'lgt novel function';
                 # finds donor (recipient is current organism j)
                 donors := {seq(i, i = 1..livingOrgs)} minus {j};
                 orgDonor := Rand(donors);
@@ -362,7 +421,6 @@ while evolTime <= maxSteps do
         
         # lateral gene transfer	of multiple genes
         if 100 * Rand() < (lgtGRate * Gfactor) and livingOrgs > 1 then
-            dl := 'lgt multiple genes';
             # finds donor (recipient is current organism j)
             donors := {seq(i, i = 1..livingOrgs)} minus {j};
             orgDonor := Rand(donors);
@@ -399,7 +457,6 @@ while evolTime <= maxSteps do
         
     # speciation
     if member(evolTime, specTime) then
-        dl := 'speciation';
         # organism which will have offspring is randomly chosen
         orgSource := trunc(Rand() * livingOrgs) + 1;
         seqmutation(orgSource, max(1, evolTime - timesteps[orgSource]));
@@ -427,7 +484,6 @@ while evolTime <= maxSteps do
         else GCratio := append(GCratio, [gcw, '0']);
         fi;
         # creates a new leaf in the real tree
-        dl := 'speciation new leaf';
         treeData := append(treeData, []);
         d := evolTime;
         if treeData[orgSource] = [] then
