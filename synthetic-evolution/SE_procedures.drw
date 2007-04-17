@@ -549,45 +549,55 @@ end:
 
 # makes the areas for rate heterogenity in a gene
 makeAreas := proc(aaStart, areas, mutRate, maxSteps)
-    hetero := CreateArray(1..Rand(1..areas));
+    domains := CreateArray(1..Rand(1..areas));
     numEnt := {};
-    for i to (length(hetero) - 1) do
-        num1 := round(aaStart / (length(hetero) - 1));
+    for i to (length(domains) - 1) do
+        num1 := round(aaStart / (length(domains) - 1));
         limitlow := max(1, ((i - 1) * num1 + 1));
         limithigh := min(aaStart - 1, (i * num1 - 1));
         numEnt := append(numEnt, Rand(limitlow..limithigh));
     od;    
     numEnt := append(numEnt, 0);
     numEnt := append(numEnt, aaStart);
-    for i to length(hetero) do        
-	    hetero[i] := [(numEnt[i]+1), numEnt[i+1], 
+    for i to length(domains) do        
+	    domains[i] := [(numEnt[i]+1), numEnt[i+1], 
             (Rand(Poisson(mutRate)) / maxSteps)];
     od;
-    return(hetero);
+    return(domains);
 end:
 
 
 # updates the area borders after a AA gain or loss
-updateBorder := proc(hetero: array, value, event: string)
-    for i to length(hetero) do
-	if event = 'insert' then
-	   if hetero[i,1] > value then
-		hetero[i,1] := (hetero[i,1] + 1);
-	   fi;
-	   if hetero[i,2] >= value then
-		hetero[i,2] := (hetero[i,2] + 1);
-	   fi;
-	fi;
-	if event = 'delet' then
-	    if hetero[i,1] > value then
-                hetero[i,1] := (hetero[i,1] - 1);
+updateBorder := proc(seq: array, value, event: string)
+    domains := seq; 
+    d := 0;
+    for i to length(domains) do
+        if event = 'insert' then
+            if domains[i,1] > value then
+                domains[i,1] := (domains[i,1] + 1);
             fi;
-	    if hetero[i,2] >= value then
-                hetero[i,2] := (hetero[i,2] - 1);
-           fi;
+            if domains[i,2] >= value then
+                domains[i,2] := (domains[i,2] + 1);
+            fi;
         fi;
-   od;
-   return(hetero);
+        if event = 'delet' then
+            if domains[i,1] > value then
+                domains[i,1] := (domains[i,1] - 1);
+            fi;
+            if domains[i,2] >= value then
+               domains[i,2] := (domains[i,2] - 1);
+            fi;
+            # deletes empty domain
+            if domains[i,1] > domains[i,2] then
+                d := i;
+            fi;
+        fi;
+    od;
+    # deletes empty domain 
+    if d > 0 then
+        domains := [op(domains[1..d - 1]), op(domains[d + 1..-1])];
+    fi;
+    return(domains);
 end:
 
 
