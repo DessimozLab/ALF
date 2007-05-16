@@ -40,7 +40,7 @@ fi;
 maxSteps := max(rate * max(Naa, Nprot), 1000);
 
 # calculation for the speciation time points
-minSpecTime := maxSteps / 5 / cSpecies;
+minSpecTime := round(maxSteps / 5 / cSpecies);
 specTime := {seq(Rand(1..maxSteps), k=1..cSpecies - 1)};
 for i to cSpecies - 2 do
     if specTime[i + 1] - specTime[i] < minSpecTime then
