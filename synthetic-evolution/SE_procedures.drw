@@ -1,12 +1,7 @@
 # procedures for Synthetic evolution
-# Daniel Margadant, CBRG, 2005
-# changes: Sereina Riniker, 2006
-#
-# - necessary for compatibility with other algorithm (eg. LGT)
-# - additional features
+# Daniel Margadant, Sereina Riniker, CBRG, 2006
 #
 
-ReadProgram(libname.'/darwinit');
 CreateCodonMatrices();
 
 
