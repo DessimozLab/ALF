@@ -6,7 +6,7 @@
 # - additional features
 #
 
-ReadProgram( '/home/darwin/v2/source/bio-recipes/Orthologues/lib/darwinit' );
+ReadProgram(libname.'/darwinit');
 CreateCodonMatrices();
 
 
