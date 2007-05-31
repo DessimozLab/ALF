@@ -316,7 +316,7 @@ end:
 # DB output
 # 11.12.06/dm
 DBout := proc()
-    if FileExists(wdir.dbdir) = false then
+    if length(FileStat(wdir.dbdir)) = 0 then
         TimedCallSystem('mkdir '.wdir.dbdir, 2);
     fi;
     for i to livingOrgs do
@@ -353,7 +353,7 @@ end:
 
 # FASTA output
 DBoutFASTA := proc()
-    if FileExists(wdir.dbdir) = false then
+    if length(FileStat(wdir.dbdir)) = 0 then
         TimedCallSystem('mkdir '.wdir.dbdir, 2);
     fi;
     for i to livingOrgs do
@@ -375,7 +375,7 @@ end:
 # DB output for the ancestral sequences
 # 11.12.06/dm
 DBoutAnc := proc(organism, parent, child, birth)
-    if FileExists(wdir.dbAncdir) = false then
+    if length(FileStat(wdir.dbAncdir)) = 0 then
         TimedCallSystem('mkdir '.wdir.dbAncdir, 2);
     fi;
     orgname := sprintf('SE%i-%i_%i', parent, child, birth);
