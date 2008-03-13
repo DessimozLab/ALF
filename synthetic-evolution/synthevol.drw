@@ -106,6 +106,7 @@ elif gcrat < gcw then
     GCratio := append(GCratio, [gcw, 'plus']);
 else GCratio := append(GCratio, [gcw, '0']);
 fi;
+DBoutAnc(evolution[1], 1, 1, 1);
 
 
 # logfile header 
