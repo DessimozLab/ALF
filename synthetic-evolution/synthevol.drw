@@ -3,8 +3,8 @@
 # Daniel Margadant, Sereina Riniker, CBRG, 2005
 
 # main data structure:
-# evolution[organism#, gene#][mutRate, aa sequence, desc, id, organism, dna]
-#                             1        2            3     4   5         6
+# evolution[organism#, gene#][mutRate, aa sequence, desc, id, organism, dna, cluster]
+#                             1        2            3     4   5         6    7
 #                  mutRate = [domain start, domain end, mutrate], ...]
 
 
@@ -56,7 +56,7 @@ Gfactor := Nprot / maxSteps;
 # loads real genome as first organism (if realseed is selected)
 if realseed = true then # generates the first organism with real data
     evolution := [];
-    evolution := append(evolution, CreateArray(1..DB[TotEntries], 1..6)):
+    evolution := append(evolution, CreateArray(1..DB[TotEntries], 1..7)):
     geneR := append(geneR, CreateArray(1..DB[TotEntries]));
     for i to DB[TotEntries] do
         protseq := SearchTag('SEQ', Entry(i));
@@ -75,13 +75,14 @@ if realseed = true then # generates the first organism with real data
         evolution[1, i, 4] := i;
         evolution[1, i, 5] := '1';
         evolution[1, i, 6] := SearchTag('DNA', Entry(i));
+        evolution[1, i, 7] := sprintf('%d',i);
         geneR[1, i] := i;
     od:
 
 # creates the first organism (if realseed is not selected)
 else	
     evolution := []:
-    evolution := append(evolution, CreateArray(1..protStart, 1..6)):
+    evolution := append(evolution, CreateArray(1..protStart, 1..7)):
     geneR := append(geneR, CreateArray(1..protStart));
     for i to protStart do
         aaStart := Rand(aaStart1..aaStart2);
@@ -91,6 +92,7 @@ else
         evolution[1, i, 3] := '1';
         evolution[1, i, 4] := i;
         evolution[1, i, 5] := '1';
+        evolution[1, i, 7] := sprintf('%d',i);
         geneR[1, i] := i;
     od:
 fi;
@@ -280,6 +282,10 @@ while evolTime <= maxSteps do
                 evolution[j, -1, 3] := evolution[j, -1, 3].'-('.copy(evolution
                     [j, geneSource + k, 4]).'D'.evolTime.')'.j;
                 maxID := maxID + 1;
+				# update clusters
+				evolution[j, -1, 7] := evolution[j,-1,7] . '.2';
+				evolution[j, geneSource+k, 7] := evolution[j,geneSource+k,7] . '.1';
+				
                 evolution[j, -1, 4] := maxID;
                 for l to length(evolution[j, -1, 1]) do
                     evolution[j, -1, 1][l, 3] := 
@@ -373,6 +379,7 @@ while evolTime <= maxSteps do
                     copy(evolution[orgDonor, geneDonor, 4]).'Lo'.evolTime.')'.j;
                 maxID := maxID + 1;
                 evolution[j, -1, 4] := maxID;
+                evolution[j, -1, 7] := sprintf('%d',maxID); # new cluster 
                 evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
                 printf ('time %0004i: lgt from organism %i with gene %i to '.
                     'organism %i, now gene %i\n', evolTime, orgDonor, 
@@ -409,7 +416,8 @@ while evolTime <= maxSteps do
                     copy(evolution[orgDonor, geneDonor, 4]).'L'.evolTime.')'.j;
                 maxID := maxID + 1;
                 evolution[j, -1, 4] := maxID; 
-                evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
+                evolution[j, -1, 7] := sprintf('%d',maxID); # new cluster 
+				evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
                 printf ('time %0004i: lgt from organism %i with gene %i '.
                     'to organism %i, now gene %i\n', evolTime, orgDonor, 
                     evolution[orgDonor, geneDonor, 4], j, evolution[j, -1, 4]);
@@ -515,8 +523,8 @@ for i to livingOrgs do
 od:
 DrawTree(treeEvo, ArcRadial, OrderLeaves=LeftHeavy, Legend, 
     Title = 'synthetic evolution');
-TimedCallSystem('mv temp.ps RealTree.ps', 2);
-OpenWriting('RealTree.drw');
+TimedCallSystem('mv temp.ps '.wdir.'RealTree.ps', 2);
+OpenWriting(wdir . 'RealTree.drw');
 printf('RealTree := %a;\n', treeEvo);
 OpenWriting(previous);
 for j to livingOrgs do
