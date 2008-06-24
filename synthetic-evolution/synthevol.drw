@@ -22,6 +22,7 @@ GCminus := GCBiasMatrix(-50);
 timesteps := CreateArray(1..1);
 geneR := [];
 c := 0;
+dupsOnLevel := [];
 if specialAreas = true then
   ReadProgram(areaPath);
 fi;
@@ -283,8 +284,16 @@ while evolTime <= maxSteps do
                     [j, geneSource + k, 4]).'D'.evolTime.')'.j;
                 maxID := maxID + 1;
 				# update clusters
-				evolution[j, -1, 7] := evolution[j,-1,7] . '.2';
-				evolution[j, geneSource+k, 7] := evolution[j,geneSource+k,7] . '.1';
+				dupLev := length(SearchAllString('.', evolution[j,-1,7])) + 1;
+				if dupLev > length(dupsOnLevel) then 
+					dupsOnLevel := append(dupsOnLevel, 
+					   seq(0, dupLev-length(dupsOnLevel))):
+				fi:
+				dupsOnLevel[dupLev] := dupsOnLevel[dupLev]+1:
+				evolution[j, -1, 7] := sprintf('%s.%db', evolution[j,-1,7],
+				    dupsOnLevel[dupLev]);
+				evolution[j, geneSource+k, 7] := sprintf('%s.%da',
+				    evolution[j,geneSource+k,7], dupsOnLevel[dupLev]);
 				
                 evolution[j, -1, 4] := maxID;
                 for l to length(evolution[j, -1, 1]) do
