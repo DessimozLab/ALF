@@ -1,0 +1,51 @@
+##############################################################
+# Mutate a amino acid sequence according to gamma model.     #
+# Requires an array 'classes' that specifies the gamma class #
+# for each site.                                             #
+# DD 6 Feb. 2009                                             #
+##############################################################
+AAMutateGamma := proc(seq1:string, Pam:list(positive), classes:array(posint))
+if not assigned(logPAM1) then
+    error('CodonLogPAM1 is not assigned. Use CreateDayMatrices().')
+fi;
+    # prepare matrices for the different gamma classes
+    MP := CreateArray(1..length(Pam),0):
+    for i to length(MP) do
+        MP[i]:=exp(Pam[i]*logPAM1);
+    od:
+    
+    for j to length(MP) do
+        for i from 2 to length(MP[j]) do
+        MP[j,i]:=MP[j,i]+MP[j,i-1];
+        od;
+        MP[j]:=transpose(MP[j]);
+    od:
+    
+    # now mutate
+    len:=length(seq1);
+    seq2:='';
+    for i to len do
+        aa0:=AToInt(seq1[i]);
+            else a:=RandomAA(MP[classes[i], aa0]) fi;
+        seq2:=seq2.a;
+    od;
+    seq2;
+end:
+
+#######################################################
+# Return a random amino acid. The input is the vector #
+# with cumulated nucleotide probabilities. (f[i]      #
+# gives the probability of a nucleotide being on of   #
+# nucleotide 1 to i.)                                 #
+#######################################################
+RandomAA:=proc(CumFreq:array(numeric)) option internal;
+    do
+        ind:=SearchOrderedArray(Rand(),CumFreq) + 1;
+        if ind<=20 then
+          	c:=IntToA(ind);
+          	break;
+          fi;
+    od:
+    c;
+end:
+

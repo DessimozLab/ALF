@@ -1,0 +1,60 @@
+#################################
+# gamma as in Yang 1994 (JME)	#
+#################################
+
+module external GammaRates;
+
+# incomplete gamma
+gamma := proc(alpha,x)
+if x=0 then return(0)
+else Gamma(alpha)-Gamma(alpha,x);
+fi;
+end:
+
+# Gamma cumulative density function with beta=alpha
+G := proc(r,alpha)
+if r=0 then return(0) fi;
+gamma(alpha,r*alpha)/Gamma(alpha)
+end:
+
+# expected rate inside an interval
+# ala Yang94, Eq. 10)
+I := (z,a) -> gamma(a,z)/Gamma(a);
+ExpG := proc(alpha,a,b)
+(I(b*alpha,alpha+1)-I(a*alpha,alpha+1))/(G(b,alpha)-G(a,alpha))
+end:
+
+
+# find an r, such that G(r,alpha)=p
+InvG := proc(p,alpha)
+if p=0 then return(0) fi;
+y := .1;
+while G(y,alpha)<p do y:=y*2 od;
+x := y/2;
+while G(x,alpha)>p do x:=x/2 od:
+fx := G(x,alpha);
+fy := G(y,alpha);
+d := 2*(y-x);
+while (y-x)<d do
+    d := y-x;
+    m := (x+y)/2;
+    fm := G(m,alpha);
+    if fm>=p then y:=m; fy:=fm
+    else x:=m; fx:=fm fi;
+od:
+return(y)
+end:
+
+# returns n rates that are the means of n equal
+# rate bins
+GammaRates := proc(alpha,n)
+if alpha<.05 then return(GammaRates(.05,n)) fi:
+if alpha>100 then return(GammaRates(100,n)) fi;
+ps := [seq(k/n,k=0..n)];
+rs := [seq(InvG(p,alpha),p=ps)];
+rs := [seq(ExpG(alpha,rs[i],rs[i+1]),i=1..n)];
+return(rs);
+end:
+
+
+end: # module

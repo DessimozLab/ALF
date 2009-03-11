@@ -1,0 +1,29 @@
+GetAllDistMatrix := proc()
+    global BestDimlessTree;
+    return(Tree_matrix(BestDimlessTree));
+end:
+
+
+GenRandomTree := proc(D_all, nSpecies)
+    n := length(D_all);
+    iL := {};
+    while length(iL) <> nSpecies do iL := iL union {Rand(1..n)} od;
+
+    D := CreateArray(1..nSpecies, 1..nSpecies, 0);
+    for i to nSpecies do for j from i+1 to nSpecies do
+        D[i,j] := D[j,i] := D_all[iL[i],iL[j]]
+    od od;
+    alpha := Rand(0.5..2.0);
+    D := alpha*D;
+
+    LenOk := true;
+    for i to nSpecies do for j from i+1 to nSpecies do
+        if D[i,j] > 300 or D[i,j] < 5 then LenOk := false; break fi;
+    od od;
+
+    if not LenOk then return(procname(args))
+    else
+        V := CreateArray(1..nSpecies, 1..nSpecies, 1); for i to nSpecies do V[i,i] := 0 od;
+        T := LeastSquaresTree(D, V, [seq('S'.i, i=1..nSpecies)]);
+    fi;
+end:

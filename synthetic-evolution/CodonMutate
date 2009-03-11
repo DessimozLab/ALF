@@ -1,0 +1,297 @@
+#################################################
+# Some functions to mutate codon sequences.     #
+#                        Adrian Schneider, 2004 #
+#################################################
+
+module external CodonMutate;
+
+# convert a list of strings to one large string
+list2string := proc(input:list(string)) option internal;
+    totchar := 0;
+    for s in input do
+        totchar := totchar + length(s);
+    od:
+    res := CreateString(totchar):
+    p := 0;
+    for i to length(input) do
+        for j to length(input[i]) do
+            res[p+j] := input[i,j];
+        od;
+        p := p + j -1;
+    od:
+    return(res);
+end:
+
+
+############################################################
+# Mutate a codon sequence. The logarithm of a 1-CodonPAM   #
+# mutation matrix, the codon frequencies and the           #
+# desired CodonPAM distance must be supplied.              #
+############################################################
+CodonMutate:=proc(seq1:string,CodonPam:{positive, list(positive)};
+	DelType:{'ExpGaps'},(lnM1=CodonLogPAM1):matrix, classes:array(posint)) 
+if not assigned(CodonLogPAM1) then
+    error('CodonLogPAM1 is not assigned. Use CreateCodonMatrices().')
+fi;
+len:=length(seq1);
+if mod(len,3)<>0 then error('Sequence length must be a multiple of 3.') fi;
+if DelType='ExpGaps' then return(CodonMutateExpGaps(seq1,lnM1,CF,CodonPam)) fi;
+if type(CodonPam, list(positive)) and assigned(classes) then
+    return(CodonMutateGamma(seq1, CodonPam, lnM1, classes))
+elif type(lnM1, list(list(list))) and assigned(classes) then
+    return(CodonMutateOmega(seq1, CodonPam, lnM1, classes0)):
+elif type(CodonPam, list(positive)) or assigned(classes) then
+    error('for gamma model CodonMutate requires a list of distances and an array with the class assignment for each site'):
+fi:
+
+MP:=exp(CodonPam*lnM1);
+for i from 2 to length(MP) do
+MP[i]:=MP[i]+MP[i-1];
+od;
+MP:=transpose(MP);
+
+seq2:='';
+for i to len/3 do
+	c0:=CodonToCInt(seq1[3*i-2..3*i]);
+        if CIntToInt(c0)=22 then c:=RandomStopCodon(MP[c0])
+        else c:=RandomCodon(MP[c0]) fi;
+	seq2:=seq2.c;
+od;
+seq2;
+end:
+
+##############################################################
+# Mutate a codon sequence using a M-series model with        #
+# multiple classes . Requires an array 'classes' that        #
+# specifies the class for each site.                   #
+# DD 17 Feb. 2009                                             #
+##############################################################
+CodonMutateOmega(seq1:string, CodonPam:positive, lnM1:list(list(list)), classes:array(posint)) option internal;
+    # prepare matrices for the different gamma classes
+    MP := CreateArray(1..length(lnM1),0):
+    for i to length(MP) do
+        MP[i]:=exp(CodonPam*lnM1[i]);
+    od:
+    
+    for j to length(MP) do
+        for i from 2 to length(MP[j]) do
+        MP[j,i]:=MP[j,i]+MP[j,i-1];
+        od;
+        MP[j]:=transpose(MP[j]);
+    od:
+
+    # now mutate
+    len:=length(seq1);
+    seq2:='';
+    for i to len/3 do
+        c0:=CodonToCInt(seq1[3*i-2..3*i]);
+            if CIntToInt(c0)=22 then c:=RandomStopCodon(MP[classes[i], c0])
+            else c:=RandomCodon(MP[classes[i], c0]) fi;
+        seq2:=seq2.c;
+    od;
+    seq2;
+end:
+
+
+##############################################################
+# Mutate a codon sequence according to gamma model. Requires #
+# an array 'classes' that specifies the gamma class for each #
+# site.                                                      #
+# DD 6 Feb. 2009                                             #
+##############################################################
+CodonMutateGamma := proc(seq1:string, CodonPam:list(positive), lnM1:matrix(numeric), classes:array(posint)) option internal;
+    # prepare matrices for the different gamma classes
+    MP := CreateArray(1..length(CodonPam),0):
+    for i to length(MP) do
+        MP[i]:=exp(CodonPam[i]*lnM1);
+    od:
+    
+    for j to length(MP) do
+        for i from 2 to length(MP[j]) do
+        MP[j,i]:=MP[j,i]+MP[j,i-1];
+        od;
+        MP[j]:=transpose(MP[j]);
+    od:
+    
+    # now mutate
+    len:=length(seq1);
+    seq2:='';
+    for i to len/3 do
+        c0:=CodonToCInt(seq1[3*i-2..3*i]);
+            if CIntToInt(c0)=22 then c:=RandomStopCodon(MP[classes[i], c0])
+            else c:=RandomCodon(MP[classes[i], c0]) fi;
+        seq2:=seq2.c;
+    od;
+    seq2;
+end:
+
+#################################################################
+# Mutate and produce random, exponentially distributed, gaps    #
+# Incorportaed Florian Walpen's code, 19 March 2008		#
+#################################################################
+CodonMutateExpGaps := proc(seq1:string,lnM1:matrix(numeric),freq_:array(numeric),CodonPam) option internal;
+len := length(seq1);
+if mod(len,3)<>0 then error('Sequence length must be a multiple of 3.') fi;
+len := len/3;
+
+M := exp(CodonPam*lnM1);
+if assigned(CMS) then
+    cm:=SearchDayMatrix(CodonPam,CMS);
+else
+    error('please CreateCodonMatrices().');
+fi;
+
+for i from 2 to 64 do M[i] := M[i] + M[i-1] od;
+M := transpose(M);
+freq := CreateArray(1..length(freq_));
+freq[1] := freq_[1];
+for i from 2 to 64 do freq[i] := freq_[i]+freq[i-1] od;
+oldseq := CreateArray(1..len);
+for i to len do oldseq[i] := seq1[3*i-2..3*i] od:
+al1:=[]: al2:=[]:
+newseq := [];
+
+Pinc := 10^(cm[IncDel]/10);
+Pfix := 10^(cm[FixedDel]/10);
+
+Popen := 0.5*Pfix/(1-Pinc);
+Equi := Popen/(1-Pinc+Popen);
+
+a := 10/cm[IncDel]/log(10);
+
+i := j := 1;
+
+# First treat indels at the beginning of the sequence
+if Rand() <= Equi then
+    # insertion of length gp
+    gp := floor(a*log(Rand())+1);
+    to gp do
+        newseq := append(newseq,RandomCodon(freq));
+	al1 := append(al1,'___');
+	al2 := append(al2,newseq[j]);
+        j := j+1;
+    od;
+fi;
+if Rand() <= Equi then
+    # deletion of length gp
+    gp := min( len-i+1, floor(a*log(Rand())+1) );
+    to gp do
+        al1 := append(al1,oldseq[i]);
+	al2 := append(al2,'___');
+        i := i+1;
+    od;
+fi;
+if i <= len then
+    # substitution
+    c0:=CodonToCInt(oldseq[i]);
+    if CIntToInt(c0)=22 then c:=RandomStopCodon(M[c0])
+    else c:=RandomCodon(M[c0]) fi;
+    newseq := append(newseq,c);
+    al1 := append(al1,oldseq[i]);
+    al2 := append(al2,newseq[j]);
+    i := i + 1;
+    j := j + 1;
+fi;
+
+# main part: interior of sequence
+while i <= len do
+    if Rand() <= Popen then
+	# deletion of length gp
+	gp := min( len-i+1, floor(a*log(Rand())+1) );
+	to gp do
+	    al1 := append(al1,oldseq[i]);
+	    al2 := append(al2,'___');
+	    i := i+1;
+	od;
+    fi;
+    if i <= len then
+	if Rand() <= Popen then
+	    # insertion of length gp
+	    gp := floor(a*log(Rand())+1);
+	    to gp do
+		newseq := append(newseq,RandomCodon(freq));
+		al1 := append(al1,'___');
+		al2 := append(al2,newseq[j]);
+		j := j+1;
+	    od;
+	fi;
+	# substitution
+	c0:=CodonToCInt(oldseq[i]);
+	if CIntToInt(c0)=22 then c:=RandomStopCodon(M[c0])
+	else c:=RandomCodon(M[c0]) fi;
+	newseq := append(newseq,c);
+	al1 := append(al1,oldseq[i]);
+	al2 := append(al2,newseq[j]);
+	i := i + 1;
+	j := j + 1;
+    fi;
+od:
+
+# treat the end of the sequence
+if Rand() <= Equi then
+    # insertion of length gp
+    gp := floor(a*log(Rand())+1);
+    to gp do
+	newseq := append(newseq,RandomCodon(freq));
+	al1 := append(al1,'___');
+	al2 := append(al2,newseq[j]);
+	j := j+1;
+    od;
+fi;
+
+
+[list2string(newseq),list2string(al1),list2string(al2)]
+end:
+
+##########################################################
+# Produce a random codon sequence (i.e. a DNA string)    #
+# with codons distributed according to the given         #
+# frequency vector. The last codon will be one of the    #
+# stop codons.                                           #
+##########################################################            
+RandomCodonSequence:=proc(len:posint, freq_:array(numeric)) option internal;
+freq:=CreateArray(1..length(freq_));
+freq[1]:=freq_[1];
+for i from 2 to 64 do freq[i] := freq_[i] + freq[i-1] od;
+seq:='';
+to len-1 do
+	seq:=seq.RandomCodon(freq);
+od;
+seq:=seq.RandomStopCodon(freq);
+end:
+
+
+##################################################
+# Return a random codon. The input is the vector #
+# with cumulated codon probabilities. (f[i]      #
+# gives the probability of a codon being on of   #
+# codon 1 to i.)                                 #
+##################################################
+RandomCodon:=proc(CumFreq:array(numeric)) option internal;
+do
+  ind:=SearchOrderedArray(Rand(),CumFreq) + 1;
+  if ind<=64 then
+  	c:=CIntToCodon(ind);
+  	if CodonToInt(c)<>22 then break fi;
+  fi;
+od;
+c;
+end:
+
+#######################################################
+# Return a random stop codon. The input is the vector #
+# with cumulated codon probabilities. (f[i] gives the #
+# probability of a codon being on of codon 1 to i.)   #
+#######################################################
+RandomStopCodon:=proc(CumFreq:array(numeric)) option internal;
+do
+  ind:=SearchOrderedArray(Rand(),CumFreq) + 1;
+  if ind<=64 then
+  	c:=CIntToCodon(ind);
+  	if CodonToInt(c)=22 then break fi;
+  fi;
+od;
+c;
+end:
+
+end: #module

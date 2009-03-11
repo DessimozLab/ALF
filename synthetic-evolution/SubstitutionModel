@@ -1,0 +1,93 @@
+# data structure to store information about a substitution model
+# Name: name of model
+# Params: list of model parameters
+#         for custom empirical models: Params[1] should contain a path to a matrix in PAML format
+#         for M-series models:  kappa = Params[1]
+#                               omega = Params[2] (single value or list)
+#                               P     = Params[3] (probabilities of w-class[es]) 
+#                               p     = Params[4] (for M8, 1st parameter of beta distribution)
+#                               q     = Params[4] (for M8, 2nd parameter of beta distribution)
+# BaseFreqs: base frequencies
+# NeutralDNA: for nucleotide models specifies whether nonsense mutations should be allowed
+# Type: specifies type of model (aa, codon, nucleotide)
+# LogPAM1: mutation matrix (or list of mutation matrices)
+SubstitutionModel := proc(Name:string, Params:list(anything), BaseFreqs:list(numeric), NeutralDNA:boolean,
+                          Type:{'aa','codon','nuc'}, LogPAM1:{matrix(numeric), list(matrix(numeric))}, Blocksize:posint)
+    global AF, NewLogPAM1, CodonLogPAM1, CF, YCodonLogPAM1, DNALogPAM1;
+    if nargs = 0 then
+        error('too few arguments. need at least a Model name!'): fi:
+    if nargs = 1 then
+        if Name = 'CPAM' then # CodonPAM model
+            CreateCodonMatrices():
+            f := copy(CF):
+            m := copy(CodonLogPAM1):
+            return(noeval(SubstitutionModel(Name, [], f, false, 'codon', m, 3))):
+        elif Name = 'GCB' then # PAM model with Gonnet matrix
+            AF := CreateArray(1..20);
+            for i to 20 do AF[i] := NewLogPAM1[i,1]/NewLogPAM1[1,i] od;
+            f := AF/sum(AF);
+            m := copy(NewLogPAM1):
+            return(noeval(SubstitutionModel(Name, [], f, false, 'aa', m, 1))):
+        elif Name = 'ECM' then
+            matrixFile := 'matrices/ECM.dat':
+        elif Name = 'ECMu' then
+            matrixFile := 'matrices/ECMu.dat':
+        elif Name = 'JTT' then
+            matrixFile := 'matrices/JTT.dat':
+        elif Name = 'WAG' then
+            matrixFile := 'matrices/WAG.dat':
+        elif Name = 'LG' then
+            matrixFile := 'matrices/LG.dat':           
+        else
+            error('too few arguments. please supply necessary model parameters!'):
+        fi:
+        if Name = 'ECM' or Name = 'ECMu' or Name = 'CustomC' then
+            LoadPAMLMatrixFile(matrixFile, 'Codon'):
+            f := copy(CF):
+            m := copy(CodonLogPAM1):
+            noeval(SubstitutionModel(Name, [], f, false, 'codon', m, 3)):
+        else
+            LoadPAMLMatrixFile(matrixFile, 'Peptide'):
+            f := copy(AF):
+            m := copy(NewLogPAM1):
+            noeval(SubstitutionModel(Name, [], f, false, 'aa', m, 1)):
+        fi:        
+    elif nargs = 2 then # all other empirical models
+        if type(Params[1], string) then # assume file name
+            if Name = 'CustomC' then
+                LoadPAMLMatrixFile(Params[1], 'Codon'):
+                f := copy(CF):
+                m := copy(CodonLogPAM1):
+                noeval(SubstitutionModel(Name, [], f, false, 'codon', m, 3)):
+            elif Name = 'CustomP' then
+                LoadPAMLMatrixFile(Params[1], 'Peptide'):
+                f := copy(AF):
+                printf('AF: %a\n', AF):
+                m := copy(NewLogPAM1):
+                noeval(SubstitutionModel(Name, [], f, false, 'aa', m, 1)):
+            else
+                error('unknown model: '.Name):
+            fi:
+        else
+            error('too few parameters for model '.Name.'!'):
+        fi:
+    elif nargs = 3 then # parametric codon models
+        if Name[1] <> 'M' then
+            error('specify whether simulation should assume neutral dna'):
+        else
+            if Name = 'M8' then
+                CreateCodonModelMatrices(Name, BaseFreqs, Params[1], Params[2], Params[4], Params[5]):
+            else
+                CreateCodonModelMatrices(Name, BaseFreqs, Params[1], Params[2]):
+            fi:
+            f := copy(BaseFreqs):
+            m := copy(YCodonLogPAM1):
+            noeval(SubstitutionModel(Name, Params, f, false, 'codon', m, 3)):
+        fi:
+    else # nucleotide models
+        CreateNucleotideMatrix(Name, BaseFreqs, Params):
+        f := copy(BaseFreqs):
+        m := copy(DNALogPAM1):
+        noeval(SubstitutionModel(Name, Params, f, NeutralDNA, 'nuc', m, If(NeutralDNA, 1, 3))):
+    fi:
+end:

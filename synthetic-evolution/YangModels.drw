@@ -1,0 +1,334 @@
+# function for creating the set of codon matrices according to the Yang-Models M0, M1/2, M3, M7/8
+# parameters: model - specifies the model; freq - array of codon frequencies; w - array of
+# syn/non-syn ratios; p and q - parameters of beta-distribution (for M7/8)
+# creates the following global objects:
+# - ...
+CreateCodonModelMatrices := proc(model:{'M0','M2','M3','M8'}, freq:list(nonnegative), kappa:nonnegative, w:{nonnegative, set(nonnegative)}; p:positive, q:positive)
+    global YCM, YCMS, YCodonLogPAM1, CF, CM, CMS, CodonLogPAM1:
+    YCM := []:
+    YCMS := []:
+    YCodonLogPAM1 := []:
+    if model = 'M0' then
+        if type(w, set) then
+            error('M0 requres a single w-value!'):
+        fi:
+        CreateParametricQMatrix(freq, kappa, w):
+        YCM := append(YCM, CM):
+        YCMS := append(YCMS, CMS):
+        YCodonLogPAM1 := append(YCodonLogPAM1, CodonLogPAM1):
+    elif model = 'M2' then
+        if not type(w, nonnegative) then
+            error('M2 requires exactly one w-value! If you want to simulate M1 using M2, set w to 1.'):
+        fi:
+        
+        warr := {0,1}:
+        warr := append(warr, w):
+        
+        for i to length(warr) do
+            CreateParametricQMatrix(freq, kappa, warr[i]):
+            YCM := append(YCM, CM):
+            YCMS := append(YCMS, CMS):
+            YCodonLogPAM1 := append(YCodonLogPAM1, CodonLogPAM1):
+        od:
+    elif model = 'M3' then
+        if not type(w, set) or length(w) < 2 then
+            error('M3 should have at least 2 classes! Use M0 instead.'):
+        fi:
+        for i to length(w) do
+            CreateParametricQMatrix(freq, kappa, w[i]):
+            YCM := append(YCM, CM):
+            YCMS := append(YCMS, CMS):
+            YCodonLogPAM1 := append(YCodonLogPAM1, CodonLogPAM1):
+        od:            
+    elif model = 'M8' then
+        if not (type(w, nonnegative) and assigned(p) and assigned(q)) then
+            error('M8 requires exactly one w-value >= 1 as well as parameters p and q!'):
+        fi:
+        for k from 0 to 9 do
+            w1 := InverseCDFBeta(k/10, p, q):
+            w2 := InverseCDFBeta((k+1)/10, p, q):
+            CreateParametricQMatrix(freq, kappa, (w1+w2)/2):
+            YCM := append(YCM, CM):
+            YCMS := append(YCMS, CMS):
+            YCodonLogPAM1 := append(YCodonLogPAM1, CodonLogPAM1):
+        od:
+        CreateParametricQMatrix(freq, kappa, w):
+        YCM := append(YCM, CM):
+        YCMS := append(YCMS, CMS):
+        YCodonLogPAM1 := append(YCodonLogPAM1, CodonLogPAM1):        
+    fi:
+    NULL
+end:
+
+
+# creates a Q-Matrix from the frequencies and given kappa and w (omega) parameters. This Q-Matrix
+# is then used for creating corresponding CodonMatrices
+CreateParametricQMatrix := proc(freq, kappa, win)
+    if win = 0 then 
+        w := 1e-15: # workaround to prevent crash when using w=0
+    else
+        w := win:
+    fi:
+    Q := CreateArray(1..64, 1..64, 0):
+    for i to 64 do
+        ci := CIntToCodon(i):
+        for j to 64 do
+            if i = j then next: fi:
+            cj := CIntToCodon(j):
+            if HammingSearchAllString(ci, cj) <> [] then
+                Q[i,j] := freq[j]:
+                for pos to 3 do if ci[pos] <> cj[pos] then break fi: od:
+                if (ci[pos] = 'A' or ci[pos] = 'G') and (cj[pos] = 'A' or cj[pos] = 'G') or
+                   (ci[pos] = 'C' or ci[pos] = 'T') and (cj[pos] = 'T' or cj[pos] = 'C') then
+                    Q[i,j] := Q[i,j] * kappa:
+                fi:
+                if CIntToA(i) <> CIntToA(j) then
+                    Q[i,j] := Q[i,j] * w:
+                fi:
+            fi:
+        od;
+    od:
+    
+    freqmat := CreateArray(1..64, 1..64, 0):
+    for i to 64 do
+        freqmat[i,i] := freq[i]:
+    od:
+    
+    qsum := sum(sum(freqmat*Q)):
+    Q := Q/qsum:
+    
+    for i to 64 do
+        Q[i,i] := -sum(Q[i]):
+    od:
+    
+    CreateCodonMatrices(transpose(Q), freq):
+    
+end:
+
+# Returns distribution function of the standard form of the beta distribution, 
+# that is, the incomplete beta ratio I_x(p,q).
+#
+# lnbeta is log of the complete beta function; provide it if known,
+# and otherwise use 0.
+#
+# This is called from InverseCDFBeta() in a root-finding loop.
+
+# This routine is a translation into Darwin of a C function from PAML,
+# which in turn is based on a Fortran subroutine by W. Fullerton of
+# Los Alamos Scientific Laboratory.
+# Bosten and Battiste (1974).
+# Remark on Algorithm 179, CACM 17, p153, (1974).
+# 
+
+CDFBeta := proc(x:nonnegative, pin:positive, qin:positive; (lnbeta=0):numeric)
+    alneps := log(DBL_EPSILON): sml := 2.2250738585072014e-308: alnsml := log(sml):
+    if x < 1e-15 then return(0)
+    elif x > 1-1e-15 then return(1) fi:
+    
+    y := x: p := pin: q := qin:
+    
+    # swap tails if x is greater than the mean
+    if p / (p + q) < x then
+        y := 1 - y: p := qin: q := pin:
+    fi:
+    
+    if lnbeta = 0 then lnbeta := LnGamma(p) + LnGamma(q) - LnGamma(p+q): fi:
+    
+    if (p + q) * y / (p + 1) < DBL_EPSILON then # tail approximation
+        ans := 0:
+        xb := p * log(max(y, sml)) - log(p) - lnbeta:
+        if xb > alnsml and y != 0 then
+            ans := exp(xb):
+        fi:
+        if y != x or p != pin then
+            ans := 1- ans:
+        fi:
+    else
+        # evaluate the infinite sum first.  term will equal
+        # y^p / beta(ps, p) * (1 - ps)-sub-i * y^i / fac(i)
+        ps := q - floor(q):
+        if ps = 0 then
+            ps := 1:
+        fi:
+        
+        xb := LnGamma(ps) + LnGamma(p) - LnGamma(ps+p):
+        xb := p * log(y) - xb - log(p):
+        
+        ans := 0:
+        if xb >= alnsml then
+            ans := exp(xb):
+            term := ans * p:
+            if ps <> 1 then
+                n := max(alneps/log(y), 4.0):
+                for i to n do
+                    xi := i:
+                    term := term * (xi - ps) * y / xi:
+                    ans := ans + term / (p + xi):
+                od:
+            fi:
+        fi:
+    
+        # evaluate the finite sum
+        if q > 1 then
+            xb := p * log(y) + q * log(1-y) - lnbeta - log(q):
+            ib := xb / alnsml:
+            if ib < 0 then ib := 0: fi:
+            term := exp(xb - ib * alnsml):
+            c := 1 / (1 - y):
+            p1 := q * c / (p + q - 1):
+            
+            finsum := 0:
+            n := floor(q):
+            if q = n then
+                n := n - 1:
+            fi:
+            for i to n do
+                if p1 <= 1 and term / DBL_EPSILON <= finsum then break: fi:
+                xi := i:
+                term := (q - xi + 1) * c * term / (p + q - xi):
+                if term > 1 then
+                    ib := ib - 1:
+                    term := term * sml:
+                fi:
+                if ib = 0 then finsum := finsum + term: fi:
+            od:
+            ans := ans + finsum:
+        fi:
+        if y <> x or p <> pin then ans := 1 - ans: fi:
+        if ans > 1 then ans := 1: fi:
+        if ans < 0 then ans := 0: fi:
+    fi:
+    return(ans):
+end:
+
+
+# Calculates the inverse CDF of the beta distribution. This procedure is
+# a translation of Ziheng Yangs implementation in PAML. Comments are preserved.
+InverseCDFBeta := proc(prob:numeric, p:numeric, q:numeric)
+# This calculates the inverseCDF of the beta distribution
+#
+# Cran, G. W., K. J. Martin and G. E. Thomas (1977).
+# Remark AS R19 and Algorithm AS 109, Applied Statistics, 26(1), 111-114.
+# Remark AS R83 (v.39, 309-310) and correction (v.40(1) p.236).
+#
+# My own implementation of the algorithm did not bracket the variable well.  
+# This version is Adpated from the pbeta and qbeta routines from 
+# "R : A Computer Language for Statistical Data Analysis".  It fails for 
+# extreme values of p and q as well, although it seems better than my 
+# previous version.
+# Ziheng Yang, May 2001
+
+    fpu := 3e-308: acu_min := 1e-300: lower := fpu: upper := 1-2.22e-16;
+    # acu_min>= fpu: Minimal value for accuracy 'acu' which will depend on (a,p);
+    niterations := 2000:
+    prev := 0: tx := 0:
+
+    # test for admissibility of parameters
+    if prob < 0 or prob > 1 or p < 0 or q<0 then error('out of range in InverseCDFBeta') fi:
+
+    # define accuracy and initialize
+    xinbta := prob;
+
+    if prob = 0 or prob = 1 then return(prob) fi:
+
+    lnbeta := LnGamma(p) + LnGamma(q) - LnGamma(p+q);
+
+    # change tail if necessary;  afterwards   0 < a <= 1/2
+    if prob <= 0.5 then
+        a := prob;   pp := p; qq := q; swap_tail := false;
+    else
+        a := 1 - prob; pp := q; qq := p; swap_tail := true;
+    fi:
+
+    # calculate the initial approximation
+    r := sqrt(-log(a * a));
+    y := r - (2.30753+0.27061*r)/(1 + (0.99229+0.04481*r) * r);
+
+    if pp > 1 and qq > 1 then
+        r := (y * y - 3.) / 6.;
+        s := 1. / (pp*2. - 1.);
+        t := 1. / (qq*2. - 1.);
+        h := 2. / (s + t);
+        w := y * sqrt(h + r) / h - (t - s) * (r + 5 / 6 - 2 /(3 * h));
+        xinbta := pp / (pp + qq * exp(w + w));
+    else
+        r := qq*2.;
+        t := 1. / (9. * qq);
+        t := r * (1 - t + y * sqrt(t))^3:
+        if t <= 0 then
+            xinbta := 1 - exp((log((1 - a) * qq) + lnbeta) / qq):
+        else
+            t := (4 * pp + r - 2) / t:
+            if t <= 1 then
+                xinbta := exp((log(a * pp) + lnbeta) / pp);
+            else
+                xinbta := 1 - 2 / (t+1):
+            fi:
+        fi:
+    fi:
+
+    # solve for x by a modified newton-raphson method, using CDFBeta
+    r := 1 - pp;
+    t := 1 - qq;
+    yprev := 0:
+    adj := 1:
+   
+    # Changes made by Ziheng to fix a bug in qbeta()
+    # qbeta(0.25, 0.143891, 0.05) = 3e-308   wrong (correct value is 0.457227)
+
+    if xinbta <= lower or xinbta >= upper then xinbta := (a+.5)/2 fi:
+
+    # Desired accuracy should depend on (a,p)
+    # This is from Remark .. on AS 109, adapted.
+    # However, it's not clear if this is "optimal" for IEEE double prec.
+    # acu = fmax2(acu_min, pow(10., -25. - 5./(pp * pp) - 1./(a * a)));
+    # NEW: 'acu' accuracy NOT for squared adjustment, but simple;
+    # ---- i.e.,  "new acu" = sqrt(old acu)
+
+    acu := 10^(-13 - 2.5/(pp * pp) - 0.5/(a * a));
+    acu := max(acu, acu_min);
+
+    for i_pb to niterations do
+        y := CDFBeta(xinbta, pp, qq, lnbeta);
+        y := (y - a) * exp(lnbeta + r * log(xinbta) + t * log(1 - xinbta));
+        if y * yprev <= 0 then prev := max(abs(adj),fpu) fi:
+        g := 1:
+        for i_inn to niterations do
+            adj := g * y;
+            if abs(adj) < prev then
+                tx := xinbta - adj; # trial new x
+                if tx >= 0 and tx <= 1 then
+                   if prev <= acu or abs(y) <= acu then return(If(swap_tail, 1 - xinbta, xinbta)): fi:
+                   if tx != 0 and tx != 1 then  break fi:
+                fi:
+            fi:
+            g := g / 3:
+        od:
+        if abs(tx-xinbta)<fpu then return(If(swap_tail, 1 - xinbta, xinbta)): fi:
+        xinbta := tx;
+        yprev := y;
+    od:
+
+    return(If(swap_tail, 1 - xinbta, xinbta)):
+end:
+
+#DeterminePAM := proc(M:matrix,F:array) option internal;
+#    logM := log(M);
+#    M2 := copy(M);
+#    n := length(M);
+#    lM11 := logM[1,1];
+#    lM23 := logM[2,3];
+#    do  
+#        d := sum( F[i]*(1-M2[i,i]), i=1..n );
+#        if d=0 then return(0) fi;
+#        if |d-0.01| < DBL_EPSILON then break fi;
+#        logM := logM * 0.01/d;
+#        M2 := exp(logM):
+#    od;
+#    f1 := lM11/logM[1,1];
+#    f2 := lM23/logM[2,3];
+#    if |f1-f2|>1e-10 then error('difficult to determine PAM',|f1-f2|) fi;
+#    return((f1+f2)/2);
+#end:
+
+

@@ -1,0 +1,40 @@
+# assigns indel length with Zipfian distribution
+
+
+d := [];
+for j to 100 do
+
+
+prob := 0;
+maxIndelLength := 50;
+c := CreateArray(1..maxIndelLength);
+I := 100000;
+
+for i to I do
+    if Rand() * 100 > prob then
+        L := 0; r := 1;
+        l := Rand();
+        while r > l and L < maxIndelLength do   # finds indel length
+            L := L + 1;
+            r := L^(-1.821);
+        od;
+        L := L - 1;
+        c[L] := c[L] + 1;
+    fi;
+od;
+d := append(d, c); 
+ 
+od:
+
+# statistics and validation
+zipfian := CreateArray(1..maxIndelLength);
+for i to maxIndelLength do
+    zipfian[i] := I * i^(-1.821);
+od:
+zipfian := zipfian * sum(c) / sum(zipfian);
+
+d := append(d, zipfian);
+OpenWriting('zipfian.txt');
+print(d);
+OpenWriting(previous);
+

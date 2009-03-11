@@ -1,0 +1,155 @@
+# create rate matrix for mechanistic models
+CreateNucleotideMatrix := proc(model: string, baseFreqs:list(nonnegative), params:list(numeric))
+    global NM, NMS, NF, DNALogPAM1:
+    fR := baseFreqs[3] + baseFreqs[4]:
+    fY := baseFreqs[1] + baseFreqs[2]:
+    if model = 'GTR' then
+        if length(params) <> 6 then error('number of parameters does not match (should be 6).'): fi:
+        Q := [[0, a*baseFreqs[2], b*baseFreqs[3], c*baseFreqs[4]],
+          [a*baseFreqs[1], 0, d*baseFreqs[3], e*baseFreqs[4]],
+          [b*baseFreqs[1], d*baseFreqs[2], 0, f*baseFreqs[4]],
+          [c*baseFreqs[1], e*baseFreqs[2], f*baseFreqs[3], 0]]:
+    else
+        if model = 'HKY' then
+            if length(params) <> 2 then error('number of parameters does not match (should be 2).'): fi:
+            alpha1 := alpha2 := params[1]:
+            beta := params[2]:
+        elif model = 'F84' then
+            if length(params) <> 2 then error('number of parameters does not match (should be 2).'): fi:
+            alpha1 := (1+params[1]/fY)*params[2]:
+            alpha2 := (1+params[1]/fR)*params[2]:
+            beta := params[2]:
+        elif model = 'TN93' then
+            if length(params) <> 3 then error('number of parameters does not match (should be 3).'): fi:
+            alpha1 := params[1]:
+            alpha2 := params[2]:
+            beta := params[3]:
+        else
+            error('Unknown Model!'):
+        fi:
+        Q := [[0, alpha1*baseFreqs[2], beta*baseFreqs[3], beta*baseFreqs[4]],
+              [alpha1*baseFreqs[1], 0, beta*baseFreqs[3], beta*baseFreqs[4]],
+              [beta*baseFreqs[1], beta*baseFreqs[2], 0, alpha2*baseFreqs[4]],
+              [beta*baseFreqs[1], beta*baseFreqs[2], alpha2*baseFreqs[3], 0]]:
+    fi:
+    
+    freqmat := CreateArray(1..4, 1..4, 0):
+    for i to 4 do
+        freqmat[i,i] := baseFreqs[i]:
+    od:
+    
+    qsum := sum(sum(freqmat*Q)):
+    Q := Q/qsum:
+    
+    for i to 4 do
+        Q[i,i] := -sum(Q[i]):
+    od:
+    
+    CreateDayMatrices(transpose(Q), baseFreqs, type='Nucleotide'):
+
+    NM := DM;
+    NMS := DMS;
+    NF := AF;
+    DNALogPAM1 := logPAM1;
+    
+end:
+
+NucToNInt := proc(n:string)
+    nint := 0:
+    if n='T' then
+        nint := 1:
+    elif n='C' then
+        nint := 2:
+    elif n='A' then
+        nint := 3:
+    elif n='G' then
+        nint := 4:
+    else
+        error('unknown nucleotide!'):
+    fi:
+    nint;
+end:
+
+NIntToNuc := proc(n:posint)
+    nstr := 'X':
+    if n = 1 then
+        nstr := 'T':
+    elif n = 2 then
+        nstr := 'C':
+    elif n = 3 then
+        nstr := 'A':
+    elif n = 4 then
+        nstr := 'G':
+    else
+        error('unknown nucleotide!'):
+    fi:
+    nstr;
+end:
+
+# mutate
+NucleotideMutate:=proc(seq1:string,time:{positive, list(positive)}; (lnM1=Q):matrix, classes:array(posint))
+    if not assigned(lnM1) then
+        error('Q is not assigned.')
+    fi;
+    if type(time, list) and assigned(classes) then
+        return(NucleotideMutateGamma(seq1, time, lnM1, classes)):
+    elif type(time, list) or assigned(classes) then
+        error('for gamma model NucleotideMutate requires a list of distances and an array with the class assignment for each site'):
+    fi:
+    MP:=exp(time*lnM1);
+    for i from 2 to length(MP) do
+    MP[i]:=MP[i]+MP[i-1];
+    od;
+    MP:=transpose(MP);
+    len:=length(seq1);
+    seq2:='';
+    for i to len do
+        n0:=NucToNInt(seq1[i]);
+        n:=RandomNucleotide(MP[n0]):
+        seq2:=seq2.n;
+    od;
+    seq2;
+end:
+
+NucleotideMutateGamma:=proc(seq1:string,time:list(positive), lnM1:matrix, classes:array(posint)) option internal;
+    # prepare matrices for the different gamma classes
+    MP := CreateArray(1..length(CodonPam),0):
+    for i to length(MP) do
+        MP[i]:=exp(time[i]*lnM1);
+    od:
+    
+    for j to length(MP) do
+        for i from 2 to length(MP[j]) do
+        MP[j,i]:=MP[j,i]+MP[j,i-1];
+        od;
+        MP[j]:=transpose(MP[j]);
+    od:
+
+    # now mutate
+    len:=length(seq1);
+    seq2:='';
+    for i to len do
+        n0:=NucToNInt(seq1[i]);
+        n:=RandomNucleotide(MP[classes[i], n0]):
+        seq2:=seq2.n;
+    od;
+    seq2;
+end:
+
+#######################################################
+# Return a random nucleotide. The input is the vector #
+# with cumulated nucleotide probabilities. (f[i]      #
+# gives the probability of a nucleotide being on of   #
+# nucleotide 1 to i.)                                 #
+#######################################################
+RandomNucleotide:=proc(CumFreq:array(numeric)) option internal;
+    do
+        ind:=SearchOrderedArray(Rand(),CumFreq) + 1;
+        if ind<=4 then
+          	c:=NIntToNuc(ind);
+          	break;
+          fi;
+    od:
+    c;
+end:
+

@@ -1,0 +1,108 @@
+# Function to load a matrix file in PAML compatible format. Creates a 1-PAM matrix and assigns it
+# to the global variables NewLogPAM1 and logPAM1
+# it is assumed that the order of amino acids and codons is always the same and the matrix is
+# re-ordered to correspond to the order used by Darwin.
+LoadPAMLMatrixFile := proc(file:string, mtype:{'Peptide', 'Codon'})
+    global AF, logPAM1, CodonLogPAM1;
+    if mtype = 'Peptide' then
+        size := 20:
+        SA := [A,  R,  N,  D,  C,  Q,  E,  G,  H,  I,  L,  K,  M,  F,  P,  S,  T,  W,  Y,  V]:
+        convfunc := AToInt;
+    elif mtype = 'Codon' then
+        size := 64:
+        SA := [TTT, TTC, TTA, TTG, TCT, TCC, TCA, TCG, TAT, TAC, TGT, TGC, TGG, CTT, CTC, CTA, CTG, CCT, CCC, CCA, 
+        CCG, CAT, CAC, CAA, CAG, CGT, CGC, CGA, CGG, ATT, ATC, ATA, ATG, ACT, ACC, ACA, ACG, AAT, AAC, AAA, 
+        AAG, AGT, AGC, AGA, AGG, GTT, GTC, GTA, GTG, GCT, GCC, GCA, GCG, GAT, GAC, GAA, GAG, GGT, GGC, GGA, 
+        GGG, TAA, TAG, TGA]:
+        convfunc := CodonToCInt;
+    else
+        error('could not determine size'):
+    fi:
+    
+    # parse PAML matrix file format
+    OpenReading(file):
+    matrix := CreateArray(1..size, 1..size, 0):
+    freqs := CreateArray(1..size, 0):
+    command := copy('tmpmat := [[], ['):
+    
+    l := ReadRawLine():
+    while l <> EOF and (l = '\n' or l = '\r' or l = '\r\n') do l := ReadRawLine() od:
+    if l = EOF then error('unexpected end of file') fi:
+
+    # parse matrix
+    do
+        tokens := SearchDelim(' ', l[1..-2]):
+        for i to length(tokens) do
+            if tokens[i] <> '' and tokens[i] <> '\n' and tokens[i] <> '\r' then command := command.tokens[i].', ' fi:
+        od:
+        while {command[-1]} intersect {' ', ',', '\r', '\n', '\t'} <> {} do command := command[1..-2]: od:
+        l := ReadRawLine():
+        if l <> '\n' and l <> '\r' and l <> '\r\n' then
+            command := command.'], [':
+        else
+            command := command.']]:':
+            break:
+        fi:
+    od:
+    eval(parse(command)):
+    if mtype = 'Peptide' and length(tmpmat) <> 20 then error('matrix should have 20 entries'):
+    elif mtype = 'Codon' and length(tmpmat) <> 61 then error('matrix should have 61 entries'):
+    fi:
+    
+    command := copy('tmpfreqs := ['):
+    while l <> EOF and (l = '\n' or l = '\r' or l = '\r\n') do l := ReadRawLine() od:
+    if l = EOF then error('unexpected end of file') fi:
+
+    tokens := SearchDelim(' ', l):
+    for i to length(tokens) do
+        if tokens[i] <> '' and tokens[i] <> '\n' and tokens[i] <> '\r' then command := command.tokens[i].', ' fi:
+    od:
+    while {command[-1]} intersect {' ', ',', '\r', '\n', '\t'} <> {} do command := command[1..-2]: od:
+    command := command.']:':
+    eval(parse(command)):
+    while l <> EOF  do l := ReadRawLine() od:
+
+    if length(tmpfreqs) <> length(tmpmat) then error('matrix size doesn''t match frequency vector') fi:
+    
+    for i from 1 to length(tmpfreqs) do
+        ai := convfunc(SA[i]):
+        freqs[ai] := tmpfreqs[i]:
+        for j from 1 to i-1 do
+            aj := convfunc(SA[j]):
+            matrix[ai,aj] := tmpmat[i,j]*tmpfreqs[j]:
+            matrix[aj,ai] := tmpmat[i,j]*tmpfreqs[i]:
+        od:
+    od:
+        
+    freqmat := CreateArray(1..size,1..size,0):
+    for i to size do
+        freqmat[i,i] := freqs[i]:
+    od:
+    qsum := sum(sum(freqmat*matrix)):
+        
+    matrix := matrix/qsum:
+    
+    for i to size do
+        v := 0:
+        for j to size do
+           if i <> j then
+               v := v+matrix[i,j]:
+            fi:
+        od:
+        matrix[i,i] := -v:
+    od:
+    freqs := freqs/sum(freqs):
+    if mtype = 'Codon' then
+        CreateCodonMatrices(transpose(matrix), freqs):
+    else
+        AF := freqs:
+        M := exp(matrix);
+        logPAM1 := matrix;
+        do  d := sum( AF[i]*(1-M[i,i]), i=1..n );
+            if |d-0.01| < DBL_EPSILON then break fi;
+            logPAM1 := logPAM1 * 0.01/d;
+            M := exp(logPAM1)
+        od;
+        NewLogPAM1 := logPAM1:
+    fi:
+end:
