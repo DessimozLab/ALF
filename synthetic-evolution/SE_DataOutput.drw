@@ -136,11 +136,13 @@ DBout := proc()
             if (geneR[i, loc] < 0) then
                 loc := -loc;
             fi;
-            printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS>'.
-                '<HGP>%d</HGP><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
+            printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>%d</HGP><SEQ>%s</SEQ>',
                 evolution[i, j, 4], loc, evolution[i, j, 3], 
-                evolution[i, j, 5], evolution[i, j, 7], evolution[i, j, 2], 
-				evolution[i, j, 6]);
+                evolution[i, j, 5], evolution[i, j, 7], evolution[i, j, 2]);
+            if substModels[evolution[i,j,9]][Type] <> 'aa' then
+                printf('<DNA>%s</DNA>', evolution[i, j, 6]);
+            fi:
+            printf('</E>\n'):
         od;
         OpenWriting(previous);
     od;
@@ -159,10 +161,12 @@ DBoutFASTA := proc()
             printf('>%a (SE%03d)\n%s\n\n', evolution[i, j, 4], i,
                 evolution[i, j, 2]);
             OpenWriting(previous);
-            OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'.fasta.dna');
-            printf('>%a (SE%03d)\n%s\n\n', evolution[i, j, 4], i,
-                evolution[i, j, 6]);
-            OpenWriting(previous);
+            if substModels[evolution[i,j,9]][Type] <> 'aa' then
+                OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'.fasta.dna');
+                printf('>%a (SE%03d)\n%s\n\n', evolution[i, j, 4], i,
+                    evolution[i, j, 6]);
+                OpenWriting(previous);
+            fi:
         od;
     od;
     lprint('\n\n.fasta files written...\n\n');
@@ -195,10 +199,12 @@ DBoutAnc := proc(organism, parent, child, birth)
         if (geneR[child, loc] < 0) then
             loc := -loc;
         fi;
-        printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS>'.
-            '<HGP>%d</HGP><SEQ>%s</SEQ><DNA>%s</DNA></E>\n',
-            organism[j, 4], loc, organism[j, 3], organism[j, 5], 
-            organism[j, 7], organism[j, 2], organism[j, 6]);
+        printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>%d</HGP><SEQ>%s</SEQ>',
+            organism[j, 4], loc, organism[j, 3], organism[j, 5], organism[j, 7], organism[j, 2]): 
+        if substModels[organism[j,9]][Type] <> 'aa' then
+            printf('<DNA>%s</DNA>', organism[j, 6]);
+        fi:
+        printf('</E>\n'):
     od;
     OpenWriting(previous);
 end:

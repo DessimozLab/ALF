@@ -39,7 +39,7 @@ if DelType='ExpGaps' then return(CodonMutateExpGaps(seq1,lnM1,CF,CodonPam)) fi;
 if type(CodonPam, list(positive)) and assigned(classes) then
     return(CodonMutateGamma(seq1, CodonPam, lnM1, classes))
 elif type(lnM1, list(list(list))) and assigned(classes) then
-    return(CodonMutateOmega(seq1, CodonPam, lnM1, classes0)):
+    return(CodonMutateOmega(seq1, CodonPam, lnM1, classes)):
 elif type(CodonPam, list(positive)) or assigned(classes) then
     error('for gamma model CodonMutate requires a list of distances and an array with the class assignment for each site'):
 fi:
@@ -66,8 +66,9 @@ end:
 # specifies the class for each site.                   #
 # DD 17 Feb. 2009                                             #
 ##############################################################
-CodonMutateOmega(seq1:string, CodonPam:positive, lnM1:list(list(list)), classes:array(posint)) option internal;
+CodonMutateOmega := proc(seq1:string, CodonPam:positive, lnM1:list(list(list)), classes:array(posint)) option internal;
     # prepare matrices for the different gamma classes
+    # printf('codonmutateomega - classes(%d): %a\n', length(classes), classes):
     MP := CreateArray(1..length(lnM1),0):
     for i to length(MP) do
         MP[i]:=exp(CodonPam*lnM1[i]);
@@ -85,8 +86,9 @@ CodonMutateOmega(seq1:string, CodonPam:positive, lnM1:list(list(list)), classes:
     seq2:='';
     for i to len/3 do
         c0:=CodonToCInt(seq1[3*i-2..3*i]);
-            if CIntToInt(c0)=22 then c:=RandomStopCodon(MP[classes[i], c0])
-            else c:=RandomCodon(MP[classes[i], c0]) fi;
+        # printf('codonmutateomega - i: %d, c0: %d\n', i, c0):
+        if CIntToInt(c0)=22 then c:=RandomStopCodon(MP[classes[i], c0])
+        else c:=RandomCodon(MP[classes[i], c0]) fi;
         seq2:=seq2.c;
     od;
     seq2;

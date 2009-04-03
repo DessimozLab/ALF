@@ -6,7 +6,7 @@
 ##############################################################
 AAMutateGamma := proc(seq1:string, Pam:list(positive), classes:array(posint))
 if not assigned(logPAM1) then
-    error('CodonLogPAM1 is not assigned. Use CreateDayMatrices().')
+    error('logPAM1 is not assigned. Use CreateDayMatrices().')
 fi;
     # prepare matrices for the different gamma classes
     MP := CreateArray(1..length(Pam),0):
@@ -26,7 +26,7 @@ fi;
     seq2:='';
     for i to len do
         aa0:=AToInt(seq1[i]);
-            else a:=RandomAA(MP[classes[i], aa0]) fi;
+        a:=RandomAA(MP[classes[i], aa0]);
         seq2:=seq2.a;
     od;
     seq2;
