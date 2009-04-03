@@ -1,0 +1,49 @@
+# main program to start all necessary files for
+# synthetic evolution 
+#
+# change parameters in parameters.drw
+#
+# paramfile := 'parameters/XXX' : ReadProgram('evolstart.drw');
+#
+# Sereina Riniker, Christophe Dessimoz, Daniel Margadant; CBRG; 2006
+Set(printgc=false);
+starttime := UTCTime();
+basedir :=
+    '/Users/ddalquen/Documents/Darwin/source/bio-recipes/Orthologues/dan/synthetic-evolution/';
+if not assigned(paramfile) then
+	paramfile := basedir.'parameters/p_pas-test.drw';
+#	paramfile := basedir.'parameters/p_pas-seminar.drw';
+	printf('paramfile not specified. use %s!!\n',paramfile);
+fi:
+
+printf('\n'):
+ReadProgram(basedir.'Gamma.drw'):
+ReadProgram(basedir.'AAMutateGamma.drw'):
+ReadProgram(basedir.'KHG_Matrix.drw'):
+ReadProgram(basedir.'YangModels.drw'):
+ReadProgram(basedir.'NucleotideMatrix.drw'):
+ReadProgram(basedir.'BirthDeathTree.drw'):
+ReadProgram(basedir.'SubstitutionModel'):
+ReadProgram(basedir.'SE_DataOutput.drw');
+ReadProgram(basedir.'SE_Rearrangement.drw');
+ReadProgram(basedir.'SE_procedures.drw');
+ReadProgram(basedir.'SE_AllAllTree.drw'):
+ReadProgram(basedir.'SE_RandomSubtree.drw'):
+printf('\n'):
+
+ReadProgram(paramfile);
+printf('\nparameter file read\n'):
+
+ReadProgram(basedir.'synthevol.drw');
+CallSystem('cp ' . paramfile . ' ' . wdir . 'used_parameters.drw'):
+endtime := (UTCTime() - starttime) / 60:
+printf('\n\nsynthetic evolution completed in %.2f minutes!\n\n', endtime):
+
+
+# framework description
+#
+# SE_procedures.drw   contains procedures for creation and analyses of se
+# parameter.drw       contains simulation parameters which can be changed
+# synthevol.drw       does the simulations and saves the .db files
+# phase1.drw          does the AllAll
+# phase4.drw          creates the matrix file
