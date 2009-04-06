@@ -353,7 +353,7 @@ CreateGeneTrees := proc(clsts, evol, msteps)
                         if length(curg) = 4 then
                             # duplication
                             nodes := append(nodes, [curg[4], gid, curg[4], curg[2], curg[3], 'D']):
-                            gid := curg[3]:
+                            gid := curg[2]:
                             break:
                         fi:
                         curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-(%d)%d'):
