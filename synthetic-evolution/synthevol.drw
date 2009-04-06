@@ -222,7 +222,7 @@ DBoutAnc(evolution[1], 1, 1, 0);
 # logfile header 
 lastSpeciation := 1:
 print('\n\nEvolution!\n\n');
-OpenWriting(wdir.'logfile.txt'); 
+OpenWriting(wdir.'/logfile.txt'); 
 lprint('Synthetic evolution\n-------------------\n');
 printf('%i iteration steps\n', maxSteps);
 printf('first organism (%s): %i proteins with %i aa (average)\n', 
@@ -259,7 +259,7 @@ while evolTime <= maxSteps do
         OpenWriting(previous);
         printf('  evolution progress in time steps:\t%i%%\t (%i of %i)\n', 
             c, evolTime, maxSteps);
-        OpenAppending(wdir.'logfile.txt');
+        OpenAppending(wdir.'/logfile.txt');
     fi;
     
     # loop over all current existing organisms
@@ -811,7 +811,7 @@ while evolTime <= maxSteps do
         OpenWriting(previous);
         printf('species %i was created at time %i\n', livingOrgs, evolTime);
     	DBoutAnc(evolution[livingOrgs], orgSource, livingOrgs, evolTime);
-        OpenAppending(wdir.'logfile.txt');
+        OpenAppending(wdir.'/logfile.txt');
         nextSpecIndex := nextSpecIndex + 1:
     fi;
 od:
@@ -826,7 +826,7 @@ for i to livingOrgs do
 od:
 DrawTree(treeEvo, ArcRadial, OrderLeaves=LeftHeavy, Legend, 
     Title = 'synthetic evolution');
-TimedCallSystem('mv temp.ps '.wdir.'RealTree.ps', 2);
+TimedCallSystem('mv temp.ps '.wdir.'/RealTree.ps', 2);
 OpenWriting(wdir . 'RealTree.drw');
 printf('RealTree := %a;\n', treeEvo);
 OpenWriting(previous);
@@ -860,7 +860,7 @@ geneTrees := CreateGeneTrees(clusters, evolution, maxSteps):
 WriteOrthologs(geneTrees, livingOrgs):
 
 # logfile footer, DB output, GenomeSummaries
-OpenAppending(wdir.'logfile.txt');
+OpenAppending(wdir.'/logfile.txt');
 printf('\n\n\n\%i species generated\n', livingOrgs);
 printf('%.0f gene duplications and %.0f lgt events\n', totD, totL);
 printf('\nGC amelioration:');
@@ -875,13 +875,18 @@ DBout():
 DBoutFASTA():
 lprint('...genome DBs saved.');
 
-OpenWriting(wdir.'DB/Summaries.drw');
+if webRequest then
+    summariesString := wdir.'/DB/Summaries.drw';
+else
+    summariesString := wdir.'/Summaries.drw':
+fi:
+OpenWriting(summariesString);
 printf('GenomeSummaries := table():\ngenomes := []:\n');
 for i to livingOrgs do
     OpenWriting(previous);
     orgname := sprintf('SE%03d', i):
     DB := ReadDb(wdir.dbdir.orgname.'.db'):
-    OpenAppending(wdir.'DB/Summaries.drw');
+    OpenAppending(summariesString);
     printf('genomes := append(genomes, %s):\n', orgname):
     printf('GenomeSummaries[%s] :=', orgname );
     dprint(copy(GenomeSummary(DB)));

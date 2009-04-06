@@ -480,13 +480,13 @@ WriteOrthologs := proc(trees, norgs)
     for i to norgs do
         CallSystem('mkdir '.wdir.sprintf('/VP/SE%03d', i)):
         for j to norgs do
-            OpenWriting(wdir.sprintf('VP/SE%03d/SE%03d.op', i, j)):
+            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.op', i, j)):
             printf('OP := %A\n', OPs[i,j]):
             OpenWriting(previous):
-            OpenWriting(wdir.sprintf('VP/SE%03d/SE%03d.pp', i, j)):
+            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.pp', i, j)):
             printf('PP := %A\n', PPs[i,j]):
             OpenWriting(previous):
-            OpenWriting(wdir.sprintf('VP/SE%03d/SE%03d.xp', i, j)):
+            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.xp', i, j)):
             printf('XP := %A\n', XPs[i,j]):
             OpenWriting(previous):
         od:
