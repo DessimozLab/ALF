@@ -131,9 +131,9 @@ transLoc := proc(org: posint, place: integer, target: posint, tSize: posint)
     global geneR;
     if place >= target then
         geneR[org] := [op(geneR[org, 1..target-1]),
-            op(geneR[org, target+tSize..place+tSize]),
+            op(geneR[org, target+tSize..place+tSize-1]),
             op(geneR[org, target..(target+tSize-1)]),
-            op(geneR[org, place+tSize+1..-1])];
+            op(geneR[org, place+tSize..-1])];
     elif place < target then
         geneR[org] := [op(geneR[org, 1..place]),
             op(geneR[org, target..(target+tSize-1)]),

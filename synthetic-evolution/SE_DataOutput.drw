@@ -179,7 +179,7 @@ DBoutAnc := proc(organism, parent, child, birth)
     if length(FileStat(wdir.dbAncdir)) = 0 then
         TimedCallSystem('mkdir -p '.wdir.dbAncdir, 2);
     fi;
-    orgname := sprintf('SE%i-%i_%i', parent, child, birth);
+    orgname := sprintf('SE%i-%i_%f', parent, child, birth);
     OpenWriting(wdir.dbAncdir.orgname.'.db');
     # header output
     printf('<DBNAME>Synthetic organism %s</DBNAME>\n', orgname);
@@ -212,6 +212,9 @@ end:
 # create the real MSA for gene cluster cls.
 CreateRealMSA := proc(cls, evol)
     global substModels:
+    if length(cls) = 0 then
+        return():
+    fi:
     simType := substModels[evol[cls[1,1],cls[1,2], 9]][Type]:
     blockSize := substModels[evol[cls[1,1],cls[1,2], 9]][Blocksize]:
     # gather sequences and events
@@ -225,6 +228,9 @@ CreateRealMSA := proc(cls, evol)
         events := sort(evol[cls[i,1], cls[i,2], 8], EventOrder):
         for j to length(events) do
             if events[j,2] = 'D' then # deletion
+                #printf('i: %d, j: %d, length(seqs): %d, length(events): %d\n', i, j, length(seqs), length(events)):
+                #dprint(seqs[i,3]):
+                #printf('events[j]: %A\n', events[j]):
                 seqs[i, 3] := seqs[i, 3, 1..events[j,3]-1].CreateString(events[j,4], '_').seqs[i, 3, events[j,3]..-1]:
                 for k to length(insertions[i]) do
                     if events[j,3] <= insertions[i,k,3] then
@@ -312,12 +318,15 @@ end:
 #   clsts: array of gene clusters, where each cluster consists of a list of organism/gene tupels
 #   evol:  the evolution data structure.
 #   msteps: the maximum number of simulation steps (for defining the depth of the leaves
-CreateGeneTrees := proc(clsts, evol, msteps)
+CreateGeneTrees := proc(clsts, evol, msteps, lheights)
     # create output directory for gene trees
     CallSystem('mkdir '.wdir.'/GeneTrees/'):
     trees := []:
+    geneIDs := [seq(transpose(evol[i])[4], i=1..length(evol))]:
+    
     # loop over all clusters
     for c to length(clsts) do
+#        printf('cluster %d\n', c):
         cls := sort(clsts[c],x->x[1]):
         
         # create a list of leaf nodes containing for each node the org/gene id of the current gene as well
@@ -335,28 +344,28 @@ CreateGeneTrees := proc(clsts, evol, msteps)
                 do
                     while j <> 1 and evolution[cls[i,1], cls[i,2], 3, j - 1] <> ')' do j := j - 1: od:
                     do
-                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-%d(%dL%d)%d'):
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-%d(%dL%g)%d'):
                         if length(curg) = 5 then
                             # LGT
                             nodes := append(nodes, [curg[5], gid, curg[2], curg[3], curg[4], 'L']):
                             gid := curg[3]:
                             break:
                         fi:
-                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-%d(%dLo%d)%d'):
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-%d(%dLo%g)%d'):
                         if length(curg) = 5 then
                             # LGT orthologous replacement
                             nodes := append(nodes, [curg[5], gid, curg[2], curg[3], curg[4], 'Lo']):
                             gid := curg[3]:
                             break:
                         fi:
-                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-(%dD%d)%d'):
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-(%dD%g)%d'):
                         if length(curg) = 4 then
                             # duplication
                             nodes := append(nodes, [curg[4], gid, curg[4], curg[2], curg[3], 'D']):
                             gid := curg[2]:
                             break:
                         fi:
-                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-(%d)%d'):
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-(%g)%d'):
                         if length(curg) = 3 then
                             # speciation
                             nodes := append(nodes, [curg[3], gid, curg[1], gid, curg[2], 'S']):
@@ -364,7 +373,10 @@ CreateGeneTrees := proc(clsts, evol, msteps)
                         fi:
                         error('unknown format: %s', evolution[cls[i,1], cls[i,2], 3, j..-1]):
                     od:
-                    if j = 1 then break fi:
+                    if j = 1 then
+                        nodes := append(nodes, [1, gid, 0, gid, 0]):
+                        break:
+                    fi:
                     k := j:
                     while evolution[cls[i,1], cls[i,2], 3, k+1] <> '-' do k := k + 1: od:
                     j := j - 1:
@@ -375,25 +387,31 @@ CreateGeneTrees := proc(clsts, evol, msteps)
         # sort nodes by time and insert them into a tree
         nodes := sort([op(nodes)], x->x[5]):
         tree := Leaf(sprintf('SE%03d_%d', nodes[1,1], nodes[1,2]), msteps):
-        nodes[1] := [nodes[1,1], nodes[1,2]]:
+        gind := SearchArray(nodes[1,2], geneIDs[nodes[1,1]]):
+        nodes[1] := [nodes[1,1], If(gind = 0, nodes[1,2], gind)]:
         for i from 2 to length(nodes) do
-            tree := InsertNode(tree, nodes[i], msteps):
-            
-            nodes[i] := [nodes[i,1], nodes[i,2]]:
+            tree := InsertNode(tree, nodes[i], msteps);
+            gind := SearchArray(nodes[i,2], geneIDs[nodes[i,1]]):
+            nodes[i] := [nodes[i,1], If(gind = 0, nodes[i,2], gind)];
         od:
         
         # remove genes that were lost during evolution
-        remnodes := {op(cls)} minus {op(nodes)}:
+        remnodes := {op(nodes)} minus {op(cls)}:
         for i to length(remnodes) do
             tree := RemoveNode(tree, sprintf('SE%03d_%d', remnodes[i,1], remnodes[i,2])):
         od:
+        
+        # correct leaf heights
+        tree := CorrectLeafHeights(tree, lheights):
         
         # store tree
         OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.drw'):
         printf('tree_%d := %A\n\n', c, tree):
         OpenWriting(previous):
-        DrawTree(tree):
-        CallSystem('mv temp.ps '.wdir.'/GeneTrees/GeneTree'.c.'.ps'):
+        if not type(tree, Leaf) then
+            DrawTree(tree):
+            CallSystem('mv temp.ps '.wdir.'/GeneTrees/GeneTree'.c.'.ps'):
+        fi:
         trees := append(trees, tree):
     od:
     return(trees):
@@ -402,7 +420,7 @@ end:
 # insert a new leaf node n into tree t. The method assumes that n is younger than all current
 # leaves of the tree. Hence, the insertion is reduced to combining an existing leaf with the one
 # being inserted into an inner node.
-InsertNode := proc(t:Tree, n:list, msteps:posint) option internal;
+InsertNode := proc(t:Tree, n:list, msteps) option internal;
     if type(t, Leaf) then
         if t[Label] = sprintf('SE%03d_%d', n[3], n[4]) then
             return(Tree(t, n[5], Leaf(sprintf('SE%03d_%d', n[1], n[2]), msteps), n[6])):
@@ -420,7 +438,7 @@ InsertNode := proc(t:Tree, n:list, msteps:posint) option internal;
             t[Right] := r:
             return(t):
         fi:
-        return(t):
+        return(NULL):
     fi:
 end:
 
@@ -435,7 +453,8 @@ RemoveNode := proc(t:Tree, l:string) option internal:
             if t[Right, Label] = l then
                 return(t[Left]):
             fi:
-        elif type(t[Left], Leaf) then
+        fi:
+        if type(t[Left], Leaf) then
             if t[Left, Label] = l then
                 return(t[Right]):
             fi:
@@ -448,6 +467,17 @@ RemoveNode := proc(t:Tree, l:string) option internal:
         fi:
     fi:
     return(t):
+end:
+
+CorrectLeafHeights := proc(tree:Tree, lheights:list)
+    if type(tree, Leaf) then
+        tokens := sscanf(tree[Label], 'SE%03d_%d'):
+        tree[Height] := lheights[tokens[1]]:
+    else
+        tree[Left] := CorrectLeafHeights(tree[Left], lheights):
+        tree[Right] := CorrectLeafHeights(tree[Right], lheights):
+    fi:
+    return(tree):
 end:
 
 WriteOrthologs := proc(trees, norgs)
@@ -526,5 +556,48 @@ GetOrthologs := proc(t:Tree, VPs:list(list(list))) option internal:
 
     NULL:
 end:
+
+ReadTreeFile := proc(fileName:string)
+    tree := ReadRawFile(fileName):
+    if tree[1..4] = 'Tree' then
+        # assume darwin format
+        t := traperror(parse(tree)):
+        if t = lasterror then
+            error('could not parse tree. assumed tree in darwin format, but encountered an error: '.lasterror):
+        fi:
+    elif tree[1..4] = 'Leaf' then
+        error('tree must consist of more than just a leaf'):
+    else
+        #assume newick format
+        t := traperror(ParseNewickTree(tree, 'InternalLabels'=ReadNewickAnnotation)):
+        if t = lasterror then
+            error('could not parse tree. assumed tree in newick format but encountered an error: '.lasterror.'. make sure to include branch lengths in the tree description.'):
+        fi:
+    fi:
+    t
+end:
+
+ReadNewickAnnotation := proc(label:string)
+    if label = NULL or label = '' then
+        return(NULL);
+    elif label[1] = '''' and label[-1] = '''' then
+        procname(label[2..-2]);
+    elif label[1] = 'S' or label[1] = 'D' then
+        tokens := SearchDelim('_', label[2..-1]);
+        models := []:
+        for i to length(tokens) do
+            curmodel := SearchDelim('-', tokens[i]):
+            if length(curmodel) <> 2 or atoi(curmodel[1]) = 0 or atoi(curmodel[2]) = 0 then
+                error('could not parse model');
+            fi:
+            models := append(models,[atoi(curmodel[1]), atoi(curmodel[2])]):
+        od:
+        models := sort(models, x->x[1]):
+        return([label[1], models]);
+    else
+        error('internal node names should have the format <event>_<model> (e.g. S1 or D2)'):
+    fi:
+end:
+
 
 lprint('IO procedures for Synthetic Evolution sucessfully loaded');

@@ -8,8 +8,8 @@
 # Sereina Riniker, Christophe Dessimoz, Daniel Margadant; CBRG; 2006
 Set(printgc=false);
 starttime := UTCTime();
-basedir := '/home/darwin/Orthologues/dan/synthetic-evolution/';
-#basedir :='/Users/ddalquen/Documents/Darwin/source/bio-recipes/Orthologues/dan/synthetic-evolution/';
+#basedir := '/home/darwin/Orthologues/dan/synthetic-evolution/';
+basedir :='/Users/ddalquen/Documents/Darwin/source/bio-recipes/Orthologues/dan/synthetic-evolution/';
 if not assigned(paramfile) then
 	paramfile := basedir.'parameters/p_pas-test.drw';
 #	paramfile := basedir.'parameters/p_pas-seminar.drw';
@@ -22,7 +22,8 @@ ReadProgram(basedir.'AAMutateGamma.drw'):
 ReadProgram(basedir.'KHG_Matrix.drw'):
 ReadProgram(basedir.'YangModels.drw'):
 ReadProgram(basedir.'NucleotideMatrix.drw'):
-ReadProgram(basedir.'BirthDeathTree.drw'):
+#ReadProgram(basedir.'BirthDeathTree.drw'):
+ReadProgram(basedir.'BirthDeathTreeNew'):
 ReadProgram(basedir.'SubstitutionModel'):
 ReadProgram(basedir.'SE_DataOutput.drw');
 ReadProgram(basedir.'SE_Rearrangement.drw');
@@ -33,6 +34,8 @@ printf('\n'):
 
 ReadProgram(paramfile);
 printf('\nparameter file read\n'):
+
+ReadProgram(basedir.'SE_Evolutionary_Events.drw'):
 
 ReadProgram(basedir.'synthevol.drw');
 CallSystem('cp ' . paramfile . ' ' . wdir . 'used_parameters.drw'):

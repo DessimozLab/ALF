@@ -1,0 +1,782 @@
+PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative)
+    global evolution, substModels, indelModel, Z_c, QG_c, QG_t, NB_r, NB_q, rateDistribution;
+#    printf('performing aa gain\n'):
+
+    substModel := substModels[evolution[org,gene,9]]:
+    simType := substModel[Type]:
+    blockSize := substModel[Blocksize]:
+    neutralDNA := substModel[NeutralDNA]:
+    # finds the indel length out of a Zipfian distribution
+    # (exponent 1.821 comes from (Chang and Benner 2004))
+    if indelModel = 'ZIPF' then
+        indelLength := randGapLength(maxIndelLength, indelModel, [Z_c]):
+    elif indelModel = 'QG' then
+        indelLength := randGapLength(maxIndelLength, indelModel, [QG_c, QG_t]):
+    elif indelModel = 'NEGBIN' then
+        indelLength := randGapLength(maxIndelLength, indelModel, [NB_r, NB_q]):
+    else
+        # custom model
+        indelLength := randGapLength(maxIndelLength, indelModel, indelVector):
+    fi:
+        
+    # searches a random start position for the insertion
+    indelStart := blockSize * Rand(0..length(evolution[org,gene,1,-1,2])):
+
+    # performs aa gain
+    if simType = 'nuc' then
+        if neutralDNA then
+            dna_value := Rand(DNA(indelLength)):
+        else
+            dna_value := '':
+            for i to indelLength do
+                do
+                    curc := Rand(DNA(3)):
+                    if curc <> TAG and curc <> TGA and curc <> TAA then break: fi:
+                od:
+                dna_value := dna_value.curc:
+            od:
+        fi:
+        if indelStart = 0 then
+            evolution[org, gene, 6] := dna_value.string(evolution[org, gene, 6]);
+        elif indelStart = length(evolution[org, gene, 6]) then
+            evolution[org, gene, 6] := string(evolution[org, gene, 6]).dna_value;
+        else
+            evolution[org, gene, 6] := string(evolution[org, gene,6])
+            [1..indelStart].dna_value.string(evolution[org, gene, 6])[indelStart + 1..-1];
+        fi;
+       if not neutralDNA then evolution[org, gene, 2] := ProteinSeq(evolution[org, gene, 6]); fi:
+    elif simType = 'codon' then
+        # we insert the whole string at once instead of codon by codon
+        # TODO: make sure this doesn't create any conficts...
+        dna_value := Rand(CodingDNA(3*indelLength)):
+        if indelStart = 0 then
+            evolution[org, gene, 6] := dna_value.string(evolution[org, gene, 6]);
+        elif indelStart = length(evolution[org, gene, 6]) then
+            evolution[org, gene, 6] := string(evolution[org, gene, 6]).dna_value;
+        else
+            evolution[org, gene, 6] := string(evolution[org, gene,6])
+            [1..indelStart].dna_value.string(evolution[org, gene, 6])[indelStart + 1..-1];
+        fi;
+        evolution[org, gene, 2] := ProteinSeq(evolution[org, gene, 6]);
+        
+    else
+        aa_value := Rand(Protein(indelLength)):
+        if indelStart = 0 then
+            evolution[org, gene, 2] := aa_value.string(evolution[org, gene, 2]):
+        elif indelStart = length(evolution[org, gene, 2]) then
+            evolution[org, gene, 2] := string(evolution[org, gene, 2]).aa_value:
+        else
+            evolution[org, gene, 2] := string(evolution[org, gene, 2])
+            [1..indelStart].aa_value.string(evolution[org, gene, 2])[indelStart + 1..-1];
+        fi:
+        # TODO: maybe create a DNA sequence of the newly inserted proteins
+    fi:
+    evolution[org, gene, 8] := append(evolution[org, gene, 8], [evolTime, 'I', indelStart, indelLength*blockSize]):
+    if substModel[Name][1] = 'M' then
+        evolution[org, gene, 1, 1] := updateBorderOmega(substModel[Name], evolution[org, gene, 1, 1], (indelStart / blockSize), indelLength, 'insert', substModel[Params][3]):
+    else
+        l := 1:
+        while l < length(evolution[org,gene,1]) and evolution[org,gene,1,l,1] < indelStart / blockSize do
+            l := l + 1:
+        od:
+        if rateDistribution = 'Gamma' then
+            evolution[org, gene, 1] := updateBorder(evolution[org, gene, 1], l, (indelStart / blockSize), indelLength, 'insert', true, areas);
+        else
+            evolution[org, gene, 1] := updateBorder(evolution[org, gene, 1], l, (indelStart / blockSize), indelLength, 'insert');
+        fi:
+    fi:
+    if evolution[org,gene,1,-1,2] <> length(evolution[org,gene,2]) then
+        printf('ERROR!\n'):
+    fi:
+end:
+
+PerformDeletion := proc(org:integer, gene, evolTime:nonnegative)
+    global evolution, substModels, indelModel, Z_c, QG_c, QG_t, NB_r, NB_q, rateDistribution;
+#    printf('performing aa loss\n'):
+
+    substModel := substModels[evolution[org,gene,9]]:
+    simType := substModel[Type]:
+    blockSize := substModel[Blocksize]:
+    neutralDNA := substModel[NeutralDNA]:
+    # finds the indel length out of a Zipfian distribution
+    # (exponent 1.821 comes from (Chang and Benner 2004))
+    if indelModel = 'ZIPF' then
+        indelLength := randGapLength(maxIndelLength, indelModel, [Z_c]):
+    elif indelModel = 'QG' then
+        indelLength := randGapLength(maxIndelLength, indelModel, [QG_c, QG_t]):
+    elif indelModel = 'NEGBIN' then
+        indelLength := randGapLength(maxIndelLength, indelModel, [NB_r, NB_q]):
+    else
+        # custom model
+        indelLength := randGapLength(maxIndelLength, indelModel, indelVector):
+    fi:
+    
+    # constrain deletion to one gene
+    # TODO: allow deletions across gene borders
+    if not simType = 'aa' then
+        dnaLen := length(evolution[org,gene,6]):
+        if not neutralDNA and CodonToA(evolution[org,gene,6,-3..-1]) = '$' then
+            dnaLen := dnaLen - 3:
+        fi:
+    fi:
+
+    indelLength := min(indelLength, If(simType = 'aa', length(evolution[org,gene,2]), dnaLen/blockSize));
+    maxStart := If(simType = 'aa', length(evolution[org,gene,2]), dnaLen/blockSize)-indelLength+1:
+
+    # searches a random start position for the deletion (constrained by the length of the deletion
+    indelStart := Rand(0..(maxStart-1))*blockSize+1;
+
+    # performs aa loss
+    #printf('org %d, gene %d: loss of %d characters starting at position %d.\n', org,gene, indelLength*blockSize, indelStart):
+    #printf('old end: %d, old length: %d\n', evolution[org,gene,1,-1,2], length(evolution[org,gene,2])):
+    if simType = 'aa' then
+        evolution[org,gene, 2] := string(evolution[org,gene, 2])[1..indelStart-1].
+                              string(evolution[org,gene, 2])[indelStart+indelLength..-1]:
+    else
+        evolution[org,gene, 6] := string(evolution[org,gene, 6])[1..indelStart-1].
+                              string(evolution[org,gene, 6])[indelStart+indelLength*blockSize..-1]:
+    fi:
+    evolution[org,gene, 8] := append(evolution[org,gene, 8], [evolTime, 'D', indelStart, indelLength*blockSize]):
+    if substModel[Name][1] = 'M' then
+        evolution[org,gene, 1, 1] := updateBorderOmega(substModel[Name], evolution[org,gene, 1, 1], (indelStart-1)/blockSize+1, indelLength, 'delet', substModel[Params][3]):
+    else
+        l := 1:
+        while l < length(evolution[org,gene,1]) and evolution[org,gene,1,l,1] < indelStart / blockSize do
+            l := l + 1:
+        od:
+        evolution[org,gene, 1] := updateBorder(evolution[org,gene, 1], l, (indelStart-1)/blockSize+1, indelLength, 'delet', rateDistribution='Gamma'):
+    fi:
+    
+    if simType <> 'aa' and not neutralDNA then
+        evolution[org,gene, 2] := ProteinSeq(evolution[org,gene, 6]);
+    fi:
+    #printf('new end: %d, new length: %d\n', evolution[org,gene,1,-1,2], length(evolution[org,gene,2])):
+    if evolution[org,gene,1,-1,2] <> length(evolution[org,gene,2]) then
+        printf('ERROR!\n'):
+    fi:
+end:
+
+PerformDuplication := proc(org:integer, evolTime:nonnegative; (ndupl=1):posint)
+    global evolution, geneR, maxID, mutRate, ratefac_pseudogene, life_neofunc, ratefac_neofunc,
+           life_subfunc, rate_subfunc, P_pseudogene, P_neofunc, P_subfunc, transDupl, fissionDupl,
+           fusionDupl;
+    printf('performing gene duplication\n'):
+    geneSourceIndex := Rand(1..length(evolution[org]) - ndupl + 1); 
+    idArr := transpose(evolution[org])[4]:
+    for k from 0 to ndupl - 1 do
+        geneSource := SearchArray(abs(geneR[org,geneSourceIndex+k]), idArr):
+        seqmutation(org, geneSource, evolTime):
+        evolution[org] := append(evolution[org], copy(evolution[org, geneSource]));
+        evolution[org, -1, 3] := evolution[org, -1, 3].'-('.copy(evolution[org, geneSource, 4]).'D'.string(evolTime).')'.org;
+        maxID := maxID + 1;
+        evolution[org, -1, 4] := maxID;
+        
+        # model switch
+        r := Rand():
+        for m to length(substModels) do
+            if r <= modelSwitchD[evolution[org, -1, 9], m] then
+                if m <>  evolution[org, -1, 9] then
+                    printf('model switch during duplication: %d -> %d\n', evolution[org, -1, 9], m):
+                    evolution[org, -1, 9] := m:
+                    substModel := substModels[m]:
+                    if substModel[Name] = 'M0' then
+                        evolution[org, -1, 1] := makeAreasOmega(substModel[Name], aaStart):
+                    elif substModel[Name][1] = 'M' then
+                        evolution[org, -1, 1] := makeAreasOmega(substModel[Name], aaStart, substModel[Params][3]):
+                    fi:
+                fi:
+                break:
+            fi:
+        od:
+
+        # modify substitution rates according to sub-/neofunctionalization or pseudogene
+        r := Rand():
+        if r < P_pseudogene then
+            evolution[org, -1, 10] := append(evolution[org, -1, 10], [mutRate, ratefac_pseudogene]):
+        elif r < P_pseudogene + P_neofunc then
+            evolution[org, -1, 10] := append(evolution[org, -1, 10], [evolTime+Rand(Poisson(life_neofunc)), ratefac_neofunc]):
+        elif r < P_pseudogene + P_neofunc + P_subfunc then
+            evolution[org, -1, 10] := append(evolution[org, -1, 10], [evolTime+Rand(Poisson(life_subfunc)), ratefac_subfunc]):
+            evolution[org, geneSource, 10] := append(evolution[org, geneSource, 10], [evolTime+Rand(Poisson(life_subfunc)), ratefac_subfunc]):
+        fi:
+        geneR[org] := append(geneR[org], evolution[org, -1, 4]);
+        printf('time %0004.4f: gene duplication in organism %i with gene'.
+            ' %i, now gene %i\n', evolTime, org, evolution[org, 
+            geneSource, 4], evolution[org, -1, 4]);
+        h := evolution[org, geneSource, 4];
+    od;
+    # gene rearrangement
+    if 100 * Rand() < transDupl then
+        place := Rand(1..length(geneR[org]) - 1 - ndupl);
+        transLoc(org, place, SearchArray(evolution[org, -ndupl, 4], 
+            abs(geneR[org])), ndupl);
+    else
+        place := geneSourceIndex+ndupl-1:
+        transLoc(org, place, SearchArray(evolution[org, -ndupl, 4], 
+            abs(geneR[org])), ndupl);
+    fi;
+    # gene fission
+    if ndupl = 1 and 100 * Rand() < fissionDupl then
+        printf('performing gene fission on gene %d of species %d\n', SearchArray(abs(geneR[org,place+1]), transpose(evolution[org])[4]), org):
+        geneFission(org, place+1, evolTime):
+    fi:
+    # gene fusion
+    if ndupl > 1 and 100 * Rand() < fusionDupl then
+        # of all duplicated genes select two consecutive genes for the fusion
+        g := Rand(1..ndupl-1):
+        printf('performing gene fusion on gene %d of species %d\n', SearchArray(abs(geneR[org,place+g]), transpose(evolution[org])[4]), org):
+        geneFusion(org, place+g, place+g+1, evolTime):
+    fi:
+end:
+
+PerformGeneLoss := proc(j:integer, evolTime:nonnegative; (nloss=1):posint)
+    global evolution, geneR;
+    printf('performing gene loss\n'):
+    geneSourceIndex := Rand(1..length(evolution[j])-nloss+1);
+    idArr := transpose(evolution[j])[4]:
+    for k from nloss-1 to 0 by -1 do
+        geneSource := SearchArray(abs(geneR[j,geneSourceIndex+k]), idArr):
+        printf ('time %0004.4f: gene loss in organism %i with gene %i\n', evolTime, j, evolution[j, geneSource, 4]);
+        # gene rearrangement
+        deleteItem(j, SearchArray(evolution[j, geneSource, 4], abs(geneR[j])));
+        # deleting the gene
+        if geneSource = 1 then
+            evolution[j] := evolution[j][2..-1];
+        elif geneSource = length(evolution[j]) then
+            evolution[j] := evolution[j][1..-2];
+        else 
+            evolution[j] := [op(evolution[j][1..geneSource - 1]), op(evolution[j][geneSource + 1..-1])];
+        fi;
+    od:
+end:
+
+PerformLGT := proc(j:integer, evolTime:nonnegative)
+    global evolution, geneR, maxID, livingOrgs;
+    # lgt - orthologous replacement
+    if Rand() < orthRep then
+        printf('performing lgto\n'):
+        # finds donor (recipient is current organism j)
+        donors := {seq(i, i = 1..livingOrgs)} minus {j}; 
+        orgDonor := Rand(donors);
+        gd1 := transpose(evolution[orgDonor])[4];
+        gd2 := transpose(evolution[j])[4];
+        gD := Rand({op(gd1)} intersect {op(gd2)});
+        geneSource := SearchArray(gD, gd2);
+        geneDonor := SearchArray(gD, gd1);
+        # copies entry and updates description
+        seqmutation(orgDonor, geneDonor, evolTime):
+        evolution[j] := append(evolution[j], copy(evolution[orgDonor, geneDonor]));
+        evolution[j, -1, 3] := evolution[j, -1, 3].'-'.orgDonor.'('.
+            copy(evolution[orgDonor, geneDonor, 4]).'Lo'.string(evolTime).')'.j;
+        maxID := maxID + 1;
+        evolution[j, -1, 4] := maxID;
+        # lgt shouldn't produce a new cluster
+#                evolution[j, -1, 7] := sprintf('%d',maxID); # new cluster 
+        evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
+        printf ('time %0004.4f: lgt from organism %i with gene %i to '.
+            'organism %i, now gene %i\n', evolTime, orgDonor, 
+            evolution[orgDonor, geneDonor, 4], j, evolution[j, -1, 4]);
+        printf('\torthologues replacement, gene %i in organism %i '.
+            'deleted\n', evolution[j, geneSource, 4], j);
+        geneR[j, SearchArray(gD, abs(geneR[j]))] := maxID;
+        # deletes own version of gene in recipient
+        if geneSource = 1 then
+            evolution[j] := evolution[j][2..-1];
+        elif geneSource = length(evolution[j]) then
+            evolution[j] := evolution[j][1..-2];
+        else
+            evolution[j] := [op(evolution[j][1..geneSource - 1]),
+                op(evolution[j][geneSource + 1..-1])];
+        fi;
+
+
+    # lgt - novel gene acquisition
+    else
+        printf('performing lgtn\n'):
+        # finds donor (recipient is current organism j)
+        donors := {seq(i, i = 1..livingOrgs)} minus {j};
+        orgDonor := Rand(donors);
+        geneDonor := trunc(Rand() * length(evolution[orgDonor])) + 1;
+        seqmutation(orgDonor, geneDonor, evolTime);
+        # copies entry and updates description
+        evolution[j] := append(evolution[j], 
+            copy(evolution[orgDonor, geneDonor]));
+        evolution[j, -1, 3] := evolution[j, -1, 3].'-'.orgDonor.'('.
+            copy(evolution[orgDonor, geneDonor, 4]).'L'.string(evolTime).')'.j;
+        maxID := maxID + 1;
+        evolution[j, -1, 4] := maxID; 
+        # lgt shouldn't produce a new cluster
+#                evolution[j, -1, 7] := sprintf('%d',maxID); # new cluster 
+        evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
+        printf ('time %0004.4f: lgt from organism %i with gene %i '.
+            'to organism %i, now gene %i\n', evolTime, orgDonor, 
+            evolution[orgDonor, geneDonor, 4], j, evolution[j, -1, 4]);
+        # gene rearrangement
+        geneR[j] := append(geneR[j], maxID);
+        place := Rand(0..length(geneR[j]) - 1);
+        transLoc(j, place, length(geneR[j]), 1);
+    fi;
+end:
+
+PerformLGTG := proc(j:integer, evolTime:nonnegative, lgtSize)
+    global evolution, geneR, maxID, livingOrgs;
+    printf('performing lgtm\n'):
+    # finds donor (recipient is current organism j)
+    donors := {seq(i, i = 1..livingOrgs)} minus {j};
+    orgDonor := Rand(donors);
+    geneDonor := trunc(Rand() * (length(evolution[orgDonor]) - lgtSize)) + 1;	
+    # copies entries for lgtSize proteins
+    for i to lgtSize do
+        seqmutation(orgDonor, geneDonor, evolTime):
+        evolution[j] := append(evolution[j], copy(evolution[orgDonor, geneDonor]));
+        evolution[j, -1, 3] := evolution[j, -1, 3].'-'.orgDonor.'('.copy(evolution[orgDonor, geneDonor, 4]).'L'.string(evolTime).')'.j;
+        maxID := maxID + 1;
+        evolution[j, -1, 4] := maxID;
+        evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
+        printf ('time %0004.4f: lgt from organism %i with gene %i '.
+            'to organism %i, now gene %i\n', 
+        evolTime, orgDonor, evolution[orgDonor, geneDonor, 4],
+            j, evolution[j, -1, 4]);
+        geneR[j] := append(geneR[j], evolution[j, -1, 4]);
+        geneDonor := geneDonor + 1;
+    od;
+    # gene rearrangement
+    place := Rand(0..length(geneR[j]) - lgtGSize - 1);
+    transLoc(j, place, length(geneR[j]) - lgtGSize + 1, lgtGSize);
+end:
+
+PerformFusion := proc(j:integer, evolTime:nonnegative; (nfuse=1):posint)
+    global geneR;
+    printf('performing gene fusion\n'):
+    fusionGene := Rand(1..length(geneR[j]) - nfuse);
+    for k to nfuse do
+        geneFusion(j, fusionGene, fusionGene+1, evolTime):
+    od:
+end:
+
+PerformFission := proc(j:integer, evolTime:nonnegative)
+    global evolution;
+    printf('performing gene fission\n'):
+    geneFission(j, Rand(1..length(evolution[j])), evolTime):
+end:
+
+PerformInversion := proc(j:integer)
+    global geneR, invSize;
+    printf('performing inversion\n'):
+    iSize := Rand(1..invSize);
+    target := Rand(1..length(geneR[j]) - iSize + 1);
+    if iSize = 1 then
+        geneR[j, target] := -geneR[j, target];
+    else
+        groupInvert(j, target, iSize);
+    fi;
+    # inverted translocation
+    if Rand() < invtrans then
+        place := Rand(0..length(geneR[j]) - iSize);
+        transLoc(j, place, target, iSize);
+    fi;
+end:
+
+PerformTranslocation := proc(org:integer)
+    global geneR, transSize;
+    printf('performing translocation\n'):
+    tSize := Rand(1..transSize);
+    target := Rand(1..length(geneR[org]) - tSize + 1);
+    place := Rand(0..length(geneR[org]) - tSize);
+    transLoc(org, place, target, tSize);
+end:
+
+PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
+    global evolution, geneR, livingOrgs, spec, treeData, treeEvo, GCratio;
+    for i to length(evolution[orgSource]) do
+        seqmutation(orgSource, i, evolTime);
+    od:
+    evolution := append(evolution, copy(evolution[orgSource]));
+    geneR := append(geneR, copy(geneR[orgSource]));
+    livingOrgs := livingOrgs + 1;
+    # updates history in gene descriptions
+    if assigned(specModels) then
+        fromModels := transpose(specModels)[1]:
+        toModels := transpose(specModels)[2]:
+    fi:
+    for l to length(evolution[livingOrgs]) do
+        evolution[livingOrgs, l, 5] := evolution[orgSource, l, 5].'-('.string(evolTime).')'.livingOrgs;
+        evolution[livingOrgs, l, 3] := evolution[orgSource, l, 3].'-('.string(evolTime).')'.livingOrgs;
+        # model switch
+        if assigned(specModels) then
+            modIndex := SearchOrderedArray(evolution[livingOrgs, l, 9], fromModels):
+            if modIndex <> 0 then
+                m := toModels[modIndex]:
+                printf('model switch during speciation for gene %d of species %d: %d -> %d\n', l, livingOrgs, evolution[livingOrgs, l, 9], m):
+                evolution[livingOrgs, l, 9] := m:
+                substModel := substModels[m]:
+                if substModel[Name] = 'M0' then
+                    evolution[livingOrgs, l, 1] := makeAreasOmega(substModel[Name], aaStart):
+                elif substModel[Name][1] = 'M' then
+                    evolution[livingOrgs, l, 1] := makeAreasOmega(substModel[Name], aaStart, substModel[Params][3]):
+                fi:
+            fi:
+        else
+            r := Rand():
+            for m to length(substModels) do
+                if r <= modelSwitchS[evolution[livingOrgs, l, 9], m] then
+                    if m <>  evolution[livingOrgs, l, 9] then
+                        printf('model switch during speciation for gene %d of species %d: %d -> %d\n', l, livingOrgs, evolution[livingOrgs, l, 9], m):
+                        evolution[livingOrgs, l, 9] := m:
+                        substModel := substModels[m]:
+                        if substModel[Name] = 'M0' then
+                            evolution[livingOrgs, l, 1] := makeAreasOmega(substModel[Name], aaStart):
+                        elif substModel[Name][1] = 'M' then
+                            evolution[livingOrgs, l, 1] := makeAreasOmega(substModel[Name], aaStart, substModel[Params][3]):
+                        fi:
+                    fi:
+                    break:
+                fi:
+            od:
+        fi:
+    od;
+    spec := append(spec, ['SE'.sprintf('%03i', orgSource), 
+        'SE'.sprintf('%03i', livingOrgs), evolTime]);
+    # creates a new leaf in the real tree
+    treeData := append(treeData, []);
+    d := evolTime;
+    if treeData[orgSource] = [] then
+        treeEvo[] := Tree(Leaf(orgSource, d),
+            d, Leaf(livingOrgs, d));
+    else
+        treeEvo[op(treeData[orgSource])] := Tree(Leaf(orgSource, d),
+            d, Leaf(livingOrgs, d));
+    fi;
+    treeData[livingOrgs] := append(copy(treeData[orgSource]), Right);
+    treeData[orgSource] := append(copy(treeData[orgSource]), Left);
+    lastSpeciation := evolTime;
+    printf ('time %0004.4f: speciation event of organism %i to organism '.
+        '%i', evolTime, orgSource, livingOrgs);
+    if enableGCAmelioration then
+        # defines new GC amelioration direction for new species
+        gcrat := calGCcont(evolution[livingOrgs]);
+        GCratio := append(GCratio, Rand(0.3..0.7)):
+        printf(', GC content: %.2f%%', gcrat):
+    fi:
+    printf('\n'):
+    OpenWriting(previous);
+    printf('species %i was created at time %0004.4f\n', livingOrgs, evolTime);
+    DBoutAnc(evolution[livingOrgs], orgSource, livingOrgs, evolTime);
+    OpenAppending(wdir.'/logfile.txt');
+end:
+
+# mutates gene k of organism org for a certain amount of time steps, 15.12.06
+seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
+    global evolution, substModels;
+    oldLen := length(evolution[org,gene,2]):
+    substModel := substModels[evolution[org, gene, 9]]:
+    # apply rate modifications from duplications
+    rateFac := curT - evolution[org,gene,11]:
+    if rateFac <= 0 then return() fi:
+    for i from length(evolution[org,gene,10]) to 1 by -1 do
+        rateFac := rateFac * evolution[org,gene,10,i,2]:
+        # remove rate modifier if it exceeds its lifetime
+        if evolution[org,gene,10,i,1] <= curT then
+            [op(evolution[org,gene,10,1..i-1]), op(evolution[org,gene,10,i+1..-1])]:
+        fi:
+    od:
+    # compute CodonMatrix from GC target content
+    if substModel[Type] <> 'aa' then
+        GCMatrix := substModel[LogPAM1]:
+        if enableGCAmelioration then
+            if substModel[Name][1] = 'M' then
+                GCMatrix := CreateArray(1..length(substModel[LogPAM1]),0):
+                for i to length(YCodonLogPAM1) do
+                    GCMatrix[i] := GCBiasMatrix(GCratio[org], substModel[LogPAM1][i], substModel[Type]):
+                od:
+            else
+                GCMatrix := GCBiasMatrix(GCratio[org], GCMatrix, substModel[Type]):
+            fi:
+        fi:
+    fi:
+    seqTot := '';
+    # loop over all domains for protein gene
+    for i to length(evolution[org, gene, 1]) do
+        if substModel[Type] = 'aa' then
+            # mutate amino acid sequence
+            sequence := evolution[org, gene, 2][(evolution[org, gene, 1][i, 1])..evolution[org, gene, 1][i, 2]];
+            if type(evolution[org,gene,1][i,3], list) then
+                sequence := AAMutateGamma(sequence, rateFac * gammaRates, evolution[org, gene, 1][i,3]):
+            else
+                sequence := Mutate(sequence, rateFac * evolution[org, gene, 1][i,3]):
+            fi:
+        else
+            if substModel[Blocksize] = 3 then
+                sequence := evolution[org, gene, 6][(evolution[org, gene, 1][i, 1]
+                    * 3 - 2)..evolution[org, gene, 1][i, 2] * 3];
+            else
+                sequence := evolution[org, gene, 6][evolution[org, gene, 1][i, 1]..evolution[org, gene, 1][i, 2]];
+            fi:
+            if substModel[Type] = 'nuc' then
+                if type(evolution[org,gene,1][i,3], list) then
+                    sequence := NucleotideMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, gene, 1][i,3]):
+                else
+                    sequence := NucleotideMutate(sequence, rateFac * evolution[org, gene, 1][i, 3], GCMatrix):
+                fi:
+            else
+                if type(evolution[org,gene,1][i,3], list) then
+                    if substModel[Name][1] = 'M' then
+                        sequence := CodonMutate(sequence, rateFac, GCMatrix, evolution[org, gene, 1][i,3]):
+                    else
+                        ol := length(sequence):
+                        sequence := CodonMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, gene, 1][i,3]):
+                        if ol <> length(sequence) then
+                            printf('ERROR occurred in CodonMutate!\n'):
+                        fi:
+                    fi:
+                else
+                    sequence := CodonMutate(sequence, rateFac * evolution[org, gene, 1][i,3], GCMatrix):
+                fi:
+            fi:
+        fi:
+        seqTot := seqTot.string(sequence);
+    od;
+    if substModel[Type] = 'aa' then
+        evolution[org, gene, 2] := string(seqTot):
+    else
+        evolution[org, gene, 6] := string(seqTot);
+        if substModel[Blocksize] = 3 then
+            evolution[org, gene, 2] := ProteinSeq(evolution[org, gene, 6]);
+        fi:
+    fi:
+    if oldLen <> length(evolution[org,gene,2]) then
+        printf('error mutating gene %d of org %d\n', gene, org):
+    fi:
+    addIndels(org, gene, substModel, meanGapLength, curT-evolution[org,gene,11]):
+    evolution[org,gene,11] := curT:
+end:
+
+# performs a gene fusion event
+geneFusion := proc(org:posint, g1:posint, g2:posint, etime:nonnegative)
+    global evolution, geneR, substModels;
+    indArr := transpose(evolution[org])[4]:
+    gene1 := SearchArray(abs(geneR[org,g1]), indArr):
+    gene2 := SearchArray(abs(geneR[org,g2]), indArr):
+    printf('evolution[%i, %i, 6]: %A\n', org, gene1, evolution[org,gene1,6]):
+    printf('evolution[%i, %i, 6]: %A\n', org, gene2, evolution[org,gene2,6]):
+    if evolution[org, gene1, 9] <> evolution[org, gene2, 9] then
+        printf('did not fuse genes because models are different\n'):
+        return():
+    fi:
+    seqmutation(org, gene1, etime):
+    seqmutation(org, gene2, etime):
+    l1 := length(evolution[org,gene1,1]):
+    offset := evolution[org,gene1,1,l1,2]:
+    l2 := evolution[org,gene2,1,-1,2]:
+    # longer gene defines cluster shorter gene is treated as insertion
+    if offset < l2 then
+        evolution[org, gene1, 7] := evolution[org, gene2, 7]:
+        blockSize := substModels[evolution[org, gene1, 9]][Blocksize]:
+        evolution[org, gene1, 8] := append(evolution[org, gene1, 8], [etime, 'I', 0, offset*blockSize]):
+    else
+        blockSize := substModels[evolution[org, gene2, 9]][Blocksize]:
+        evolution[org, gene1, 8] := append(evolution[org, gene1, 8], [etime, 'I', offset, l2*blockSize]):
+    fi:
+
+    if substModels[evolution[org, gene1, 9]][Name][1] = 'M' or rateDistribution = 'Gamma' then
+        evolution[org,gene1,1,1,2] := evolution[org,gene1,1,1,2] + evolution[org,gene2,1,1,2]:
+        evolution[org,gene1,1,1,3] := append(evolution[org,gene1,1,1,3], op(evolution[org,gene2,1,1,3])):
+    else
+        evolution[org,gene1,1] := append(evolution[org,gene1,1], op(evolution[org,gene2,1])):
+        for i from l1+1 to length(evolution[org,gene1,1]) do
+            evolution[org,gene1,1,i,1] := evolution[org,gene1,1,i,1] + offset:
+            evolution[org,gene1,1,i,2] := evolution[org,gene1,1,i,2] + offset:
+        od:
+    fi:
+    evolution[org,gene1,2] := evolution[org,gene1,2].evolution[org,gene2,2]:
+    lastIndex := If(CodonToA(evolution[org,gene1,6,-3..-1]) = '$', -4,-1):
+    evolution[org,gene1,6] := evolution[org,gene1,6,1..lastIndex].evolution[org,gene2,6]:
+    
+    # update evolutionary history ?
+    evolution[org, gene1, 3] := evolution[org, gene1, 3].'-('.copy(evolution[org, gene2, 4]).'Fu'.string(etime).')'.org;
+    
+    # delete gene2 (which is now fused with gene1)
+    deleteItem(org, g2):
+
+    if gene2 = 1 then
+        evolution[org] := evolution[org][2..-1];
+        
+    elif gene2 = length(evolution[org]) then
+        evolution[org] := evolution[org][1..-2];
+    else 
+        evolution[org] := [op(evolution[org][1..gene2 - 1]),
+            op(evolution[org][gene2 + 1..-1])];
+    fi;
+    
+end:
+
+
+# performs a gene fission event
+geneFission := proc(org:posint, g:posint, etime:nonnegative)
+    global evolution, geneR, maxID, substModels, evolTime;
+    indArr := transpose(evolution[org])[4]:
+    gene := SearchArray(abs(geneR[org,g]), indArr):
+    seqmutation(org, gene, etime):
+    substModel := substModels[evolution[org, gene, 9]]:
+    simType := substModel[Type]:
+    blockSize := substModel[Blocksize]:
+    # get a location for breaking up the gene into two
+    if simType = 'aa' then
+        seqLen := length(evolution[org,gene,2])
+    else
+        seqLen := length(evolution[org,gene,6])
+    fi:
+    breakPoint := Rand(1..seqLen/blockSize-1):
+    
+    # create new gene with second part of original gene
+    newGene := CreateArray(1..11):
+    if substModel[Name][1] = 'M' or rateDistribution = 'Gamma' then
+        newGene[1] := [[1, seqLen/blockSize - breakPoint, evolution[org,gene,1,1,3,breakPoint+1..-1]]]:
+    else
+        bDom := 1:
+        while evolution[org,gene,1,bDom,1] <= breakPoint do bDom := bDom + 1: od:
+        bDom := bDom - 1;
+        if breakPoint = evolution[org,gene,1,bDom,2] then
+            newGene[1] := evolution[org,gene,1,bDom+1..-1]:
+            evolution[org,gene,1] := evolution[org,gene,1,1..bDom]:
+        else
+            offset := 0:
+            while breakPoint > evolution[org,gene,1,bDom,1] + offset do offset := offset + 1: od:
+            newGene[1] := [[breakPoint+1, evolution[org,gene,1,bDom,2], evolution[org,gene,1,bDom,3]]]:
+            newGene[1] := append(newGene[1], op(evolution[org,gene,1,bDom+1..-1])):
+            evolution[org,gene,1] := evolution[org,gene,1,1..bDom]:
+            evolution[org,gene,1,bDom,2] := breakPoint:
+        fi:
+    fi:
+        
+    if simType = 'aa' then
+        newGene[2] := evolution[org,gene,2,newGene[1,1,1]..-1]:
+    else
+        newGene[6] := evolution[org,gene,6, breakPoint*blockSize+1..-1]:
+        if simType = 'codon' or not substModel[NeutralDNA] then
+            newGene[2] := ProteinSeq(newGene[6]):
+        fi:
+    fi:
+    maxID := maxID + 1:
+    newGene[3] := evolution[org,gene,3]:
+    newGene[4] := maxID:
+    newGene[5] := evolution[org,gene,5]:
+    newGene[7] := evolution[org,gene,7]:
+    newGene[8] := append(evolution[org,gene,8], [etime, 'D', 1, breakPoint]):
+    newGene[9] := evolution[org,gene,9]:
+    newGene[10] := copy(evolution[org,gene,10]):
+    newGene[11] := evolution[org,gene,11]:
+    for i to length(newGene[1]) do
+        newGene[1,i,1] := newGene[1,i,1] - breakPoint:
+        newGene[1,i,2] := newGene[1,i,2] - breakPoint:
+    od:
+    
+    # update original gene
+    if simType = 'aa' then
+        evolution[org,gene,2] := evolution[org,gene,2,1..breakPoint]:
+        len := length(newGene[2]):
+    else
+        evolution[org,gene,6] := evolution[org,gene,6,1..breakPoint*blockSize]:
+        len := length(newGene[6]):
+        if simType = 'codon' then
+            evolution[org,gene,2] := ProteinSeq(evolution[org,gene,6]):
+        fi:
+    fi:
+    evolution[org,gene,8] := append(evolution[org,gene,8], [etime, 'D', evolution[org,gene,1,-1,2]+1, len]):
+    # update evolutionary history?
+    evolution[org, gene, 3] := evolution[org, gene, 3].'-('.copy(evolution[org, gene, 4]).'Fi'.string(etime).')'.org;
+    newGene[3] := newGene[3].'-('.copy(evolution[org, gene, 4]).'Fi'.string(etime).')'.org:
+    
+    # add new gene to the data structures
+    evolution[org] := append(evolution[org], newGene):
+    geneR[org] := append(geneR[org], evolution[org, -1, 4]):
+    transLoc(org, g, SearchArray(evolution[org, -1, 4], abs(geneR[org])), 1);
+end:
+
+makeAreas := proc(aaStart, areas, mutRate, distr:{'Poisson', 'Gamma'}; motFreq:nonnegative)
+    if distr = 'Poisson' then
+        if not assigned(motFreq) then
+            motFreq := 0:
+        fi:
+        domains := CreateArray(1..Rand(1..areas));
+        numEnt := {};
+        for i to (length(domains) - 1) do
+            num1 := round(aaStart / (length(domains) - 1));
+            limitlow := max(1, ((i - 1) * num1 + 1));
+            limithigh := min(aaStart - 1, (i * num1 - 1));
+            numEnt := append(numEnt, Rand(limitlow..limithigh));
+        od;    
+        numEnt := append(numEnt, 0);
+        numEnt := append(numEnt, aaStart);
+        for i to length(domains) do        
+            domains[i] := [(numEnt[i]+1), numEnt[i+1], 
+                If(Rand() < motFreq, 1/DBL_MAX, Rand(Poisson(mutRate))/mutRate)];
+        od;
+    else
+        if not assigned(motFreq) then
+            error ('gamma distribution requires alpha parameter')
+        fi:
+        classes := CreateArray(1..aaStart,0):
+        for i to aaStart do
+            if Rand() <= motFreq then
+                classes[i] := areas+1:
+            else
+                classes[i] := Rand(1..areas):
+            fi:
+        od:
+        domains := copy([[1, aaStart, classes]]):
+    fi:
+    return(domains);
+end:
+
+addIndels := proc(org:posint, gene:posint, substModel, meanLen:nonnegative, evolTime:nonnegative)
+    global evolution, aaGainRate, aaLossRate;
+    curT := evolution[org,gene,11]:
+    if evolTime <= curT then return() fi:
+    do
+        if substModel[Type] = 'aa' then
+            geneLen := length(evolution[org,gene,2]):
+        else
+            geneLen := length(evolution[org,gene,6]) / substModel[Blocksize]:
+        fi:
+        totalRate := (geneLen + 1) * aaGainRate + (meanLen - 1 + geneLen) * aaLossRate;
+        curInt := Rand(Exponential(0,1/totalRate)):
+        if curT + curInt > evolTime then break fi:
+        curT := curT + curInt:
+        
+        # select type of event
+        r := Rand():
+        if r <= (geneLen + 1) * aaGainRate / totalRate then
+            PerformInsertion(org, gene, curT):
+        else
+            PerformDeletion(org, gene, curT):
+        fi:
+    od:
+end:
+
+MeanGapLength := proc(distr:{'ZIPF', 'QG', 'NEGBIN', 'CUSTOM'}, maxLength, params:array)
+    m := 0:
+    if distr = 'ZIPF' then
+        normFac := ZipfNormalizationFactor(maxLength, params[1]):
+        for i to maxLength do
+            m := m + i * i^(-params[1]) / normFac:
+        od:
+    elif distr = 'QG' then
+        c := params[1]: t := params[2]:
+        normFac := QGNormalizationFactor(maxLength, c, t):
+        for i to maxLength do
+            m := m + i * (1.027e-2*exp(-i*c/(0.96*t)) + 3.031e-3*exp(-i*c/(3.13*t))
+                   + 6.141e-4*exp(-i*c/(14.3*t)) + 2.090e-5*exp(-i*c/(81.7*t))) / normFac:
+        od:
+    elif distr = 'NEGBIN' then
+        r := params[1]: q := params[2]:
+        normFac := NBNormalizationFactor(maxLength, r, q):
+        for i to maxLength do
+            m := m + i * ((r+i-2)!/((i-1)!*(r+1)!)*(1-q)^r*q^(i-1))/normFac:
+        od:
+    else
+        for i to length(params) do
+            m := m + i * params[i]:
+        od:
+    fi:
+end:

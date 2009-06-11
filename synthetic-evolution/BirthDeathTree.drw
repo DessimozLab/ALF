@@ -91,7 +91,7 @@ BirthDeathTree := proc(b, d; (timeStop=0):nonnegative, (taxaStop=0):nonnegative,
         fi:
     od:
    
-    printf('alive: %a\n', alive):
+    #printf('alive: %a\n', alive):
     
     # build tree structure
     tree := Tree(BuildBDTree(edge, edgeLength, alive, 0), 0, BuildBDTree(edge[2..-1], edgeLength[2..-1], alive [2..-1], 0)):
@@ -156,20 +156,49 @@ end:
 
 ScaleTree := proc(tree:Tree, height:float)
     curh := FindDeepestLeaf(tree):
-    hfac := round(height / curh):
+    hfac := height / curh:
     ScaleTreeHeight(tree, hfac):
 end:
 
 ListTimePoints := proc(tree:Tree, prefix:string)
     if type(tree, Leaf) then
-        res := []:
+        res := copy([[],[]]):
     else
-        res := [[prefix, tree[Height]], op(ListTimePoints(tree[Left], prefix.'.1')),
-            op(ListTimePoints(tree[Right], prefix.'.2'))]:
+    	lt := ListTimePoints(tree[Left], prefix.'.1'):
+    	rt := ListTimePoints(tree[Right], prefix.'.2'):
+    	if length(tree) = 4 then
+    		if tree[xtra][1] = 'S' then
+	    		res := [[[prefix, tree[Height], tree[xtra][2]], op(lt[1]), op(rt[1])], [op(lt[2]), op(rt[2])]]:
+	    	else
+	    		res := [[op(lt[1]), op(rt[1])], [[prefix, tree[Height], tree[xtra][2]], op(lt[2]), op(rt[2])]]:
+	    	fi:
+   		else
+	        res := [[[prefix, tree[Height]], op(lt[1]), op(rt[1])],[]]:
+	    fi:
     fi:
     res
 end:
     
+EnumerateBranches := proc(tree:Tree, specPts)
+	branches := append(EnumerateBranches_R(tree[Left], tree[Height]), op(EnumerateBranches_R(tree[Right], tree[Height]))):
+	branches := sort(branches, x->x[1]):
+	res := []:
+	n := 2:
+	for i to length(specPts) do
+		res := append(res, [specPts[i, 1], op(branches[2*i-1])], [n, op(branches[2*i])]):
+		n := n + 1:
+	od:
+	res
+end:
+
+EnumerateBranches_R := proc(tree:Tree, start:nonnegative)
+	if type(tree, Leaf) then return([[start, tree[Height]]]): fi:
+	
+	res := EnumerateBranches_R(tree[Left], tree[Height]):
+	res := append(res, [start, tree[Height]], op(EnumerateBranches_R(tree[Right], tree[Height]))):
+end:
+
+
 ### old procedures ###
 #Species := proc(name:string, descendent1:Species, descendent2:Species, speciationTime:integer) option polymorphic;
 #    noeval(procname(args));

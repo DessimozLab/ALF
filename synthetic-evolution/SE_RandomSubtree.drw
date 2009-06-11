@@ -25,5 +25,16 @@ GenRandomTree := proc(D_all, nSpecies)
     else
         V := CreateArray(1..nSpecies, 1..nSpecies, 1); for i to nSpecies do V[i,i] := 0 od;
         T := LeastSquaresTree(D, V, [seq('S'.i, i=1..nSpecies)]);
+        T := RemoveXtra(T):
     fi;
+end:
+
+RemoveXtra := proc(tree:Tree):
+    if type(tree,Leaf) then
+        return(Leaf(tree[Label], abs(tree[Height]))):
+    else
+        lt := RemoveXtra(tree[Left]):
+        rt := RemoveXtra(tree[Right]):
+        return(Tree(lt, abs(tree[Height]), rt)):
+    fi:
 end:

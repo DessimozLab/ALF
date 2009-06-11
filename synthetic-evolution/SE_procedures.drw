@@ -457,7 +457,7 @@ ProteinSeq := proc(dna:string)
     for i to length(dna) by 3 do
         prot := prot.CodonToA(dna[i..i + 2]);
     od;
-    if prot[-1] = '$' then
+    if length(prot) > 0 and prot[-1] = '$' then
         prot := prot[1..-2]:
     fi:
     prot
@@ -756,13 +756,23 @@ end:
 
 # updates the area borders after a AA gain or loss
 updateBorder := proc(domains: array, dom, value, len, event: string; (gamma=false):boolean, areas: nonnegative)
+    global motifFreq;
     doms := domains:
     d := {};
     if event = 'insert' then    
         if gamma then
             relVal := value - doms[dom,1] + 1:
-            doms[dom,3] := [op(doms[dom,3,1..relVal]), seq(Rand(1..areas),len), op(doms[dom,3,relVal+1..-1])]:
+            newClasses := CreateArray(1..len,0):
+            for i to len do
+                if Rand() <= motifFreq then
+                    newClasses[i] := areas+1:
+                else
+                    newClasses[i] := Rand(1..areas):
+                fi:
+            od:
+            doms[dom,3] := [op(doms[dom,3,1..relVal]), op(newClasses), op(doms[dom,3,relVal+1..-1])]:
         fi:
+        if doms[dom,1] = 0 then doms[dom,1] := 1: fi:
         for i from dom to length(doms) do
             if i > dom then
                 doms[i,1] := (doms[i,1] + len);
@@ -806,33 +816,12 @@ updateBorder := proc(domains: array, dom, value, len, event: string; (gamma=fals
     fi;
     # deletes empty domain 
     for i from length(d) to 1 by -1 do
+        if d[i] = 1 then doms[1,1] := doms[1,2] := 0: next fi:
         doms := [op(doms[1..d[i] - 1]), op(doms[d[i] + 1..-1])];
     od:
     return(doms);
 end:
 
-
-
-ReadTreeFile := proc(fileName:string)
-    OpenReading(fileName):
-    tree := ReadRawLine():
-    if tree[1..4] = 'Tree' then
-        # assume darwin format
-        t := traperror(parse(tree)):
-        if t = lasterror then
-            error('could not parse tree. assumed tree in darwin format, but encountered an error: '.lasterror):
-        fi:
-    elif tree[1..4] = 'Leaf' then
-        error('tree must consist of more than just a leaf'):
-    else
-        #assume newick format
-        t := traperror(ParseNewickTree(tree)):
-        if t = lasterror then
-            error('could not parse tree. assumed tree in newick format but encountered an error: '.
-                    lasterror.'. make sure to include branch lengths in the tree description.'):
-        fi:
-    fi:
-end:
 
 ComputeIndelPos := proc(e, sms, gr)
     # calculates sum of all domain/gene probabilities
