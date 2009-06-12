@@ -79,7 +79,7 @@ for i to length(timePts) do
     curplen := length(curprefix1);
     for j from i+1 to length(timePts) do
         if length(timePts[j,1]) >= curplen and timePts[j, 1, 1..curplen] = curprefix1 then
-            timePts[j,1] := timePts[j,1,1].timePts[j,1,curplen+1..-1]:
+            timePts[j,1] := timePts[i,1].timePts[j,1,curplen+1..-1]:
         elif length(timePts[j,1]) >= curplen and timePts[j, 1, 1..curplen] = curprefix2 then
             timePts[j,1] := string(i+1).timePts[j,1,curplen+1..-1]:
         fi:
@@ -309,7 +309,7 @@ branches := sort(branches, x->x[3]):
 ngenes := [length(evolution[1])]:
 curT := 0:
 
-events := []:
+events := [seq([], floor(mutRate/10)+1)]:
 
 seind := 1:
 
@@ -341,48 +341,50 @@ for i to length(branches) do
         event := 1:
         while r > cumProb[event] do event := event + 1 od:
 
+        curInd := floor(curT/10)+1:
+
         if event = 1 then
             # gene duplication
-            events := append(events, [curT, branches[i,1], 'D']):
+            events[curInd] := append(events[curInd], [curT, branches[i,1], 'D']):
             ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
             totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
         elif event = 2 then
             # gene loss
-            events := append(events, [curT, branches[i,1], 'L']):
+            events[curInd] := append(events[curInd], [curT, branches[i,1], 'L']):
             ngenes[branches[i,1]] := ngenes[branches[i,1]] - 1:
             totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
         elif event = 7 then
             # lgt
-            events := append(events, [curT, branches[i,1], 'LGT']):
+            events[curInd] := append(events[curInd], [curT, branches[i,1], 'LGT']):
             ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
             totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
         elif event = 8 then
             # group lgt
             numg := Rand(2..lgtGSize):
-            events := append(events, [curT, branches[i,1], 'LGTG', numg]):
+            events[curInd] := append(events[curInd], [curT, branches[i,1], 'LGTG', numg]):
             ngenes[branches[i,1]] := ngenes[branches[i,1]] + numg:
             totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
         elif event = 3 then
             # fusion
-            events := append(events, [curT, branches[i,1], 'FU']):
+            events[curInd] := append(events[curInd], [curT, branches[i,1], 'FU']):
             ngenes[branches[i,1]] := ngenes[branches[i,1]] - 1:
             totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
         elif event = 4 then
             # fission
-            events := append(events, [curT, branches[i,1], 'FI']):
+            events[curInd] := append(events[curInd], [curT, branches[i,1], 'FI']):
             ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
             totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
         elif event = 5 then
             # inversion
-            events := append(events, [curT, branches[i,1], 'IV']):
+            events[curInd] := append(events[curInd], [curT, branches[i,1], 'IV']):
         elif event = 6 then
             # transloc
-            events := append(events, [curT, branches[i,1], 'TL']):
+            events[curInd] := append(events[curInd], [curT, branches[i,1], 'TL']):
         else
             error('unknown event!'):
         fi:
     od:
-    #seind; length(timePts); branches[i,1]; timePts[seind,1]; branches[i,3]; timePts[seind,2];
+#    printf('seind: %A, length(timePts): %A,  branches[i,1]: %A, timePts[seind,1]: %A, branches[i,3]: %A, timePts[seind,2]: %A,\n',seind, length(timePts), branches[i,1], timePts[seind,1], branches[i,3], timePts[seind,2]):
     if seind <= length(timePts) and branches[i,1] = timePts[seind,1] and branches[i,3] = timePts[seind,2] then
         ngenes := append(ngenes, copy(ngenes[branches[i,1]])):
         seind := seind + 1:
@@ -390,10 +392,14 @@ for i to length(branches) do
 od:
 
 for i to length(timePts) do
-    events := append(events, [timePts[i,2], timePts[i,1], 'S']):
+    curInd := floor(timePts[i,2]/10)+1:
+    events[curInd] := append(events[curInd], [timePts[i,2], timePts[i,1], 'S']):
 od:
 
-events := sort(events, x->x[1]):
+for i to length(events) do
+    events[i] := sort(events[i], x->x[1]):
+od:
+
 if indelModel = 'ZIPF' then
     meanGapLength := MeanGapLength(indelModel, maxIndelLength, [Z_c]):
 elif indelModel = 'QG' then
@@ -405,37 +411,39 @@ else
 fi:
 
 for i to length(events) do
-    cure := events[i,3]:
-    if cure = 'D' then
-        # gene duplication
-        PerformGeneDuplication(events[i,2], events[i,1]):
-    elif cure = 'L' then
-        # gene loss
-        PerformGeneLoss(events[i,2], events[i,1]):
-    elif cure = 'LGT' then
-        # LGT
-        PerformLGT(events[i,2], events[i,1]):
-    elif cure = 'LGTG' then
-        # group LGT
-        PerformLGTG(events[i,2], events[i,1], events[i,4]):
-    elif cure = 'FU' then
-        # gene fusion
-        PerformFusion(events[i,2], events[i,1]):
-    elif cure = 'FI' then
-        # gene fission
-        PerformFission(events[i,2], events[i,1]):
-    elif cure = 'IV' then
-        # inversion
-        PerformInversion(events[i,2]):
-    elif cure = 'TL' then
-        # translocation
-        PerformTranslocation(events[i,2]):
-    elif cure = 'S' then
-        # speciation
-        PerformSpeciation(events[i,2], events[i,1]):
-    else
-        error('unknown event!'):
-    fi:
+    for j to length(events[i]) do
+        cure := events[i,j,3]:
+        if cure = 'D' then
+            # gene duplication
+            PerformGeneDuplication(events[i,j,2], events[i,j,1]):
+        elif cure = 'L' then
+            # gene loss
+            PerformGeneLoss(events[i,j,2], events[i,j,1]):
+        elif cure = 'LGT' then
+            # LGT
+            PerformLGT(events[i,j,2], events[i,j,1]):
+        elif cure = 'LGTG' then
+            # group LGT
+            PerformLGTG(events[i,j,2], events[i,j,1], events[i,j,4]):
+        elif cure = 'FU' then
+            # gene fusion
+            PerformFusion(events[i,j,2], events[i,j,1]):
+        elif cure = 'FI' then
+            # gene fission
+            PerformFission(events[i,j,2], events[i,j,1]):
+        elif cure = 'IV' then
+            # inversion
+            PerformInversion(events[i,j,2]):
+        elif cure = 'TL' then
+            # translocation
+            PerformTranslocation(events[i,j,2]):
+        elif cure = 'S' then
+            # speciation
+            PerformSpeciation(events[i,j,2], events[i,j,1]):
+        else
+            error('unknown event!'):
+        fi:
+    od:
 od:
 
 OpenWriting(previous);
