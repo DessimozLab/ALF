@@ -37,10 +37,10 @@ elif treeType = 'BDTree' then
 #        labels := ListLivingLineages(tree):
 #        tree := PruneTree(tree, labels):
 #    fi:
-    tree := BirthDeathTree(birthRate, deathRate, maxSpecies, mutRate):
+    tree := BirthDeathTree(birthRate, deathRate, NSpecies, mutRate):
 elif treeType = 'ToLSample' then
     D := GetAllDistMatrix():
-    tree := GenRandomTree(D, tlNSpecies):
+    tree := GenRandomTree(D, NSpecies):
 else
     error('no tree selected')
 fi:
@@ -52,7 +52,7 @@ if realseed = true then
     Nprot := DB[TotEntries];
     Naa := round(avg(seq(length(SearchTag('SEQ', Entry(e))), e=1..Nprot)));
 else
-    Naa := (aaStart1+aaStart2)/2;
+    Naa := gammaLengthDist[1]*gammaLengthDist[2];
     Nprot := protStart;
 fi:
 #maxSteps := max(rate * max(Naa, Nprot), 1000);
@@ -220,7 +220,7 @@ else
     evolution := append(evolution, CreateArray(1..protStart, 1..11)):
     geneR := append(geneR, CreateArray(1..protStart));
     for i to protStart do
-        aaStart := Rand(aaStart1..aaStart2);
+        aaStart := max(minGeneLength, gammaLengthDist[2] * Rand(GammaDist(gammaLengthDist[1])));
         substModel := substModels[modelAssignments[i]]:
         if substModel[Name] = 'M0' then
             evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart):
