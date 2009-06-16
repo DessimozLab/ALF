@@ -156,7 +156,7 @@ PerformDeletion := proc(org:integer, gene, evolTime:nonnegative)
     fi:
 end:
 
-PerformDuplication := proc(org:integer, evolTime:nonnegative; (ndupl=1):posint)
+PerformGeneDuplication := proc(org:integer, evolTime:nonnegative; (ndupl=1):posint)
     global evolution, geneR, maxID, mutRate, ratefac_pseudogene, life_neofunc, ratefac_neofunc,
            life_subfunc, rate_subfunc, P_pseudogene, P_neofunc, P_subfunc, transDupl, fissionDupl,
            fusionDupl;
@@ -456,6 +456,8 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
         # defines new GC amelioration direction for new species
         gcrat := calGCcont(evolution[livingOrgs]);
         GCratio := append(GCratio, Rand(0.3..0.7)):
+        # instead of picking a random value, choose one that differs max +/-0.1 from the ancestor's
+        #GCratio := append(GCratio, Rand(max(0.3, GCratio[orgSource]-0.1)..min(0.7,GCratio[orgSource]+0.1))):
         printf(', GC content: %.2f%%', gcrat):
     fi:
     printf('\n'):

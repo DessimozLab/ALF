@@ -52,7 +52,7 @@ if realseed = true then
     Nprot := DB[TotEntries];
     Naa := round(avg(seq(length(SearchTag('SEQ', Entry(e))), e=1..Nprot)));
 else
-    Naa := gammaLengthDist[1]*gammaLengthDist[2];
+    Naa := round(gammaLengthDist[1]*gammaLengthDist[2]);
     Nprot := protStart;
 fi:
 #maxSteps := max(rate * max(Naa, Nprot), 1000);
@@ -220,7 +220,7 @@ else
     evolution := append(evolution, CreateArray(1..protStart, 1..11)):
     geneR := append(geneR, CreateArray(1..protStart));
     for i to protStart do
-        aaStart := max(minGeneLength, gammaLengthDist[2] * Rand(GammaDist(gammaLengthDist[1])));
+        aaStart := max(minGeneLength, round(gammaLengthDist[2] * Rand(GammaDist(gammaLengthDist[1]))));
         substModel := substModels[modelAssignments[i]]:
         if substModel[Name] = 'M0' then
             evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart):
@@ -315,11 +315,11 @@ seind := 1:
 
 for i to length(branches) do
     if seind > 1 then
-        rateSum := rateSum + lgtRate + lgtGRate:
-        totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:        
+        totalRate := ngenes[branches[i,1]] * rateSum + (ngenes[branches[i,1]] + 1) * (lgtRate + lgtGRate):        
     else
         totalRate := ngenes[branches[i,1]] * rateSum:
     fi:
+    #printf('rateSum: %.4g, totalRate: %.4g\n', rateSum, totalRate):
     curT := branches[i,2]:
     do
         curInt := Rand(Exponential(0,1/totalRate)):
@@ -338,6 +338,7 @@ for i to length(branches) do
         od:
         cumProb := cumProb / cumProb[-1]:
         r := Rand():
+        #printf('cumProb[1]: %.4g, r: %.4g\n', cumProb[1], r):
         event := 1:
         while r > cumProb[event] do event := event + 1 od:
 
