@@ -20,7 +20,8 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative)
     fi:
         
     # searches a random start position for the insertion
-    indelStart := blockSize * Rand(0..length(evolution[org,gene,1,-1,2])):
+    r := Rand(0..evolution[org,gene,1,-1,2]):
+    indelStart := blockSize * r:
 
     # performs aa gain
     if simType = 'nuc' then
@@ -549,7 +550,7 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
     if oldLen <> length(evolution[org,gene,2]) then
         printf('error mutating gene %d of org %d\n', gene, org):
     fi:
-    addIndels(org, gene, substModel, meanGapLength, curT-evolution[org,gene,11]):
+    addIndels(org, gene, substModel, meanGapLength, curT):
     evolution[org,gene,11] := curT:
 end:
 
