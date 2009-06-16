@@ -330,6 +330,8 @@ CreateGeneTrees := proc(clsts, evol, msteps, lheights)
 #        printf('cluster %d\n', c):
         cls := sort(clsts[c],x->x[1]):
         
+        if length(cls) = 0 then next fi:
+        
         # create a list of leaf nodes containing for each node the org/gene id of the current gene as well
         # as its parent and the time of the event.
         # the list will contain nodes that have been deleted during evolution
