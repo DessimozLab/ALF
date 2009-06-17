@@ -389,7 +389,7 @@ CreateGeneTrees := proc(clsts, evol, msteps, lheights)
     
         # sort nodes by time and insert them into a tree
         nodes := sort([op(nodes)], x->x[5]):
-        tree := Leaf(sprintf('SE%03d_%d', nodes[1,1], nodes[1,2]), msteps):
+        tree := Leaf(sprintf('SE%03d/%05d', nodes[1,1], nodes[1,2]), msteps):
         gind := SearchArray(nodes[1,2], geneIDs[nodes[1,1]]):
         nodes[1] := [nodes[1,1], If(gind = 0, nodes[1,2], gind)]:
         for i from 2 to length(nodes) do
@@ -401,7 +401,7 @@ CreateGeneTrees := proc(clsts, evol, msteps, lheights)
         # remove genes that were lost during evolution
         remnodes := {op(nodes)} minus {op(cls)}:
         for i to length(remnodes) do
-            tree := RemoveNode(tree, sprintf('SE%03d_%d', remnodes[i,1], remnodes[i,2])):
+            tree := RemoveNode(tree, sprintf('SE%03d/%05d', remnodes[i,1], remnodes[i,2])):
         od:
         
         # correct leaf heights
@@ -425,8 +425,8 @@ end:
 # being inserted into an inner node.
 InsertNode := proc(t:Tree, n:list, msteps) option internal;
     if type(t, Leaf) then
-        if t[Label] = sprintf('SE%03d_%d', n[3], n[4]) then
-            return(Tree(t, n[5], Leaf(sprintf('SE%03d_%d', n[1], n[2]), msteps), n[6])):
+        if t[Label] = sprintf('SE%03d/%05d', n[3], n[4]) then
+            return(Tree(t, n[5], Leaf(sprintf('SE%03d/%05d', n[1], n[2]), msteps), n[6])):
         else
             return(NULL):
         fi:
@@ -465,7 +465,7 @@ RemoveNode := proc(t:Tree, l:string) option internal:
         if not type(t[Right], Leaf) then
             t[Right] := RemoveNode(t[Right], l):
         fi:
-        if not type(t[Right], Leaf) then
+        if not type(t[Left], Leaf) then
             t[Left] := RemoveNode(t[Left], l):
         fi:
     fi:
@@ -474,7 +474,7 @@ end:
 
 CorrectLeafHeights := proc(tree:Tree, lheights:list)
     if type(tree, Leaf) then
-        tokens := sscanf(tree[Label], 'SE%03d_%d'):
+        tokens := sscanf(tree[Label], 'SE%03d/%05d'):
         tree[Height] := lheights[tokens[1]]:
     else
         tree[Left] := CorrectLeafHeights(tree[Left], lheights):
