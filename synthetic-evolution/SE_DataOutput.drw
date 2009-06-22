@@ -129,16 +129,16 @@ DBout := proc()
         printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
             'Organismus syntheticus_%s</OS>\n', orgname);
         printf('<KINGDOM>Bacteria</KINGDOM>\n');
-        printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA; HGP</FIELDS>\n');
+        printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA; HGP; RATES</FIELDS>\n');
         # entry output
         for j to length(evolution[i]) do
             loc := SearchArray(evolution[i, j, 4], abs(geneR[i]));
             if (geneR[i, loc] < 0) then
                 loc := -loc;
             fi;
-            printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>%d</HGP><SEQ>%s</SEQ>',
+            printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
                 evolution[i, j, 4], loc, evolution[i, j, 3], 
-                evolution[i, j, 5], evolution[i, j, 7], evolution[i, j, 2]);
+                evolution[i, j, 5], evolution[i, j, 7], evolution[i,j,1], evolution[i, j, 2]);
             if substModels[evolution[i,j,9]][Type] <> 'aa' then
                 printf('<DNA>%s</DNA>', evolution[i, j, 6]);
             fi:
@@ -192,15 +192,15 @@ DBoutAnc := proc(organism, parent, child, birth)
     printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
         'Organismus syntheticus_%s</OS>\n', orgname);
     printf('<KINGDOM>Bacteria</KINGDOM>\n');
-    printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA; HGP</FIELDS>\n');
+    printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA; HGP; RATES</FIELDS>\n');
     # entry output
     for j to length(organism) do
         loc := SearchArray(organism[j, 4], abs(geneR[child]));
         if (geneR[child, loc] < 0) then
             loc := -loc;
         fi;
-        printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>%d</HGP><SEQ>%s</SEQ>',
-            organism[j, 4], loc, organism[j, 3], organism[j, 5], organism[j, 7], organism[j, 2]): 
+        printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
+            organism[j, 4], loc, organism[j, 3], organism[j, 5], organism[j, 7], organism[j,1], organism[j, 2]): 
         if substModels[organism[j,9]][Type] <> 'aa' then
             printf('<DNA>%s</DNA>', organism[j, 6]);
         fi:
