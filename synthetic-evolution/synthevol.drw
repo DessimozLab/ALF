@@ -30,6 +30,7 @@ fi;
 # get tree
 if treeType = 'Custom' then
     tree := ReadTreeFile(treeFile):
+    CheckBranchLengths(tree):
 elif treeType = 'BDTree' then
 # old code. replace with Tanja Stadler's BD-Tree sampling method
 #    tree := BirthDeathTree(birthRate, deathRate, maxTime, maxSpecies, not pruneDeadLineages):
@@ -321,70 +322,72 @@ for i to length(branches) do
     fi:
     #printf('rateSum: %.4g, totalRate: %.4g\n', rateSum, totalRate):
     curT := branches[i,2]:
-    do
-        curInt := Rand(Exponential(0,1/totalRate)):
-        if curT + curInt > branches[i,3] then break fi:
-        curT := curT + curInt:
-        if seind > 1 then
-            # select type of event
-            cumProb := copy([geneDuplRate, geneLossRate, fusionRate, fissionRate, invers, transloc, lgtRate, lgtGRate]) * ngenes[branches[i,1]]:
-            cumProb[7] := cumProb[7] + lgtRate:
-            cumProb[8] := cumProb[8] + lgtGRate:
-        else
-            cumProb := copy([geneDuplRate, geneLossRate, fusionRate, fissionRate, invers, transloc]) * ngenes[branches[i,1]]:
-        fi:
-        for j from 2 to length(cumProb) do
-            cumProb[j] := cumProb[j-1] + cumProb[j]:
+    if totalRate > 0 then
+        do
+            curInt := Rand(Exponential(0,1/totalRate)):
+            if curT + curInt > branches[i,3] then break fi:
+            curT := curT + curInt:
+            if seind > 1 then
+                # select type of event
+                cumProb := copy([geneDuplRate, geneLossRate, fusionRate, fissionRate, invers, transloc, lgtRate, lgtGRate]) * ngenes[branches[i,1]]:
+                cumProb[7] := cumProb[7] + lgtRate:
+                cumProb[8] := cumProb[8] + lgtGRate:
+            else
+                cumProb := copy([geneDuplRate, geneLossRate, fusionRate, fissionRate, invers, transloc]) * ngenes[branches[i,1]]:
+            fi:
+            for j from 2 to length(cumProb) do
+                cumProb[j] := cumProb[j-1] + cumProb[j]:
+            od:
+            cumProb := cumProb / cumProb[-1]:
+            r := Rand():
+            #printf('cumProb[1]: %.4g, r: %.4g\n', cumProb[1], r):
+            event := 1:
+            while r > cumProb[event] do event := event + 1 od:
+    
+            curInd := floor(curT/10)+1:
+    
+            if event = 1 then
+                # gene duplication
+                events[curInd] := append(events[curInd], [curT, branches[i,1], 'D']):
+                ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
+                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+            elif event = 2 then
+                # gene loss
+                events[curInd] := append(events[curInd], [curT, branches[i,1], 'L']):
+                ngenes[branches[i,1]] := ngenes[branches[i,1]] - 1:
+                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+            elif event = 7 then
+                # lgt
+                events[curInd] := append(events[curInd], [curT, branches[i,1], 'LGT']):
+                ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
+                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+            elif event = 8 then
+                # group lgt
+                numg := Rand(2..lgtGSize):
+                events[curInd] := append(events[curInd], [curT, branches[i,1], 'LGTG', numg]):
+                ngenes[branches[i,1]] := ngenes[branches[i,1]] + numg:
+                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+            elif event = 3 then
+                # fusion
+                events[curInd] := append(events[curInd], [curT, branches[i,1], 'FU']):
+                ngenes[branches[i,1]] := ngenes[branches[i,1]] - 1:
+                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+            elif event = 4 then
+                # fission
+                events[curInd] := append(events[curInd], [curT, branches[i,1], 'FI']):
+                ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
+                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+            elif event = 5 then
+                # inversion
+                events[curInd] := append(events[curInd], [curT, branches[i,1], 'IV']):
+            elif event = 6 then
+                # transloc
+                events[curInd] := append(events[curInd], [curT, branches[i,1], 'TL']):
+            else
+                error('unknown event!'):
+            fi:
         od:
-        cumProb := cumProb / cumProb[-1]:
-        r := Rand():
-        #printf('cumProb[1]: %.4g, r: %.4g\n', cumProb[1], r):
-        event := 1:
-        while r > cumProb[event] do event := event + 1 od:
-
-        curInd := floor(curT/10)+1:
-
-        if event = 1 then
-            # gene duplication
-            events[curInd] := append(events[curInd], [curT, branches[i,1], 'D']):
-            ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
-            totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-        elif event = 2 then
-            # gene loss
-            events[curInd] := append(events[curInd], [curT, branches[i,1], 'L']):
-            ngenes[branches[i,1]] := ngenes[branches[i,1]] - 1:
-            totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-        elif event = 7 then
-            # lgt
-            events[curInd] := append(events[curInd], [curT, branches[i,1], 'LGT']):
-            ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
-            totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-        elif event = 8 then
-            # group lgt
-            numg := Rand(2..lgtGSize):
-            events[curInd] := append(events[curInd], [curT, branches[i,1], 'LGTG', numg]):
-            ngenes[branches[i,1]] := ngenes[branches[i,1]] + numg:
-            totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-        elif event = 3 then
-            # fusion
-            events[curInd] := append(events[curInd], [curT, branches[i,1], 'FU']):
-            ngenes[branches[i,1]] := ngenes[branches[i,1]] - 1:
-            totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-        elif event = 4 then
-            # fission
-            events[curInd] := append(events[curInd], [curT, branches[i,1], 'FI']):
-            ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
-            totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-        elif event = 5 then
-            # inversion
-            events[curInd] := append(events[curInd], [curT, branches[i,1], 'IV']):
-        elif event = 6 then
-            # transloc
-            events[curInd] := append(events[curInd], [curT, branches[i,1], 'TL']):
-        else
-            error('unknown event!'):
-        fi:
-    od:
+    fi:
 #    printf('seind: %A, length(timePts): %A,  branches[i,1]: %A, timePts[seind,1]: %A, branches[i,3]: %A, timePts[seind,2]: %A,\n',seind, length(timePts), branches[i,1], timePts[seind,1], branches[i,3], timePts[seind,2]):
     if seind <= length(timePts) and branches[i,1] = timePts[seind,1] and branches[i,3] = timePts[seind,2] then
         ngenes := append(ngenes, copy(ngenes[branches[i,1]])):
@@ -463,12 +466,14 @@ OpenWriting(wdir . 'RealTree.drw');
 printf('RealTree := %a;\n', treeEvo);
 OpenWriting(previous);
 leafHeights := CreateArray(1..livingOrgs, 0):
-for j to livingOrgs do
+for j to length(branches) do
     org := branches[-j,1]:
-    leafHeights[org] := branches[-j,3]:
-    for g to length(evolution[org]) do
-        seqmutation(org, g, branches[-j,3]);
-    od:
+    if leafHeights[org] = 0 then
+        leafHeights[org] := branches[-j,3]:
+        for g to length(evolution[org]) do
+            seqmutation(org, g, branches[-j,3]);
+        od:
+    fi:
 od:
 lprint('...real genome tree saved.');
 

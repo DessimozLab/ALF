@@ -89,3 +89,20 @@ EnumerateBranches_R := proc(tree:Tree, start:nonnegative)
 	res := EnumerateBranches_R(tree[Left], tree[Height]):
 	res := append(res, [start, tree[Height]], op(EnumerateBranches_R(tree[Right], tree[Height]))):
 end:
+
+# prevent branches of length 0 by adding a small value
+CheckBranchLengths := proc(tree:Tree)
+    CheckBranchLengths_R(tree, 0):
+end:
+
+CheckBranchLengths_R := proc(tree:Tree, inc:nonnegative) option internal;
+    if type(tree, Leaf) then return() fi:
+
+    linc := inc + If(tree[Height] = tree[Left][Height], 1e-10, 0):
+    CheckBranchLengths_R(tree[Left], linc):
+    tree[Left][Height] := tree[Left][Height] + linc:
+
+    rinc := inc + If(tree[Height] = tree[Right][Height], 1e-10, 0):
+    CheckBranchLengths_R(tree[Right], rinc):
+    tree[Right][Height] := tree[Right][Height] + rinc:
+end:

@@ -550,7 +550,9 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
     if oldLen <> length(evolution[org,gene,2]) then
         printf('error mutating gene %d of org %d\n', gene, org):
     fi:
-    addIndels(org, gene, substModel, meanGapLength, curT):
+    if aaGainRate + aaLossRate > 0 then
+        addIndels(org, gene, substModel, meanGapLength, curT):
+    fi:
     evolution[org,gene,11] := curT:
 end:
 
