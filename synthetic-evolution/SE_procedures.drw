@@ -290,92 +290,93 @@ end:
 
 
 # mutates organisms for a certain amount of time steps, 15.12.06
-seqmutation := proc(org: posint, ts: posint)
-    global evolution, substModels;
-    for k to length(evolution[org]) do
-        oldLen := length(evolution[org,k,2]):
-        #printf('seqmutation %d/%d domains: %a\n', org,k,evolution[org,k,1]):
-        substModel := substModels[evolution[org, k, 9]]:
-        # apply rate modifications from duplications
-        rateFac := ts:
-        for i from length(evolution[org,k,10]) to 1 by -1 do
-            rateFac := rateFac * evolution[org,k,10,i,2]:
-            # remove rate modifier if it exceeds its lifetime
-            if evolution[org,k,10,i,1] <= evolTime then
-                [op(evolution[org,k,10,1..i-1]), op(evolution[org,k,10,i+1..-1])]:
-            fi:
-        od:
-        # compute CodonMatrix from GC target content
-        if substModel[Type] <> 'aa' then
-                GCMatrix := substModel[LogPAM1]:
-            if enableGCAmelioration then
-                if substModel[Name][1] = 'M' then
-                    GCMatrix := CreateArray(1..length(substModel[LogPAM1]),0):
-                    for i to length(YCodonLogPAM1) do
-                        GCMatrix[i] := GCBiasMatrix(GCratio[org], substModel[LogPAM1][i], substModel[Type]):
-                    od:
-                else
-                    GCMatrix := GCBiasMatrix(GCratio[org], GCMatrix, substModel[Type]):
-                fi:
-            fi:
-        fi:
-        seqTot := '';
-        # loop over all domains for protein k
-        for i to length(evolution[org, k, 1]) do
-            if substModel[Type] = 'aa' then
-                sequence := evolution[org, k, 2][(evolution[org, k, 1][i, 1])..evolution[org, k, 1][i, 2]];
-                # TODO: mutate amino acid sequence
-                if type(evolution[org,k,1][i,3], list) then
-                    #printf('length: %d\n', length(sequence)):
-                    sequence := AAMutateGamma(sequence, rateFac * gammaRates, evolution[org, k, 1][i,3]):
-                    #printf('length: %d\n', length(sequence)):
-                else
-                    sequence := Mutate(sequence, rateFac * evolution[org, k, 1][i,3]):
-                fi:
-            else
-                if substModel[Blocksize] = 3 then
-                    sequence := evolution[org, k, 6][(evolution[org, k, 1][i, 1]
-                        * 3 - 2)..evolution[org, k, 1][i, 2] * 3];
-                else
-                    sequence := evolution[org, k, 6][evolution[org, k, 1][i, 1]..evolution[org, k, 1][i, 2]];
-                fi:
-                if substModel[Type] = 'nuc' then
-                    if type(evolution[org,k,1][i,3], list) then
-                        sequence := NucleotideMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, k, 1][i,3]):
-                    else
-                        sequence := NucleotideMutate(sequence, rateFac * evolution[org, k, 1][i, 3], GCMatrix):
-                    fi:
-                else
-                    if type(evolution[org,k,1][i,3], list) then
-                        if substModel[Name][1] = 'M' then
-                            sequence := CodonMutate(sequence, rateFac, GCMatrix, evolution[org, k, 1][i,3]):
-                        else
-                            ol := length(sequence):
-                            sequence := CodonMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, k, 1][i,3]):
-                            if ol <> length(sequence) then
-                                printf('ERROR occurred in CodonMutate!\n'):
-                            fi:
-                        fi:
-                    else
-                        sequence := CodonMutate(sequence, rateFac * evolution[org, k, 1][i,3], GCMatrix):
-                    fi:
-                fi:
-            fi:
-            seqTot := seqTot.string(sequence);
-        od;
-        if substModel[Type] = 'aa' then
-            evolution[org, k, 2] := string(seqTot):
-        else
-            evolution[org, k, 6] := string(seqTot);
-            if substModel[Blocksize] = 3 then
-                evolution[org, k, 2] := ProteinSeq(evolution[org, k, 6]);
-            fi:
-        fi:
-        if oldLen <> length(evolution[org,k,2]) then
-            printf('error mutating gene %d of org %d\n', k, org):
-        fi:
-    od;
-end:
+######## moved to SE_Evolutionary_Events.drw ########
+#seqmutation := proc(org: posint, ts: posint)
+#    global evolution, substModels;
+#    for k to length(evolution[org]) do
+#        oldLen := length(evolution[org,k,2]):
+#        #printf('seqmutation %d/%d domains: %a\n', org,k,evolution[org,k,1]):
+#        substModel := substModels[evolution[org, k, 9]]:
+#        # apply rate modifications from duplications
+#        rateFac := ts:
+#        for i from length(evolution[org,k,10]) to 1 by -1 do
+#            rateFac := rateFac * evolution[org,k,10,i,2]:
+#            # remove rate modifier if it exceeds its lifetime
+#            if evolution[org,k,10,i,1] <= evolTime then
+#                [op(evolution[org,k,10,1..i-1]), op(evolution[org,k,10,i+1..-1])]:
+#            fi:
+#        od:
+#        # compute CodonMatrix from GC target content
+#        if substModel[Type] <> 'aa' then
+#                GCMatrix := substModel[LogPAM1]:
+#            if enableGCAmelioration then
+#                if substModel[Name][1] = 'M' then
+#                    GCMatrix := CreateArray(1..length(substModel[LogPAM1]),0):
+#                    for i to length(YCodonLogPAM1) do
+#                        GCMatrix[i] := GCBiasMatrix(GCratio[org], substModel[LogPAM1][i], substModel[Type]):
+#                    od:
+#                else
+#                    GCMatrix := GCBiasMatrix(GCratio[org], GCMatrix, substModel[Type]):
+#                fi:
+#            fi:
+#        fi:
+#        seqTot := '';
+#        # loop over all domains for protein k
+#        for i to length(evolution[org, k, 1]) do
+#            if substModel[Type] = 'aa' then
+#                sequence := evolution[org, k, 2][(evolution[org, k, 1][i, 1])..evolution[org, k, 1][i, 2]];
+#                # TODO: mutate amino acid sequence
+#                if type(evolution[org,k,1][i,3], list) then
+#                    #printf('length: %d\n', length(sequence)):
+#                    sequence := AAMutateGamma(sequence, rateFac * gammaRates, evolution[org, k, 1][i,3]):
+#                    #printf('length: %d\n', length(sequence)):
+#                else
+#                    sequence := Mutate(sequence, rateFac * evolution[org, k, 1][i,3]):
+#                fi:
+#            else
+#                if substModel[Blocksize] = 3 then
+#                    sequence := evolution[org, k, 6][(evolution[org, k, 1][i, 1]
+#                        * 3 - 2)..evolution[org, k, 1][i, 2] * 3];
+#                else
+#                    sequence := evolution[org, k, 6][evolution[org, k, 1][i, 1]..evolution[org, k, 1][i, 2]];
+#                fi:
+#                if substModel[Type] = 'nuc' then
+#                    if type(evolution[org,k,1][i,3], list) then
+#                        sequence := NucleotideMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, k, 1][i,3]):
+#                    else
+#                        sequence := NucleotideMutate(sequence, rateFac * evolution[org, k, 1][i, 3], GCMatrix):
+#                    fi:
+#                else
+#                    if type(evolution[org,k,1][i,3], list) then
+#                        if substModel[Name][1] = 'M' then
+#                            sequence := CodonMutate(sequence, rateFac, GCMatrix, evolution[org, k, 1][i,3]):
+#                        else
+#                            ol := length(sequence):
+#                            sequence := CodonMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, k, 1][i,3]):
+#                            if ol <> length(sequence) then
+#                                printf('ERROR occurred in CodonMutate!\n'):
+#                            fi:
+#                        fi:
+#                    else
+#                        sequence := CodonMutate(sequence, rateFac * evolution[org, k, 1][i,3], GCMatrix):
+#                    fi:
+#                fi:
+#            fi:
+#            seqTot := seqTot.string(sequence);
+#        od;
+#        if substModel[Type] = 'aa' then
+#            evolution[org, k, 2] := string(seqTot):
+#        else
+#            evolution[org, k, 6] := string(seqTot);
+#            if substModel[Blocksize] = 3 then
+#                evolution[org, k, 2] := ProteinSeq(evolution[org, k, 6]);
+#            fi:
+#        fi:
+#        if oldLen <> length(evolution[org,k,2]) then
+#            printf('error mutating gene %d of org %d\n', k, org):
+#        fi:
+#    od;
+#end:
 
 NBNormalizationFactor := proc(maxLen, r, q)
     res := 0:
@@ -559,7 +560,7 @@ end:
 calGCcont := proc(org)
     sumGC := 0;
     for i to length(org) do
-        if substModels[org[i,9]][Type] <> 'aa' then
+        if substModels[org[i,9]][Type] <> 'aa' and length(org[i,6]) > 0 then
             cont := BaseCount(org[i, 6]);
             sumGC := sumGC + ((cont[2] + cont[3]) / sum(cont[1..4]));
         fi:
@@ -637,82 +638,83 @@ end:
         
 
 # makes the areas for rate heterogenity in a gene
-makeAreas := proc(aaStart, areas, mutRate, maxSteps, distr:{'Poisson', 'Gamma'}; motFreq:nonnegative)
-    if distr = 'Poisson' then
-        if not assigned(motFreq) then
-            motFreq := 0:
-        fi:
-        domains := CreateArray(1..Rand(1..areas));
-        numEnt := {};
-        for i to (length(domains) - 1) do
-            num1 := round(aaStart / (length(domains) - 1));
-            limitlow := max(1, ((i - 1) * num1 + 1));
-            limithigh := min(aaStart - 1, (i * num1 - 1));
-            numEnt := append(numEnt, Rand(limitlow..limithigh));
-        od;    
-        numEnt := append(numEnt, 0);
-        numEnt := append(numEnt, aaStart);
-        for i to length(domains) do        
-            domains[i] := [(numEnt[i]+1), numEnt[i+1], 
-                If(Rand() < motFreq, 1/DBL_MAX, Rand(Poisson(mutRate)) / maxSteps)];
-        od;
-    else
-        if not assigned(motFreq) then
-            error ('gamma distribution requires alpha parameter')
-        fi:
-        motifs := {}:
-        for i to aaStart do
-            if Rand() <= motFreq then
-                motifs := append(motifs,i):
-            fi:
-        od:
-        #printf('%a\n', motifs):
-        if length(motifs) = 0 then
-            domains := []:
-            domains := append(domains, [1, aaStart, [seq(Rand(1..areas), aaStart)]]):
-        else
-            domains := CreateArray(1..2*length(motifs)-1):
-            d := {}:
-            for i to length(domains) do
-                if floor(i/2) <> i/2 then # handle motif
-                    domains[i] := [motifs[ceil(i/2)], motifs[ceil(i/2)], 1/DBL_MAX]:
-                else # handle gamma domain
-                    domains[i] := [motifs[i/2]+1, motifs[i/2+1]-1, []]:
-                    if domains[i,1] > domains[i,2] then # domain is empty (2 motifs next to each other)
-                        d := append(d,i):
-                        next:
-                    fi:
-                    #for j to domains[i,2]-domains[i,1]+1 do
-                    #    rnd := Rand(1..areas):
-                    #domains[i,3] := append(domains[i,3], gr[rnd]):
-                    #od:
-                    # for gamma rates we only store the class not the actual rate
-                    domains[i,3] := [seq(Rand(1..areas), domains[i,2]-domains[i,1]+1)]:
-                fi:
-            od:
-            if d <> {} then
-                for i from length(d) to 1 by -1 do
-                    domains := [op(domains[1..d[i]-1]), op(domains[d[i]+1..-1])]:
-                od:
-            fi:
-            if motifs[1] <> 1 then
-                domains := append([[1, motifs[1]-1, [seq(Rand(1..areas), domains[1,1]-1)]]], op(domains)):
-                #for j to domains[1,2]-domains[1,1]+1 do
-                #    rnd := Rand(1..areas):
-                #    domains[1,3] := append(domains[1,3], gr[rnd]):
-                #od:
-            fi:
-            if motifs[-1] <> aaStart then
-                domains := append(domains, [motifs[-1]+1, aaStart, [seq(Rand(1..areas), aaStart-domains[-1,2])]]):
-                #for j to domains[-1,2]-domains[-1,1]+1 do
-                #    rnd := Rand(1..areas):
-                #    domains[-1,3] := append(domains[-1,3], gr[rnd]):
-                #od:
-            fi:
-        fi:
-    fi:
-    return(domains);
-end:
+######## moved to SE_Evolutionary_Events.drw ########
+#makeAreas := proc(aaStart, areas, mutRate, maxSteps, distr:{'Poisson', 'Gamma'}; motFreq:nonnegative)
+#    if distr = 'Poisson' then
+#        if not assigned(motFreq) then
+#            motFreq := 0:
+#        fi:
+#        domains := CreateArray(1..Rand(1..areas));
+#        numEnt := {};
+#        for i to (length(domains) - 1) do
+#            num1 := round(aaStart / (length(domains) - 1));
+#            limitlow := max(1, ((i - 1) * num1 + 1));
+#            limithigh := min(aaStart - 1, (i * num1 - 1));
+#            numEnt := append(numEnt, Rand(limitlow..limithigh));
+#        od;    
+#        numEnt := append(numEnt, 0);
+#        numEnt := append(numEnt, aaStart);
+#        for i to length(domains) do        
+#            domains[i] := [(numEnt[i]+1), numEnt[i+1], 
+#                If(Rand() < motFreq, 1/DBL_MAX, Rand(Poisson(mutRate)) / maxSteps)];
+#        od;
+#    else
+#        if not assigned(motFreq) then
+#            error ('gamma distribution requires alpha parameter')
+#        fi:
+#        motifs := {}:
+#        for i to aaStart do
+#            if Rand() <= motFreq then
+#                motifs := append(motifs,i):
+#            fi:
+#        od:
+#        #printf('%a\n', motifs):
+#        if length(motifs) = 0 then
+#            domains := []:
+#            domains := append(domains, [1, aaStart, [seq(Rand(1..areas), aaStart)]]):
+#        else
+#            domains := CreateArray(1..2*length(motifs)-1):
+#            d := {}:
+#            for i to length(domains) do
+#                if floor(i/2) <> i/2 then # handle motif
+#                    domains[i] := [motifs[ceil(i/2)], motifs[ceil(i/2)], 1/DBL_MAX]:
+#                else # handle gamma domain
+#                    domains[i] := [motifs[i/2]+1, motifs[i/2+1]-1, []]:
+#                    if domains[i,1] > domains[i,2] then # domain is empty (2 motifs next to each other)
+#                        d := append(d,i):
+#                        next:
+#                    fi:
+#                    #for j to domains[i,2]-domains[i,1]+1 do
+#                    #    rnd := Rand(1..areas):
+#                    #domains[i,3] := append(domains[i,3], gr[rnd]):
+#                    #od:
+#                    # for gamma rates we only store the class not the actual rate
+#                    domains[i,3] := [seq(Rand(1..areas), domains[i,2]-domains[i,1]+1)]:
+#                fi:
+#            od:
+#            if d <> {} then
+#                for i from length(d) to 1 by -1 do
+#                    domains := [op(domains[1..d[i]-1]), op(domains[d[i]+1..-1])]:
+#                od:
+#            fi:
+#            if motifs[1] <> 1 then
+#                domains := append([[1, motifs[1]-1, [seq(Rand(1..areas), domains[1,1]-1)]]], op(domains)):
+#                #for j to domains[1,2]-domains[1,1]+1 do
+#                #    rnd := Rand(1..areas):
+#                #    domains[1,3] := append(domains[1,3], gr[rnd]):
+#                #od:
+#            fi:
+#            if motifs[-1] <> aaStart then
+#                domains := append(domains, [motifs[-1]+1, aaStart, [seq(Rand(1..areas), aaStart-domains[-1,2])]]):
+#                #for j to domains[-1,2]-domains[-1,1]+1 do
+#                #    rnd := Rand(1..areas):
+#                #    domains[-1,3] := append(domains[-1,3], gr[rnd]):
+#                #od:
+#            fi:
+#        fi:
+#    fi:
+#    return(domains);
+#end:
 
 updateBorderOmega := proc(substModel:string, domain:array, value, len, event, classFreq:{nonnegative, list(nonnegative)})
     oldmax := max(domain[3]):

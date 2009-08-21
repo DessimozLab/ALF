@@ -1,110 +1,112 @@
 # performs a gene fusion event
-geneFusion := proc(org:posint, g1:posint, g2:posint; (etime=evolTime):positive)
-    global evolution, geneR, substModels, evolTime;
-    indArr := transpose(evolution[org])[4]:
-    gene1 := SearchArray(abs(geneR[org,g1]), indArr):
-    gene2 := SearchArray(abs(geneR[org,g2]), indArr):
-    if evolution[org, gene1, 9] <> evolution[org, gene2, 9] then
-        printf('did not fuse genes because models are different\n'):
-        return():
-    fi:
-    l1 := length(evolution[org,gene1,1]):
-    offset := evolution[org,gene1,1,l1,2]:
-    l2 := evolution[org,gene2,1,-1,2]:
-    # longer gene defines cluster shorter gene is treated as insertion
-    if offset < l2 then
-        evolution[org, gene1, 7] := evolution[org, gene2, 7]:
-        blockSize := substModels[evolution[org, gene1, 9]][Blocksize]:
-        evolution[org, gene1, 8] := append(evolution[org, gene1, 8], [etime, 'I', 0, offset*blockSize]):
-    else
-        blockSize := substModels[evolution[org, gene2, 9]][Blocksize]:
-        evolution[org, gene1, 8] := append(evolution[org, gene1, 8], [etime, 'I', offset, l2*blockSize]):
-    fi:
-
-    evolution[org,gene1,1] := append(evolution[org,gene1,1], op(evolution[org,gene2,1])):
-    for i from l1+1 to length(evolution[org,gene1,1]) do
-        evolution[org,gene1,1,i,1] := evolution[org,gene1,1,i,1] + offset:
-        evolution[org,gene1,1,i,2] := evolution[org,gene1,1,i,2] + offset:
-    od:
-    evolution[org,gene1,2] := evolution[org,gene1,2].evolution[org,gene2,2]:
-    lastIndex := If(CodonToA(evolution[org,gene1,6,-3..-1]) = '$', -4,-1):
-    evolution[org,gene1,6] := evolution[org,gene1,6,1..lastIndex].evolution[org,gene2,6]:
-    
-    # update evolutionary history ?
-    evolution[org, gene1, 3] := evolution[org, gene1, 3].'-('.copy(evolution[org, gene2, 4]).'Fu'.evolTime.')'.org;
-    
-    # delete gene2 (which is now fused with gene1)
-    deleteItem(org, g2):
-
-    if gene2 = 1 then
-        evolution[org] := evolution[org][2..-1];
-    elif gene2 = length(evolution[org]) then
-        evolution[org] := evolution[org][1..-2];
-    else 
-        evolution[org] := [op(evolution[org][1..gene2 - 1]),
-            op(evolution[org][gene2 + 1..-1])];
-    fi;
-end:
+######## moved to SE_Evolutionary_Events.drw ########
+#geneFusion := proc(org:posint, g1:posint, g2:posint; (etime=evolTime):positive)
+#    global evolution, geneR, substModels, evolTime;
+#    indArr := transpose(evolution[org])[4]:
+#    gene1 := SearchArray(abs(geneR[org,g1]), indArr):
+#    gene2 := SearchArray(abs(geneR[org,g2]), indArr):
+#    if evolution[org, gene1, 9] <> evolution[org, gene2, 9] then
+#        printf('did not fuse genes because models are different\n'):
+#        return():
+#    fi:
+#    l1 := length(evolution[org,gene1,1]):
+#    offset := evolution[org,gene1,1,l1,2]:
+#    l2 := evolution[org,gene2,1,-1,2]:
+#    # longer gene defines cluster shorter gene is treated as insertion
+#    if offset < l2 then
+#        evolution[org, gene1, 7] := evolution[org, gene2, 7]:
+#        blockSize := substModels[evolution[org, gene1, 9]][Blocksize]:
+#        evolution[org, gene1, 8] := append(evolution[org, gene1, 8], [etime, 'I', 0, offset*blockSize]):
+#    else
+#        blockSize := substModels[evolution[org, gene2, 9]][Blocksize]:
+#        evolution[org, gene1, 8] := append(evolution[org, gene1, 8], [etime, 'I', offset, l2*blockSize]):
+#    fi:
+#
+#    evolution[org,gene1,1] := append(evolution[org,gene1,1], op(evolution[org,gene2,1])):
+#    for i from l1+1 to length(evolution[org,gene1,1]) do
+#        evolution[org,gene1,1,i,1] := evolution[org,gene1,1,i,1] + offset:
+#        evolution[org,gene1,1,i,2] := evolution[org,gene1,1,i,2] + offset:
+#    od:
+#    evolution[org,gene1,2] := evolution[org,gene1,2].evolution[org,gene2,2]:
+#    lastIndex := If(CodonToA(evolution[org,gene1,6,-3..-1]) = '$', -4,-1):
+#    evolution[org,gene1,6] := evolution[org,gene1,6,1..lastIndex].evolution[org,gene2,6]:
+#    
+#    # update evolutionary history ?
+#    evolution[org, gene1, 3] := evolution[org, gene1, 3].'-('.copy(evolution[org, gene2, 4]).'Fu'.evolTime.')'.org;
+#    
+#    # delete gene2 (which is now fused with gene1)
+#    deleteItem(org, g2):
+#
+#    if gene2 = 1 then
+#        evolution[org] := evolution[org][2..-1];
+#    elif gene2 = length(evolution[org]) then
+#        evolution[org] := evolution[org][1..-2];
+#    else 
+#        evolution[org] := [op(evolution[org][1..gene2 - 1]),
+#            op(evolution[org][gene2 + 1..-1])];
+#    fi;
+#end:
 
 
 # performs a gene fission event
-geneFission := proc(org:posint, g:posint; (etime=evolTime):positive)
-    global evolution, geneR, maxID, substModels, evolTime;
-    indArr := transpose(evolution[org])[4]:
-    gene := SearchArray(abs(geneR[org,g]), indArr):
-    substModel := substModels[evolution[org, gene, 9]]:
-    simType := substModel[Type]:
-    blockSize := substModel[Blocksize]:
-    # get a location for breaking up the gene into two
-    breakPoint := Rand(1..length(evolution[org,gene,1])-1):
-    offset := evolution[org,gene,1,breakPoint,2]:
-    
-    # create new gene with second part of original gene
-    newGene := CreateArray(1..9):
-    newGene[1] := evolution[org,gene,1,breakPoint+1..-1]:
-    if simType = 'aa' then
-        newGene[2] := evolution[org,gene,2,newGene[1,1,1]..-1]:
-    else
-        newGene[6] := evolution[org,gene,6, (offset-1)*blockSize+1..-1]:
-        if simType = 'codon' then
-            newGene[2] := ProteinSeq(newGene[6]):
-        fi:
-    fi:
-    maxID := maxID + 1:
-    newGene[3] := evolution[org,gene,3]:
-    newGene[4] := maxID:
-    newGene[5] := evolution[org,gene,5]:
-    newGene[7] := evolution[org,gene,7]:
-    newGene[8] := append(evolution[org,gene,8], [etime, 'D', 1, evolution[org,gene,1,breakPoint, 2]]):
-    newGene[9] := evolution[org,gene,9]:
-    newGene[10] := copy(evolution[org,gene,10]):
-    for i to length(newGene[1]) do
-        newGene[1,i,1] := newGene[1,i,1] - offset:
-        newGene[1,i,2] := newGene[1,i,2] - offset:
-    od:
-    
-    # update original gene
-    evolution[org,gene,1] := evolution[org,gene,1,1..breakPoint]:
-    if simType = 'aa' then
-        evolution[org,gene,2] := evolution[org,gene,2,1..offset]:
-        len := length(newGene[2]):
-    else
-        evolution[org,gene,6] := evolution[org,gene,6,1..(offset-1)*blockSize]:
-        len := length(newGene[6]):
-        if simType = 'codon' then
-            evolution[org,gene,2] := ProteinSeq(evolution[org,gene,6]):
-        fi:
-    fi:
-    evolution[org,gene,8] := append(evolution[org,gene,8], [etime, 'D', evolution[org,gene,1,-1,2]+1, len]):
-    # update evolutionary history?
-    evolution[org, gene, 3] := evolution[org, gene, 3].'-('.copy(evolution[org, gene, 4]).'Fi'.evolTime.')'.org;
-    newGene[3] := newGene[3].'-('.copy(evolution[org, gene, 4]).'Fi'.evolTime.')'.org:
-    
-    # add new gene to the data structures
-    evolution[org] := append(evolution[org], newGene):
-    geneR[org] := append(geneR[org], evolution[org, -1, 4]):
-    transLoc(org, g, SearchArray(evolution[org, -1, 4], abs(geneR[org])), 1);
-end:
+######## moved to SE_Evolutionary_Events.drw ########
+#geneFission := proc(org:posint, g:posint; (etime=evolTime):positive)
+#    global evolution, geneR, maxID, substModels, evolTime;
+#    indArr := transpose(evolution[org])[4]:
+#    gene := SearchArray(abs(geneR[org,g]), indArr):
+#    substModel := substModels[evolution[org, gene, 9]]:
+#    simType := substModel[Type]:
+#    blockSize := substModel[Blocksize]:
+#    # get a location for breaking up the gene into two
+#    breakPoint := Rand(1..length(evolution[org,gene,1])-1):
+#    offset := evolution[org,gene,1,breakPoint,2]:
+#    
+#    # create new gene with second part of original gene
+#    newGene := CreateArray(1..9):
+#    newGene[1] := evolution[org,gene,1,breakPoint+1..-1]:
+#    if simType = 'aa' then
+#        newGene[2] := evolution[org,gene,2,newGene[1,1,1]..-1]:
+#    else
+#        newGene[6] := evolution[org,gene,6, (offset-1)*blockSize+1..-1]:
+#        if simType = 'codon' then
+#            newGene[2] := ProteinSeq(newGene[6]):
+#        fi:
+#    fi:
+#    maxID := maxID + 1:
+#    newGene[3] := evolution[org,gene,3]:
+#    newGene[4] := maxID:
+#    newGene[5] := evolution[org,gene,5]:
+#    newGene[7] := evolution[org,gene,7]:
+#    newGene[8] := append(evolution[org,gene,8], [etime, 'D', 1, evolution[org,gene,1,breakPoint, 2]]):
+#    newGene[9] := evolution[org,gene,9]:
+#    newGene[10] := copy(evolution[org,gene,10]):
+#    for i to length(newGene[1]) do
+#        newGene[1,i,1] := newGene[1,i,1] - offset:
+#        newGene[1,i,2] := newGene[1,i,2] - offset:
+#    od:
+#    
+#    # update original gene
+#    evolution[org,gene,1] := evolution[org,gene,1,1..breakPoint]:
+#    if simType = 'aa' then
+#        evolution[org,gene,2] := evolution[org,gene,2,1..offset]:
+#        len := length(newGene[2]):
+#    else
+#        evolution[org,gene,6] := evolution[org,gene,6,1..(offset-1)*blockSize]:
+#        len := length(newGene[6]):
+#        if simType = 'codon' then
+#            evolution[org,gene,2] := ProteinSeq(evolution[org,gene,6]):
+#        fi:
+#    fi:
+#    evolution[org,gene,8] := append(evolution[org,gene,8], [etime, 'D', evolution[org,gene,1,-1,2]+1, len]):
+#    # update evolutionary history?
+#    evolution[org, gene, 3] := evolution[org, gene, 3].'-('.copy(evolution[org, gene, 4]).'Fi'.evolTime.')'.org;
+#    newGene[3] := newGene[3].'-('.copy(evolution[org, gene, 4]).'Fi'.evolTime.')'.org:
+#    
+#    # add new gene to the data structures
+#    evolution[org] := append(evolution[org], newGene):
+#    geneR[org] := append(geneR[org], evolution[org, -1, 4]):
+#    transLoc(org, g, SearchArray(evolution[org, -1, 4], abs(geneR[org])), 1);
+#end:
 
 
 # performs the inversion of a gene group

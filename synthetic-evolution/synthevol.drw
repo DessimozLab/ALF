@@ -451,7 +451,6 @@ for i to length(events) do
 od:
 
 OpenWriting(previous);
-lprint('...main calculation finished.');
 
 
 # saves real tree, updates all organisms
@@ -465,17 +464,30 @@ TimedCallSystem('mv temp.ps '.wdir.'/RealTree.ps', 2);
 OpenWriting(wdir . 'RealTree.drw');
 printf('RealTree := %a;\n', treeEvo);
 OpenWriting(previous);
+lprint('...real genome tree saved.');
+OpenAppending(wdir.'/logfile.txt');
 leafHeights := CreateArray(1..livingOrgs, 0):
 for j to length(branches) do
     org := branches[-j,1]:
     if leafHeights[org] = 0 then
         leafHeights[org] := branches[-j,3]:
-        for g to length(evolution[org]) do
+        g := 1:
+        while g <= length(evolution[org]) do
             seqmutation(org, g, branches[-j,3]);
+            if length(evolution[org,g,2]) = 0 and length(evolution[org,g,6]) = 0 then
+                # remove genes with zero-length in the end
+                gid := evolution[org,g,4]:
+                grid := SearchArray(gid, abs(geneR[org])):
+                geneR[org] := [op(geneR[org,1..grid-1]), op(geneR[org,grid+1..-1])]:
+                evolution[org] := [op(evolution[org,1..g-1]), op(evolution[org,g+1..-1])]:
+            else
+                g := g+1:
+            fi:
         od:
     fi:
 od:
-lprint('...real genome tree saved.');
+OpenWriting(previous):
+lprint('...main calculation finished.');
 
 # calculates total number of lgt and duplication and gathers gene families
 for i to livingOrgs do
@@ -494,6 +506,7 @@ od:
 for i to length(clusters) do
     CreateRealMSA(clusters[i], evolution):
 od:
+lprint('...real MSAs written.'):
 
 # create gene trees
 geneTrees := CreateGeneTrees(clusters, evolution, mutRate, leafHeights):

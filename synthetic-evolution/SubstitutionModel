@@ -29,15 +29,15 @@ SubstitutionModel := proc(Name:string, Params:list(anything), BaseFreqs:list(num
             m := copy(NewLogPAM1):
             return(noeval(SubstitutionModel(Name, [], f, false, 'aa', m, 1))):
         elif Name = 'ECM' then
-            matrixFile := 'matrices/ECM.dat':
+            matrixFile := 'matrices/ecm.dat':
         elif Name = 'ECMu' then
-            matrixFile := 'matrices/ECMu.dat':
+            matrixFile := 'matrices/ecmu.dat':
         elif Name = 'JTT' then
-            matrixFile := 'matrices/JTT.dat':
+            matrixFile := 'matrices/jtt.dat':
         elif Name = 'WAG' then
-            matrixFile := 'matrices/WAG.dat':
+            matrixFile := 'matrices/wag.dat':
         elif Name = 'LG' then
-            matrixFile := 'matrices/LG.dat':           
+            matrixFile := 'matrices/lg.dat':           
         else
             error('too few arguments. please supply necessary model parameters!'):
         fi:

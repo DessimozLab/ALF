@@ -18,10 +18,16 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative)
         # custom model
         indelLength := randGapLength(maxIndelLength, indelModel, indelVector):
     fi:
-        
+
+    printf('time %0004.4f: insertion of length %d in org/genome %d/%d\n', evolTime, indelLength, org, gene):
+
     # searches a random start position for the insertion
     r := Rand(0..evolution[org,gene,1,-1,2]):
     indelStart := blockSize * r:
+
+    OpenAppending(wdir.'insertions.txt'):
+    printf('%d\t%d\t%d\n', indelLength, indelStart, evolution[org,gene,1,-1,2]):
+    OpenWriting(previous):
 
     # performs aa gain
     if simType = 'nuc' then
@@ -77,7 +83,7 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative)
         evolution[org, gene, 1, 1] := updateBorderOmega(substModel[Name], evolution[org, gene, 1, 1], (indelStart / blockSize), indelLength, 'insert', substModel[Params][3]):
     else
         l := 1:
-        while l < length(evolution[org,gene,1]) and evolution[org,gene,1,l,1] < indelStart / blockSize do
+        while l < length(evolution[org,gene,1]) and evolution[org,gene,1,l,2] < indelStart / blockSize do
             l := l + 1:
         od:
         if rateDistribution = 'Gamma' then
@@ -122,11 +128,15 @@ PerformDeletion := proc(org:integer, gene, evolTime:nonnegative)
     fi:
 
     indelLength := min(indelLength, If(simType = 'aa', length(evolution[org,gene,2]), dnaLen/blockSize));
+    printf('time %0004.4f: deletion of length %d in org/genome %d/%d\n', evolTime, indelLength, org, gene):
     maxStart := If(simType = 'aa', length(evolution[org,gene,2]), dnaLen/blockSize)-indelLength+1:
 
     # searches a random start position for the deletion (constrained by the length of the deletion
     indelStart := Rand(0..(maxStart-1))*blockSize+1;
 
+    OpenAppending(wdir.'deletions.txt'):
+    printf('%d\t%d\t%d\n', indelLength, indelStart, evolution[org,gene,1,-1,2]):
+    OpenWriting(previous):
     # performs aa loss
     #printf('org %d, gene %d: loss of %d characters starting at position %d.\n', org,gene, indelLength*blockSize, indelStart):
     #printf('old end: %d, old length: %d\n', evolution[org,gene,1,-1,2], length(evolution[org,gene,2])):
@@ -404,16 +414,19 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
         evolution[livingOrgs, l, 5] := evolution[orgSource, l, 5].'-('.string(evolTime).')'.livingOrgs;
         evolution[livingOrgs, l, 3] := evolution[orgSource, l, 3].'-('.string(evolTime).')'.livingOrgs;
         # model switch
+        curm := evolution[livingOrgs, l, 9]:
+        curSubstModel := substModels[curm]:
         if assigned(specModels) then
-            modIndex := SearchOrderedArray(evolution[livingOrgs, l, 9], fromModels):
+            modIndex := SearchOrderedArray(curm, fromModels):
             if modIndex <> 0 then
                 m := toModels[modIndex]:
-                printf('model switch during speciation for gene %d of species %d: %d -> %d\n', l, livingOrgs, evolution[livingOrgs, l, 9], m):
+                printf('model switch during speciation for gene %d of species %d: %d -> %d\n', l, livingOrgs, curm, m):
                 evolution[livingOrgs, l, 9] := m:
                 substModel := substModels[m]:
-                if substModel[Name] = 'M0' then
+                printf('cs: %A, s: %A, cp3: %A, p3: %A\n', curSubstModel, substModel, curSubstModel[Params], substModel[Params]):
+                if substModel[Name] = 'M0' and curSubstModel[Name] <> 'M0' then
                     evolution[livingOrgs, l, 1] := makeAreasOmega(substModel[Name], aaStart):
-                elif substModel[Name][1] = 'M' then
+                elif substModel[Name][1] = 'M' and (curSubstModel[Name] <> substModel[Name] or length(curSubstModel[Params][3]) <> length(substModel[Params][3])) then
                     evolution[livingOrgs, l, 1] := makeAreasOmega(substModel[Name], aaStart, substModel[Params][3]):
                 fi:
             fi:
@@ -422,12 +435,12 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
             for m to length(substModels) do
                 if r <= modelSwitchS[evolution[livingOrgs, l, 9], m] then
                     if m <>  evolution[livingOrgs, l, 9] then
-                        printf('model switch during speciation for gene %d of species %d: %d -> %d\n', l, livingOrgs, evolution[livingOrgs, l, 9], m):
+                        #printf('model switch during speciation for gene %d of species %d: %d -> %d\n', l, livingOrgs, curm, m):
                         evolution[livingOrgs, l, 9] := m:
                         substModel := substModels[m]:
-                        if substModel[Name] = 'M0' then
+                        if substModel[Name] = 'M0' and curSubstModel[Name] <> 'M0' then
                             evolution[livingOrgs, l, 1] := makeAreasOmega(substModel[Name], aaStart):
-                        elif substModel[Name][1] = 'M' then
+                        elif substModel[Name][1] = 'M' and (curSubstModel[Name] <> substModel[Name] or length(curSubstModel[Params][3]) <> length(substModel[Params][3])) then
                             evolution[livingOrgs, l, 1] := makeAreasOmega(substModel[Name], aaStart, substModel[Params][3]):
                         fi:
                     fi:
@@ -483,72 +496,74 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
             [op(evolution[org,gene,10,1..i-1]), op(evolution[org,gene,10,i+1..-1])]:
         fi:
     od:
-    # compute CodonMatrix from GC target content
-    if substModel[Type] <> 'aa' then
-        GCMatrix := substModel[LogPAM1]:
-        if enableGCAmelioration then
-            if substModel[Name][1] = 'M' then
-                GCMatrix := CreateArray(1..length(substModel[LogPAM1]),0):
-                for i to length(YCodonLogPAM1) do
-                    GCMatrix[i] := GCBiasMatrix(GCratio[org], substModel[LogPAM1][i], substModel[Type]):
-                od:
-            else
-                GCMatrix := GCBiasMatrix(GCratio[org], GCMatrix, substModel[Type]):
+    if length(evolution[org,gene,2]) > 0 or length(evolution[org,gene,6]) > 0 then
+        # compute CodonMatrix from GC target content
+        if substModel[Type] <> 'aa' then
+            GCMatrix := substModel[LogPAM1]:
+            if enableGCAmelioration then
+                if substModel[Name][1] = 'M' then
+                    GCMatrix := CreateArray(1..length(substModel[LogPAM1]),0):
+                    for i to length(YCodonLogPAM1) do
+                        GCMatrix[i] := GCBiasMatrix(GCratio[org], substModel[LogPAM1][i], substModel[Type]):
+                    od:
+                else
+                    GCMatrix := GCBiasMatrix(GCratio[org], GCMatrix, substModel[Type]):
+                fi:
             fi:
         fi:
-    fi:
-    seqTot := '';
-    # loop over all domains for protein gene
-    for i to length(evolution[org, gene, 1]) do
-        if substModel[Type] = 'aa' then
-            # mutate amino acid sequence
-            sequence := evolution[org, gene, 2][(evolution[org, gene, 1][i, 1])..evolution[org, gene, 1][i, 2]];
-            if type(evolution[org,gene,1][i,3], list) then
-                sequence := AAMutateGamma(sequence, rateFac * gammaRates, evolution[org, gene, 1][i,3]):
-            else
-                sequence := Mutate(sequence, rateFac * evolution[org, gene, 1][i,3]):
-            fi:
-        else
-            if substModel[Blocksize] = 3 then
-                sequence := evolution[org, gene, 6][(evolution[org, gene, 1][i, 1]
-                    * 3 - 2)..evolution[org, gene, 1][i, 2] * 3];
-            else
-                sequence := evolution[org, gene, 6][evolution[org, gene, 1][i, 1]..evolution[org, gene, 1][i, 2]];
-            fi:
-            if substModel[Type] = 'nuc' then
+        seqTot := '';
+        # loop over all domains for protein gene
+        for i to length(evolution[org, gene, 1]) do
+            if substModel[Type] = 'aa' then
+                # mutate amino acid sequence
+                sequence := evolution[org, gene, 2][(evolution[org, gene, 1][i, 1])..evolution[org, gene, 1][i, 2]];
                 if type(evolution[org,gene,1][i,3], list) then
-                    sequence := NucleotideMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, gene, 1][i,3]):
+                    sequence := AAMutateGamma(sequence, rateFac * gammaRates, evolution[org, gene, 1][i,3]):
                 else
-                    sequence := NucleotideMutate(sequence, rateFac * evolution[org, gene, 1][i, 3], GCMatrix):
+                    sequence := Mutate(sequence, rateFac * evolution[org, gene, 1][i,3]):
                 fi:
             else
-                if type(evolution[org,gene,1][i,3], list) then
-                    if substModel[Name][1] = 'M' then
-                        sequence := CodonMutate(sequence, rateFac, GCMatrix, evolution[org, gene, 1][i,3]):
+                if substModel[Blocksize] = 3 then
+                    sequence := evolution[org, gene, 6][(evolution[org, gene, 1][i, 1]
+                        * 3 - 2)..evolution[org, gene, 1][i, 2] * 3];
+                else
+                    sequence := evolution[org, gene, 6][evolution[org, gene, 1][i, 1]..evolution[org, gene, 1][i, 2]];
+                fi:
+                if substModel[Type] = 'nuc' then
+                    if type(evolution[org,gene,1][i,3], list) then
+                        sequence := NucleotideMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, gene, 1][i,3]):
                     else
-                        ol := length(sequence):
-                        sequence := CodonMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, gene, 1][i,3]):
-                        if ol <> length(sequence) then
-                            printf('ERROR occurred in CodonMutate!\n'):
-                        fi:
+                        sequence := NucleotideMutate(sequence, rateFac * evolution[org, gene, 1][i, 3], GCMatrix):
                     fi:
                 else
-                    sequence := CodonMutate(sequence, rateFac * evolution[org, gene, 1][i,3], GCMatrix):
+                    if type(evolution[org,gene,1][i,3], list) then
+                        if substModel[Name][1] = 'M' then
+                            sequence := CodonMutate(sequence, rateFac, GCMatrix, evolution[org, gene, 1][i,3]):
+                        else
+                            ol := length(sequence):
+                            sequence := CodonMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, gene, 1][i,3]):
+                            if ol <> length(sequence) then
+                                printf('ERROR occurred in CodonMutate!\n'):
+                            fi:
+                        fi:
+                    else
+                        sequence := CodonMutate(sequence, rateFac * evolution[org, gene, 1][i,3], GCMatrix):
+                    fi:
                 fi:
             fi:
+            seqTot := seqTot.string(sequence);
+        od;
+        if substModel[Type] = 'aa' then
+            evolution[org, gene, 2] := string(seqTot):
+        else
+            evolution[org, gene, 6] := string(seqTot);
+            if substModel[Blocksize] = 3 then
+                evolution[org, gene, 2] := ProteinSeq(evolution[org, gene, 6]);
+            fi:
         fi:
-        seqTot := seqTot.string(sequence);
-    od;
-    if substModel[Type] = 'aa' then
-        evolution[org, gene, 2] := string(seqTot):
-    else
-        evolution[org, gene, 6] := string(seqTot);
-        if substModel[Blocksize] = 3 then
-            evolution[org, gene, 2] := ProteinSeq(evolution[org, gene, 6]);
+        if oldLen <> length(evolution[org,gene,2]) then
+            printf('error mutating gene %d of org %d\n', gene, org):
         fi:
-    fi:
-    if oldLen <> length(evolution[org,gene,2]) then
-        printf('error mutating gene %d of org %d\n', gene, org):
     fi:
     if aaGainRate + aaLossRate > 0 then
         addIndels(org, gene, substModel, meanGapLength, curT):
