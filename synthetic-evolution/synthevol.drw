@@ -410,6 +410,9 @@ elif indelModel = 'QG' then
     meanGapLength := MeanGapLength(indelModel, maxIndelLength, [QG_c, QG_t]):
 elif indelModel = 'NEGBIN' then
     meanGapLength := MeanGapLength(indelModel, maxIndelLength, [NB_r, NB_q]):
+elif indelModel = 'EXP' then
+#    meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_a, E_b]):
+    meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_p]):
 else
     meanGapLength := MeanGapLength(indelModel, maxIndelLength, indelVector):
 fi:

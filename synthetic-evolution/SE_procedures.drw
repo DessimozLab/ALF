@@ -403,13 +403,19 @@ ZipfNormalizationFactor := proc(maxLen, c)
     res
 end:
 
+#ExpNormalizationFactor := proc(maxLen, a, b)
+ExpNormalizationFactor := proc(maxLen, p)
+#    res := 1 - exp(-(maxLen-a)/b)
+    res := 1 - (1 - p)^maxLen
+end:
+
 GQG := proc(n, c, t)
     fac := QGNormalizationFactor(100, c, t):
     res :=  (1.027e-2*exp(-n*c/(0.96*t)) + 3.031e-3*exp(-n*c/(3.13*t))
                    + 6.141e-4*exp(-n*c/(14.3*t)) + 2.090e-5*exp(-n*c/(81.7*t))) / fac:
 end:
 
-randGapLength := proc(maxLen:nonnegative, indelType:{'ZIPF', 'QG', 'NEGBIN', 'CUSTOM'} ; params:list(numeric))
+randGapLength := proc(maxLen:nonnegative, indelType:{'ZIPF', 'QG', 'NEGBIN', 'EXP', 'CUSTOM'} ; params:list(numeric))
     L := 0; s := 0;
     rp := Rand();
     if indelType = 'ZIPF' then
@@ -438,6 +444,15 @@ randGapLength := proc(maxLen:nonnegative, indelType:{'ZIPF', 'QG', 'NEGBIN', 'CU
             L := L + 1:
             s := s + ((r+L-2)!/((L-1)!*(r+1)!)*(1-q)^r*q^(L-1))/normFactor:
         od:
+    elif indelType = 'EXP' then
+#        a := params[1]: b := params[2]:
+#        normFactor := ExpNormalizationFactor(maxLen, a, b):
+        normFactor := ExpNormalizationFactor(maxLen, params[1]):
+        while s < rp and L < maxLen do
+            L := L + 1:
+#            s := 1 - exp(-(L-a)/b) / normFactor:
+            s := 1 - ( 1 - params[1])^L / normFactor:
+       od:
     else
         # param[i] should contain the probability of a gap of length i from the custom distribution
         if length(params) <> maxLen then

@@ -14,6 +14,9 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative)
         indelLength := randGapLength(maxIndelLength, indelModel, [QG_c, QG_t]):
     elif indelModel = 'NEGBIN' then
         indelLength := randGapLength(maxIndelLength, indelModel, [NB_r, NB_q]):
+    elif indelModel = 'EXP' then
+#        indelLength := randGapLength(maxIndelLength, indelModel, [E_a, E_b]):
+        indelLength := randGapLength(maxIndelLength, indelModel, [E_p]):
     else
         # custom model
         indelLength := randGapLength(maxIndelLength, indelModel, indelVector):
@@ -27,6 +30,9 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative)
 
     OpenAppending(wdir.'insertions.txt'):
     printf('%d\t%d\t%d\n', indelLength, indelStart, evolution[org,gene,1,-1,2]):
+    OpenWriting(previous):
+    OpenAppending(wdir.'indels.txt'):
+    printf('%d\t%d\t%d\t%d\t%d\n', org, gene, indelLength, indelStart, evolution[org,gene,1,-1,2]):
     OpenWriting(previous):
 
     # performs aa gain
@@ -113,6 +119,9 @@ PerformDeletion := proc(org:integer, gene, evolTime:nonnegative)
         indelLength := randGapLength(maxIndelLength, indelModel, [QG_c, QG_t]):
     elif indelModel = 'NEGBIN' then
         indelLength := randGapLength(maxIndelLength, indelModel, [NB_r, NB_q]):
+    elif indelModel = 'EXP' then
+#        indelLength := randGapLength(maxIndelLength, indelModel, [E_a, E_b]):
+        indelLength := randGapLength(maxIndelLength, indelModel, [E_p]):
     else
         # custom model
         indelLength := randGapLength(maxIndelLength, indelModel, indelVector):
@@ -136,6 +145,9 @@ PerformDeletion := proc(org:integer, gene, evolTime:nonnegative)
 
     OpenAppending(wdir.'deletions.txt'):
     printf('%d\t%d\t%d\n', indelLength, indelStart, evolution[org,gene,1,-1,2]):
+    OpenWriting(previous):
+    OpenAppending(wdir.'indels.txt'):
+    printf('%d\t%d\t%d\t%d\t%d\n', org, gene, indelLength, indelStart, evolution[org,gene,1,-1,2]):
     OpenWriting(previous):
     # performs aa loss
     #printf('org %d, gene %d: loss of %d characters starting at position %d.\n', org,gene, indelLength*blockSize, indelStart):
@@ -489,6 +501,7 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
     # apply rate modifications from duplications
     rateFac := curT - evolution[org,gene,11]:
     if rateFac <= 0 then return() fi:
+    printf('org %d\tgene %d\ttime %g\n', org, gene, rateFac):
     for i from length(evolution[org,gene,10]) to 1 by -1 do
         rateFac := rateFac * evolution[org,gene,10,i,2]:
         # remove rate modifier if it exceeds its lifetime
@@ -713,8 +726,10 @@ geneFission := proc(org:posint, g:posint, etime:nonnegative)
     transLoc(org, g, SearchArray(evolution[org, -1, 4], abs(geneR[org])), 1);
 end:
 
-makeAreas := proc(aaStart, areas, mutRate, distr:{'Poisson', 'Gamma'}; motFreq:nonnegative)
-    if distr = 'Poisson' then
+makeAreas := proc(aaStart, areas, mutRate, distr:{'None', 'Poisson', 'Gamma'}; motFreq:nonnegative)
+    if distr = 'None' then
+        domains := copy([[1, aaStart, 1]]):
+    elif distr = 'Poisson' then
         if not assigned(motFreq) then
             motFreq := 0:
         fi:
@@ -774,7 +789,7 @@ addIndels := proc(org:posint, gene:posint, substModel, meanLen:nonnegative, evol
     od:
 end:
 
-MeanGapLength := proc(distr:{'ZIPF', 'QG', 'NEGBIN', 'CUSTOM'}, maxLength, params:array)
+MeanGapLength := proc(distr:{'ZIPF', 'QG', 'NEGBIN', 'EXP', 'CUSTOM'}, maxLength, params:array)
     m := 0:
     if distr = 'ZIPF' then
         normFac := ZipfNormalizationFactor(maxLength, params[1]):
@@ -793,6 +808,14 @@ MeanGapLength := proc(distr:{'ZIPF', 'QG', 'NEGBIN', 'CUSTOM'}, maxLength, param
         normFac := NBNormalizationFactor(maxLength, r, q):
         for i to maxLength do
             m := m + i * ((r+i-2)!/((i-1)!*(r+1)!)*(1-q)^r*q^(i-1))/normFac:
+        od:
+    elif distr = 'EXP' then
+#        a := params[1]: b := params[2]:
+#        normFac := ExpNormalizationFactor(maxLength, a, b):
+        normFac := ExpNormalizationFactor(maxLength, params[1]):
+        for i to maxLength do
+#            m := m + i * 1/b * exp(-(i-a)/b) / normFac:
+            m := m + i * (1 - params[1])^(i-1) * params[1] / normFac:
         od:
     else
         for i to length(params) do

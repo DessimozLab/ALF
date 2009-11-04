@@ -89,6 +89,20 @@ CreateParametricQMatrix := proc(freq, kappa, win)
         od;
     od:
     
+    OpenWriting('alfqmat.txt'):
+    SA := [TTT, TTC, TTA, TTG, TCT, TCC, TCA, TCG, TAT, TAC, TGT, TGC, TGG, CTT, CTC, CTA, CTG, CCT, CCC, CCA, 
+        CCG, CAT, CAC, CAA, CAG, CGT, CGC, CGA, CGG, ATT, ATC, ATA, ATG, ACT, ACC, ACA, ACG, AAT, AAC, AAA, 
+        AAG, AGT, AGC, AGA, AGG, GTT, GTC, GTA, GTG, GCT, GCC, GCA, GCG, GAT, GAC, GAA, GAG, GGT, GGC, GGA, 
+        GGG, TAA, TAG, TGA]:
+    for i to 64 do for j to 64 do
+        if i = j then
+            printf('%0.4g\t', -sum(Q[CodonToCInt(SA[i])]))
+        else
+            printf('%0.4g\t', Q[CodonToCInt(SA[i]),CodonToCInt(SA[j])])
+        fi
+    od: printf('\n') od:
+    OpenWriting(previous): 
+
     freqmat := CreateArray(1..64, 1..64, 0):
     for i to 64 do
         freqmat[i,i] := freq[i]:
@@ -100,7 +114,7 @@ CreateParametricQMatrix := proc(freq, kappa, win)
     for i to 64 do
         Q[i,i] := -sum(Q[i]):
     od:
-    
+   
     CreateCodonMatrices(transpose(Q), freq):
     
 end:
