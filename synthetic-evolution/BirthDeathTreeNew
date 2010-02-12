@@ -106,3 +106,43 @@ CheckBranchLengths_R := proc(tree:Tree, inc:nonnegative) option internal;
     CheckBranchLengths_R(tree[Right], rinc):
     tree[Right][Height] := tree[Right][Height] + rinc:
 end:
+
+AddDeviation := proc(t:Tree)
+    curh := FindDeepestLeaf(t) - t[Height]:
+    mu := 0.2/(0.001+Rand()):
+
+    # add deviation to tree
+    AddDeviation_R(t, mu):
+    
+    # normalize tree
+    newh := FindDeepestLeaf(t) - t[Height]:
+    ScaleTreeHeight(t, curh / newh, t[Height]):
+end:
+
+AddDeviation_R := proc(t:Tree, mu:numeric) option internal;
+    # left subtree
+    x := Rand(Exponential(0,mu)):
+    curblen := t[Left, Height] - t[Height]:
+    newblen := (1+x) * curblen:
+    PropagateDeviation(t[Left], newblen - curblen):
+    if not type(t[Left], Leaf) then
+        AddDeviation_R(t[Left], mu):
+    fi:
+
+    # right subtree
+    x := Rand(Exponential(0,mu)):
+    curblen := t[Right, Height] - t[Height]:
+    newblen := (1+x) * curblen:
+    PropagateDeviation(t[Right], newblen - curblen):
+    if not type(t[Right], Leaf) then
+        AddDeviation_R(t[Right], mu):
+    fi:
+end:
+
+PropagateDeviation := proc(t:Tree, delta:numeric) option internal;
+    t[Height] := t[Height] + delta:
+    if not type(t, Leaf) then
+        PropagateDeviation(t[Left], delta):
+        PropagateDeviation(t[Right], delta):
+    fi:
+end:

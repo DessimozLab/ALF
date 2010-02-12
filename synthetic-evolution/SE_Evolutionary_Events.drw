@@ -1,5 +1,5 @@
 PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative)
-    global evolution, substModels, indelModel, Z_c, QG_c, QG_t, NB_r, NB_q, rateDistribution;
+    global evolution, substModels, indelModel, Z_c, QG_c, QG_t, NB_r, NB_q, amongSiteDistr;
 #    printf('performing aa gain\n'):
 
     substModel := substModels[evolution[org,gene,9]]:
@@ -92,7 +92,7 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative)
         while l < length(evolution[org,gene,1]) and evolution[org,gene,1,l,2] < indelStart / blockSize do
             l := l + 1:
         od:
-        if rateDistribution = 'Gamma' then
+        if amongSiteDistr = 'Gamma' then
             evolution[org, gene, 1] := updateBorder(evolution[org, gene, 1], l, (indelStart / blockSize), indelLength, 'insert', true, areas);
         else
             evolution[org, gene, 1] := updateBorder(evolution[org, gene, 1], l, (indelStart / blockSize), indelLength, 'insert');
@@ -104,7 +104,7 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative)
 end:
 
 PerformDeletion := proc(org:integer, gene, evolTime:nonnegative)
-    global evolution, substModels, indelModel, Z_c, QG_c, QG_t, NB_r, NB_q, rateDistribution;
+    global evolution, substModels, indelModel, Z_c, QG_c, QG_t, NB_r, NB_q, amongSiteDistr;
 #    printf('performing aa loss\n'):
 
     substModel := substModels[evolution[org,gene,9]]:
@@ -167,7 +167,7 @@ PerformDeletion := proc(org:integer, gene, evolTime:nonnegative)
         while l < length(evolution[org,gene,1]) and evolution[org,gene,1,l,1] < indelStart / blockSize do
             l := l + 1:
         od:
-        evolution[org,gene, 1] := updateBorder(evolution[org,gene, 1], l, (indelStart-1)/blockSize+1, indelLength, 'delet', rateDistribution='Gamma'):
+        evolution[org,gene, 1] := updateBorder(evolution[org,gene, 1], l, (indelStart-1)/blockSize+1, indelLength, 'delet', amongSiteDistr='Gamma'):
     fi:
     
     if simType <> 'aa' and not neutralDNA then
@@ -180,7 +180,7 @@ PerformDeletion := proc(org:integer, gene, evolTime:nonnegative)
 end:
 
 PerformGeneDuplication := proc(org:integer, evolTime:nonnegative; (ndupl=1):posint)
-    global evolution, geneR, maxID, mutRate, ratefac_pseudogene, life_neofunc, ratefac_neofunc,
+    global evolution, geneR, maxID, leafHeights, ratefac_pseudogene, life_neofunc, ratefac_neofunc,
            life_subfunc, rate_subfunc, P_pseudogene, P_neofunc, P_subfunc, transDupl, fissionDupl,
            fusionDupl;
     printf('performing gene duplication\n'):
@@ -215,7 +215,7 @@ PerformGeneDuplication := proc(org:integer, evolTime:nonnegative; (ndupl=1):posi
         # modify substitution rates according to sub-/neofunctionalization or pseudogene
         r := Rand():
         if r < P_pseudogene then
-            evolution[org, -1, 10] := append(evolution[org, -1, 10], [mutRate, ratefac_pseudogene]):
+            evolution[org, -1, 10] := append(evolution[org, -1, 10], [leafHeights[org], ratefac_pseudogene]):
         elif r < P_pseudogene + P_neofunc then
             evolution[org, -1, 10] := append(evolution[org, -1, 10], [evolTime+Rand(Poisson(life_neofunc)), ratefac_neofunc]):
         elif r < P_pseudogene + P_neofunc + P_subfunc then
@@ -611,7 +611,7 @@ geneFusion := proc(org:posint, g1:posint, g2:posint, etime:nonnegative)
         evolution[org, gene1, 8] := append(evolution[org, gene1, 8], [etime, 'I', offset, l2*blockSize]):
     fi:
 
-    if substModels[evolution[org, gene1, 9]][Name][1] = 'M' or rateDistribution = 'Gamma' then
+    if substModels[evolution[org, gene1, 9]][Name][1] = 'M' or amongSiteDistr = 'Gamma' then
         evolution[org,gene1,1,1,2] := evolution[org,gene1,1,1,2] + evolution[org,gene2,1,1,2]:
         evolution[org,gene1,1,1,3] := append(evolution[org,gene1,1,1,3], op(evolution[org,gene2,1,1,3])):
     else
@@ -663,7 +663,7 @@ geneFission := proc(org:posint, g:posint, etime:nonnegative)
     
     # create new gene with second part of original gene
     newGene := CreateArray(1..11):
-    if substModel[Name][1] = 'M' or rateDistribution = 'Gamma' then
+    if substModel[Name][1] = 'M' or amongSiteDistr = 'Gamma' then
         newGene[1] := [[1, seqLen/blockSize - breakPoint, evolution[org,gene,1,1,3,breakPoint+1..-1]]]:
     else
         bDom := 1:

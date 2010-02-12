@@ -320,7 +320,8 @@ end:
 #   clsts: array of gene clusters, where each cluster consists of a list of organism/gene tupels
 #   evol:  the evolution data structure.
 #   msteps: the maximum number of simulation steps (for defining the depth of the leaves
-CreateGeneTrees := proc(clsts, evol, msteps, lheights)
+#CreateGeneTrees := proc(clsts, evol, msteps, lheights)
+CreateGeneTrees := proc(clsts, evol, lheights)
     # create output directory for gene trees
     CallSystem('mkdir '.wdir.'/GeneTrees/'):
     trees := []:
@@ -390,12 +391,14 @@ CreateGeneTrees := proc(clsts, evol, msteps, lheights)
     
         # sort nodes by time and insert them into a tree
         nodes := sort([op(nodes)], x->x[5]):
-        tree := Leaf(sprintf('SE%03d/%05d', nodes[1,1], nodes[1,2]), msteps):
+#        tree := Leaf(sprintf('SE%03d/%05d', nodes[1,1], nodes[1,2]), msteps):
         gind := SearchArray(nodes[1,2], geneIDs[nodes[1,1]]):
+        tree := Leaf(sprintf('SE%03d/%05d', nodes[1,1], nodes[1,2]), If(gind=0,1000,evolution[nodes[1,1], gind, 11])):
         nodes[1] := [nodes[1,1], If(gind = 0, nodes[1,2], gind)]:
         for i from 2 to length(nodes) do
-            tree := InsertNode(tree, nodes[i], msteps);
+#            tree := InsertNode(tree, nodes[i], msteps);
             gind := SearchArray(nodes[i,2], geneIDs[nodes[i,1]]):
+            tree := InsertNode(tree, nodes[i], If(gind=0,1000,evolution[nodes[i,1], gind, 11]));
             nodes[i] := [nodes[i,1], If(gind = 0, nodes[i,2], gind)];
         od:
         
@@ -603,5 +606,18 @@ ReadNewickAnnotation := proc(label:string)
     fi:
 end:
 
+CheckTree := proc(tree:{Tree, string})
+    if type(tree, string) then
+        t := traperror(ParseNewickTree(tree, 'InternalLabels'=ReadNewickAnnotation)):
+        if t = lasterror then
+            t := ReadTreeFile(tree):
+        fi:
+    elif type(tree, Leaf) then
+        error('tree must consist of more than just a leaf'):
+    else
+        t := tree:
+    fi:
+    t
+end:
 
 lprint('IO procedures for Synthetic Evolution sucessfully loaded');

@@ -25,12 +25,75 @@ dupsOnLevel := [];
 if specialAreas = true then
   ReadProgram(areaPath);
 fi;
+if amongGeneDistr = 'Custom' then
+    customRates := parse(ReadRawFile(aGPath)):
+fi:
 
+# assign variables for features that are turned off
+if not assigned(geneDuplRate) then
+    geneDuplRate := 0:
+fi:
+if not assigned(geneLossRate) then
+    geneLossRate := 0:
+fi:
+if not assigned(lgtRate) then
+    lgtRate := 0:
+fi:
+if not assigned(lgtGRate) then
+    lgtGRate := 0:
+fi:
+if not assigned(invers) then
+    invers := 0:
+fi:
+if not assigned(transloc) then
+    transloc := 0:
+fi:
+if not assigned(aaGainRate) then
+    aaGainRate := 0:
+fi:
+if not assigned(aaLossRate) then
+    aaLossRate := 0:
+fi:
+if not assigned(invtrans) then
+    invtrans := 0:
+fi:
+if not assigned(fissionRate) then
+    fissionRate := 0:
+fi:
+if not assigned(fusionRate) then
+    fusionRate := 0:
+fi:
+if not assigned(modelAssignments) then
+    modelAssignments := [1]:
+fi:
+if not assigned(modelSwitchS) then
+    modelSwitchS := [[1]]:
+fi:
+if not assigned(modelSwitchD) then
+    modelSwitchD := [[1]]:
+fi:
+
+if length(FileStat(wdir.'/'.mname)) <> 0 then
+    i := 1:
+    while length(FileStat(wdir.'/'.mname.'_'.i.'/')) > 0 do
+        i := i + 1:
+    od:
+    mname := mname.'_'.i:
+fi:
+wdir := wdir.'/'.mname.'/':
 
 # get tree
 if treeType = 'Custom' then
-    tree := ReadTreeFile(treeFile):
+    if not assigned(treeFile) and not assigned(tree) then
+        error('no tree given'):
+    elif not assigned(tree) then
+        tree := treeFile:
+    fi:
+    tree := CheckTree(tree):
+#    tree := ReadTreeFile(treeFile):
     CheckBranchLengths(tree):
+    NSpecies := 0:
+    for l in Leaves(tree) do NSpecies := NSpecies + 1 od:
 elif treeType = 'BDTree' then
 # old code. replace with Tanja Stadler's BD-Tree sampling method
 #    tree := BirthDeathTree(birthRate, deathRate, maxTime, maxSpecies, not pruneDeadLineages):
@@ -39,6 +102,10 @@ elif treeType = 'BDTree' then
 #        tree := PruneTree(tree, labels):
 #    fi:
     tree := BirthDeathTree(birthRate, deathRate, NSpecies, mutRate):
+    if not ultrametric then
+        # create deviation using method defined in Guindon and Gascuel, 2003
+        AddDeviation(tree):
+    fi:
 elif treeType = 'ToLSample' then
     D := GetAllDistMatrix():
     tree := GenRandomTree(D, NSpecies):
@@ -127,13 +194,26 @@ else
     dupIndex := []:
 fi:
 
+branches := EnumerateBranches(tree, timePts):
+branches := sort(branches, x->x[3]):
+
+leafHeights := CreateArray(1..NSpecies, 0):
+for j to length(branches) do
+    org := branches[-j,1]:
+    if leafHeights[org] = 0 then
+        leafHeights[org] := branches[-j,3]:
+    fi
+od:
+
+mutRate := max(leafHeights):
+
 nextDupIndex := 1:
 cSpecies := length(specTime) + 1:
     
 #AAfactor := Nprot * Naa / maxSteps;
 #Gfactor := Nprot / maxSteps;
 
-if rateDistribution = 'Gamma' then
+if amongSiteDistr = 'Gamma' then
 #    gammaRates := GammaRates(alphaG, areas) * mutRate / maxSteps:
     gammaRates := GammaRates(alphaG, areas):
     gammaRates := append(gammaRates, 1/DBL_MAX):
@@ -193,8 +273,8 @@ if realseed = true then # generates the first organism with real data
             elif substModel[Name][1] = 'M' then
                 evolution[1, i, 1] := makeAreasOmega(substModel[Name], length(protseq), substModel[Params][3]):
             else
-#                evolution[1, i, 1] := makeAreas(length(protseq), areas, mutRate, maxSteps, rateDistribution, motifFreq);
-                evolution[1, i, 1] := makeAreas(length(protseq), areas, mutRate, rateDistribution, motifFreq);
+#                evolution[1, i, 1] := makeAreas(length(protseq), areas, mutRate, maxSteps, amongSiteDistr, motifFreq);
+                evolution[1, i, 1] := makeAreas(length(protseq), areas, mutRate, amongSiteDistr, motifFreq);
             fi:
         fi;
         evolution[1, i, 3] := '1';
@@ -211,6 +291,11 @@ if realseed = true then # generates the first organism with real data
         evolution[1, i, 8] := []:
         evolution[1, i, 9] := modelAssignments[i]:
         evolution[1, i, 10] := []:
+        if amongGeneDistr = 'Gamma' then
+            evolution[1, i, 10] := [[mutRate, Rand(GammaDistr(aGAlpha))/aGAlpha]]:
+        elif amongGeneDistr = 'Custom' then
+            evolution[1, i, 10] := [[mutRate, customRates[i]]:            
+        fi:
         evolution[1, i, 11] := 0:
         geneR[1, i] := i;
     od:
@@ -229,18 +314,18 @@ else
             evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart, substModel[Params][3]):
         else
             #printf('motifs %d - ', i):
-#            evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, maxSteps, rateDistribution, motifFreq);
-            evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, rateDistribution, motifFreq);
+#            evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, maxSteps, amongSiteDistr, motifFreq);
+            evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, amongSiteDistr, motifFreq);
         fi:
         if substModel[Type] <> 'aa' then
-            if substModel[Type] = 'nuc' and substModel[NeutralDNA] then
-                evolution[1, i, 6] := Rand(DNA(aaStart));
+            if substModel[Type] = 'nuc' and not substModel[NeutralDNA] then
+                evolution[1, i, 6] := CreateRandSeq(3*aaStart, substModel[BaseFreqs]);
             else
-                evolution[1, i, 6] := Rand(CodingDNA(3 * aaStart));
+                evolution[1, i, 6] := CreateRandSeq(aaStart, substModel[BaseFreqs]);
             fi:
         fi:
         if substModel[Type] = 'aa' then
-            evolution[1, i, 2] := Rand(Protein(aaStart)):
+            evolution[1, i, 2] := CreateRandSeq(aaStart, substModel[BaseFreqs]):
         elif substModel[Type] = 'codon' then
             evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]);
         else
@@ -254,6 +339,9 @@ else
         evolution[1, i, 8] := []:
         evolution[1, i, 9] := modelAssignments[i]:
         evolution[1, i, 10] := []:
+        if amongGeneDistr = 'Gamma' then
+            evolution[1, i, 10] := [[mutRate, Rand(GammaDistr(aGAlpha))/aGAlpha]]:            
+        fi:
         evolution[1, i, 11] := 0:
         geneR[1, i] := i;
     od:
@@ -277,21 +365,39 @@ print('\n\nEvolution!\n\n');
 OpenWriting(wdir.'/logfile.txt'); 
 lprint('Synthetic evolution\n-------------------\n');
 #printf('%i iteration steps\n', maxSteps);
-printf('height of tree: %i\n', mutRate);
+printf('height of tree: %a\n', mutRate);
 printf('first organism (%s): %i proteins with %i aa (average)\n', 
     If(realseed = true, 'biological sequences', 'artificial sequences'), 
     Nprot, Naa);
 printf('Mutation rate: %.2f, Speciations: %i\n', 
     mutRate, cSpecies);
-printf('Gene duplication rate: %.2f, transloc. Dupl.: %.2f, Gene loss rate: %.2f\n', 
-    geneDuplRate, transDupl, geneLossRate);
-printf('LGT rate: %.2f, LGT rate for groups: %.2f, LGT group size: %.2f\n', 
-    lgtRate, lgtGRate, lgtGSize );
-printf('Inversion rate: %.2f, max. Inversion group size: %.2f, inverted Translocation: %.2f\n',
-    invers, invSize, invtrans);
-printf('Translocation rate: %.2f, max. Translocation group size: %.2f\n',
-    transloc, transSize);
-printf('aa gain rate: %.3f, aa loss rate= %.3f\n\n', aaGainRate, aaLossRate);
+if geneDuplRate > 0 then
+    printf('Gene duplication rate: %.2f, transloc. Dupl.: %.2f\n', 
+        geneDuplRate, transDupl);
+fi:
+if geneLossRate > 0 then
+    printf('Gene loss rate: %.2f\n', geneLossRate):
+fi:
+if lgtRate > 0 then
+    printf('LGT rate: %.2f\n', lgtRate );
+fi:
+if lgtGRate > 0 then
+    printf('LGT rate for groups: %.2f, LGT group size: %.2f\n', lgtGRate, lgtGSize):
+fi:
+if invers > 0 then
+    printf('Inversion rate: %.2f, max. Inversion group size: %.2f, inverted Translocation: %.2f\n',
+        invers, invSize, invtrans);
+fi:
+if transloc > 0 then
+    printf('Translocation rate: %.2f, max. Translocation group size: %.2f\n', transloc, transSize);
+fi:
+if aaGainRate > 0 then
+    printf('aa gain rate: %.3f\n', aaGainRate);
+fi:
+if aaLossRate > 0 then
+    printf('aa loss rate= %.3f\n', aaLossRate);
+fi:
+lprint():
 #lprint('mutation rates: g <genenumber> : <domain 1>, <domain 2>, ...');
 #for i to length(evolution[1]) do
 #    printf('g %3i : ', i);
@@ -303,14 +409,11 @@ printf('aa gain rate: %.3f, aa loss rate= %.3f\n\n', aaGainRate, aaLossRate);
 lprint();
 
 rateSum := geneDuplRate + geneLossRate + fusionRate + fissionRate + invers + transloc:
-branches := EnumerateBranches(tree, timePts):
-branches := sort(branches, x->x[3]):
-
 
 ngenes := [length(evolution[1])]:
 curT := 0:
 
-events := [seq([], floor(mutRate/10)+1)]:
+events := [seq([], floor(max(leafHeights)/10)+1)]:
 
 seind := 1:
 
@@ -404,17 +507,19 @@ for i to length(events) do
     events[i] := sort(events[i], x->x[1]):
 od:
 
-if indelModel = 'ZIPF' then
-    meanGapLength := MeanGapLength(indelModel, maxIndelLength, [Z_c]):
-elif indelModel = 'QG' then
-    meanGapLength := MeanGapLength(indelModel, maxIndelLength, [QG_c, QG_t]):
-elif indelModel = 'NEGBIN' then
-    meanGapLength := MeanGapLength(indelModel, maxIndelLength, [NB_r, NB_q]):
-elif indelModel = 'EXP' then
-#    meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_a, E_b]):
-    meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_p]):
-else
-    meanGapLength := MeanGapLength(indelModel, maxIndelLength, indelVector):
+if aaGainRate > 0 or aaLossRate > 0 then
+    if indelModel = 'ZIPF' then
+        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [Z_c]):
+    elif indelModel = 'QG' then
+        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [QG_c, QG_t]):
+    elif indelModel = 'NEGBIN' then
+        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [NB_r, NB_q]):
+    elif indelModel = 'EXP' then
+    #    meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_a, E_b]):
+        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_p]):
+    else
+        meanGapLength := MeanGapLength(indelModel, maxIndelLength, indelVector):
+    fi:
 fi:
 
 for i to length(events) do
@@ -469,25 +574,27 @@ printf('RealTree := %a;\n', treeEvo);
 OpenWriting(previous);
 lprint('...real genome tree saved.');
 OpenAppending(wdir.'/logfile.txt');
-leafHeights := CreateArray(1..livingOrgs, 0):
-for j to length(branches) do
-    org := branches[-j,1]:
-    if leafHeights[org] = 0 then
-        leafHeights[org] := branches[-j,3]:
-        g := 1:
-        while g <= length(evolution[org]) do
-            seqmutation(org, g, branches[-j,3]);
-            if length(evolution[org,g,2]) = 0 and length(evolution[org,g,6]) = 0 then
-                # remove genes with zero-length in the end
-                gid := evolution[org,g,4]:
-                grid := SearchArray(gid, abs(geneR[org])):
-                geneR[org] := [op(geneR[org,1..grid-1]), op(geneR[org,grid+1..-1])]:
-                evolution[org] := [op(evolution[org,1..g-1]), op(evolution[org,g+1..-1])]:
-            else
-                g := g+1:
-            fi:
-        od:
-    fi:
+#leafHeights := CreateArray(1..livingOrgs, 0):
+#for j to length(branches) do
+#    org := branches[-j,1]:
+for org to length(leafHeights) do
+#    if leafHeights[org] = 0 then
+#        leafHeights[org] := branches[-j,3]:
+    g := 1:
+    while g <= length(evolution[org]) do
+#            seqmutation(org, g, branches[-j,3]);
+        seqmutation(org, g, leafHeights[org]);
+        if length(evolution[org,g,2]) = 0 and length(evolution[org,g,6]) = 0 then
+            # remove genes with zero-length in the end
+            gid := evolution[org,g,4]:
+            grid := SearchArray(gid, abs(geneR[org])):
+            geneR[org] := [op(geneR[org,1..grid-1]), op(geneR[org,grid+1..-1])]:
+            evolution[org] := [op(evolution[org,1..g-1]), op(evolution[org,g+1..-1])]:
+        else
+            g := g+1:
+        fi:
+    od:
+#    fi:
 od:
 OpenWriting(previous):
 lprint('...main calculation finished.');
@@ -512,7 +619,8 @@ od:
 lprint('...real MSAs written.'):
 
 # create gene trees
-geneTrees := CreateGeneTrees(clusters, evolution, mutRate, leafHeights):
+#geneTrees := CreateGeneTrees(clusters, evolution, mutRate, leafHeights):
+geneTrees := CreateGeneTrees(clusters, evolution, leafHeights):
 
 # store orthologs for each pair of genes
 WriteOrthologs(geneTrees, livingOrgs):
@@ -520,13 +628,19 @@ WriteOrthologs(geneTrees, livingOrgs):
 # logfile footer, DB output, GenomeSummaries
 OpenAppending(wdir.'/logfile.txt');
 printf('\n\n\n\%i species generated\n', livingOrgs);
-printf('%.0f gene duplications and %.0f lgt events\n', totD, totL);
-printf('\nGC amelioration:');
-printf('\norganism #\ttarget GC content\tinitialized GC ratio\n'); 
-for i to length(GCratio) do
-    printf('\norganism %i\t%.2f\t\t%.2f', 
-	i, GCratio[i], calGCcont(evolution[i])); 
-od;
+if geneDuplRate > 0 then
+printf('%.0f gene duplications\n', totD):
+fi:
+if lgtRate > 0 or lgtGRate > 0 then
+    printf('%.0f lgt events\n', totL);
+fi:
+if enableGCAmelioration then
+    printf('\nGC amelioration:');
+    printf('\norganism #\ttarget GC content\tinitialized GC ratio\n'); 
+    for i to length(GCratio) do
+        printf('\norganism %i\t%.2f\t\t%.2f', i, GCratio[i], calGCcont(evolution[i])); 
+    od;
+fi:
 OpenWriting(previous);
 
 DBout():

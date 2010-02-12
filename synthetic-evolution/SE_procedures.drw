@@ -849,7 +849,7 @@ ComputeIndelPos := proc(e, sms, gr)
             #handle M-series models
             # rate is hidden in the Q-matrices
             indelSum := indelSum + 1:
-        elif rateDistribution = 'Gamma' then
+        elif amongSiteDistr = 'Gamma' then
             # handle gamma model
             for m to length(e[k, 1]) do
                 if type(e[k, 1, m, 3], list) then

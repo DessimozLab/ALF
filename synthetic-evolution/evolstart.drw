@@ -8,6 +8,7 @@
 # Sereina Riniker, Christophe Dessimoz, Daniel Margadant; CBRG; 2006
 Set(printgc=false);
 starttime := UTCTime();
+Set(gc=2e7): SetRandSeed(); # Set(quiet):
 #basedir := '/home/darwin/Orthologues/dan/synthetic-evolution/';
 basedir :='/Users/ddalquen/Documents/Darwin/source/bio-recipes/Orthologues/dan/synthetic-evolution/';
 if not assigned(paramfile) then
