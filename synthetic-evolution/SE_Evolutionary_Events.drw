@@ -274,13 +274,13 @@ PerformGeneLoss := proc(j:integer, evolTime:nonnegative; (nloss=1):posint)
 end:
 
 PerformLGT := proc(j:integer, evolTime:nonnegative)
-    global evolution, geneR, maxID, livingOrgs;
+    global evolution, geneR, maxID, livingOrgs, treeData, treeEvo, lgtNum;
+    donors := {seq(i, i = 1..livingOrgs)} minus {j}; 
+    orgDonor := Rand(donors);
     # lgt - orthologous replacement
     if Rand() < orthRep then
         printf('performing lgto\n'):
         # finds donor (recipient is current organism j)
-        donors := {seq(i, i = 1..livingOrgs)} minus {j}; 
-        orgDonor := Rand(donors);
         gd1 := transpose(evolution[orgDonor])[4];
         gd2 := transpose(evolution[j])[4];
         gD := Rand({op(gd1)} intersect {op(gd2)});
@@ -317,8 +317,6 @@ PerformLGT := proc(j:integer, evolTime:nonnegative)
     else
         printf('performing lgtn\n'):
         # finds donor (recipient is current organism j)
-        donors := {seq(i, i = 1..livingOrgs)} minus {j};
-        orgDonor := Rand(donors);
         geneDonor := trunc(Rand() * length(evolution[orgDonor])) + 1;
         seqmutation(orgDonor, geneDonor, evolTime);
         # copies entry and updates description
@@ -339,10 +337,20 @@ PerformLGT := proc(j:integer, evolTime:nonnegative)
         place := Rand(0..length(geneR[j]) - 1);
         transLoc(j, place, length(geneR[j]), 1);
     fi;
+    
+    if not type(treeEvo[op(treeData[orgDonor])], Leaf) then
+        error(treeEvo[op(treeData[orgDonor])], 'donor is not a leaf - should not happen!'):
+    fi:
+    if not type(treeEvo[op(treeData[j])], Leaf) then
+        error(treeEvo[op(treeData[j])], 'receipient is not a leaf - should not happen!'):
+    fi:
+    treeEvo[op(treeData[orgDonor])][3] := append(treeEvo[op(treeData[j])][3], ['LGT'.lgtNum.'s', evolTime]):
+    treeEvo[op(treeData[j])][3] := append(treeEvo[op(treeData[j])][3], ['LGT'.lgtNum.'e', evolTime]):
+    lgtNum := lgtNum + 1:
 end:
 
 PerformLGTG := proc(j:integer, evolTime:nonnegative, lgtSize)
-    global evolution, geneR, maxID, livingOrgs;
+    global evolution, geneR, maxID, livingOrgs, treeData, treeEvo, lgtNum;
     printf('performing lgtm\n'):
     # finds donor (recipient is current organism j)
     donors := {seq(i, i = 1..livingOrgs)} minus {j};
@@ -366,6 +374,16 @@ PerformLGTG := proc(j:integer, evolTime:nonnegative, lgtSize)
     # gene rearrangement
     place := Rand(0..length(geneR[j]) - lgtGSize - 1);
     transLoc(j, place, length(geneR[j]) - lgtGSize + 1, lgtGSize);
+
+    if not type(treeEvo[op(treeData[orgDonor])], Leaf) then
+        error(treeEvo[op(treeData[orgDonor])], 'donor is not a leaf - should not happen!'):
+    fi:
+    if not type(treeEvo[op(treeData[j])], Leaf) then
+        error(treeEvo[op(treeData[j])], 'receipient is not a leaf - should not happen!'):
+    fi:
+    treeEvo[op(treeData[orgDonor])][3] := append(treeEvo[op(treeData[j])][3], ['LGT'.lgtNum.'s', evolTime]):
+    treeEvo[op(treeData[j])][3] := append(treeEvo[op(treeData[j])][3], ['LGT'.lgtNum.'e', evolTime]):
+    lgtNum := lgtNum + 1:
 end:
 
 PerformFusion := proc(j:integer, evolTime:nonnegative; (nfuse=1):posint)
@@ -410,7 +428,7 @@ PerformTranslocation := proc(org:integer)
 end:
 
 PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
-    global evolution, geneR, livingOrgs, spec, treeData, treeEvo, GCratio;
+    global evolution, geneR, livingOrgs, spec, treeData, treeEvo, GCratio, specModels;
     for i to length(evolution[orgSource]) do
         seqmutation(orgSource, i, evolTime);
     od:
@@ -419,8 +437,13 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
     livingOrgs := livingOrgs + 1;
     # updates history in gene descriptions
     if assigned(specModels) then
-        fromModels := transpose(specModels)[1]:
-        toModels := transpose(specModels)[2]:
+        curSpecModels := transpose(specModels[1]):
+        #printf('curSpecModels: %A\n', curSpecModels):
+        if curSpecModels <> [] then
+            fromModels := curSpecModels[1]:
+            toModels := curSpecModels[2]:
+        fi:
+        specModels := specModels[2..-1]:
     fi:
     for l to length(evolution[livingOrgs]) do
         evolution[livingOrgs, l, 5] := evolution[orgSource, l, 5].'-('.string(evolTime).')'.livingOrgs;
@@ -428,14 +451,15 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
         # model switch
         curm := evolution[livingOrgs, l, 9]:
         curSubstModel := substModels[curm]:
-        if assigned(specModels) then
+        if assigned(fromModels) then
+            #printf('fromModels assigned: %A\n', fromModels):
             modIndex := SearchOrderedArray(curm, fromModels):
             if modIndex <> 0 then
                 m := toModels[modIndex]:
                 printf('model switch during speciation for gene %d of species %d: %d -> %d\n', l, livingOrgs, curm, m):
                 evolution[livingOrgs, l, 9] := m:
                 substModel := substModels[m]:
-                printf('cs: %A, s: %A, cp3: %A, p3: %A\n', curSubstModel, substModel, curSubstModel[Params], substModel[Params]):
+                #printf('cs: %A, s: %A, cp3: %A, p3: %A\n', curSubstModel, substModel, curSubstModel[Params], substModel[Params]):
                 if substModel[Name] = 'M0' and curSubstModel[Name] <> 'M0' then
                     evolution[livingOrgs, l, 1] := makeAreasOmega(substModel[Name], aaStart):
                 elif substModel[Name][1] = 'M' and (curSubstModel[Name] <> substModel[Name] or length(curSubstModel[Params][3]) <> length(substModel[Params][3])) then
@@ -467,25 +491,25 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
     treeData := append(treeData, []);
     d := evolTime;
     if treeData[orgSource] = [] then
-        treeEvo[] := Tree(Leaf(orgSource, d),
-            d, Leaf(livingOrgs, d));
+        treeEvo[] := Tree(Leaf(orgSource, d, {}),
+            d, Leaf(livingOrgs, d, {}));
     else
-        treeEvo[op(treeData[orgSource])] := Tree(Leaf(orgSource, d),
-            d, Leaf(livingOrgs, d));
+        treeEvo[op(treeData[orgSource])] := Tree(Leaf(orgSource, d, {}),
+            d, Leaf(livingOrgs, d, {}), treeEvo[op(treeData[orgSource])][3]);
     fi;
     treeData[livingOrgs] := append(copy(treeData[orgSource]), Right);
     treeData[orgSource] := append(copy(treeData[orgSource]), Left);
     lastSpeciation := evolTime;
     printf ('time %0004.4f: speciation event of organism %i to organism '.
         '%i', evolTime, orgSource, livingOrgs);
-    if enableGCAmelioration then
-        # defines new GC amelioration direction for new species
-        gcrat := calGCcont(evolution[livingOrgs]);
-        GCratio := append(GCratio, Rand(0.3..0.7)):
-        # instead of picking a random value, choose one that differs max +/-0.1 from the ancestor's
-        #GCratio := append(GCratio, Rand(max(0.3, GCratio[orgSource]-0.1)..min(0.7,GCratio[orgSource]+0.1))):
-        printf(', GC content: %.2f%%', gcrat):
-    fi:
+#    if enableGCAmelioration then
+#        # defines new GC amelioration direction for new species
+#        gcrat := calGCcont(evolution[livingOrgs]);
+#        GCratio := append(GCratio, Rand(0.3..0.7)):
+#        # instead of picking a random value, choose one that differs max +/-0.1 from the ancestor's
+#        #GCratio := append(GCratio, Rand(max(0.3, GCratio[orgSource]-0.1)..min(0.7,GCratio[orgSource]+0.1))):
+#        printf(', GC content: %.2f%%', gcrat):
+#    fi:
     printf('\n'):
     OpenWriting(previous);
     printf('species %i was created at time %0004.4f\n', livingOrgs, evolTime);
@@ -495,9 +519,12 @@ end:
 
 # mutates gene k of organism org for a certain amount of time steps, 15.12.06
 seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
-    global evolution, substModels;
+    global evolution, substModels, curTargetFreqs, enableGCAmelioration;
     oldLen := length(evolution[org,gene,2]):
     substModel := substModels[evolution[org, gene, 9]]:
+    if enableGCAmelioration then
+        targetFreqs := curTargetFreqs[org][min(length(curTargetFreqs[org]), evolution[org, gene, 9])]:
+    fi:
     # apply rate modifications from duplications
     rateFac := curT - evolution[org,gene,11]:
     if rateFac <= 0 then return() fi:
@@ -516,11 +543,11 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
             if enableGCAmelioration then
                 if substModel[Name][1] = 'M' then
                     GCMatrix := CreateArray(1..length(substModel[LogPAM1]),0):
-                    for i to length(YCodonLogPAM1) do
-                        GCMatrix[i] := GCBiasMatrix(GCratio[org], substModel[LogPAM1][i], substModel[Type]):
+                    for i to length(substModel[LogPAM1]) do
+                        GCMatrix[i] := GCBiasMatrix(substModel[LogPAM1][i], substModel[BaseFreqs], targetFreqs):
                     od:
                 else
-                    GCMatrix := GCBiasMatrix(GCratio[org], GCMatrix, substModel[Type]):
+                    GCMatrix := GCBiasMatrix(GCMatrix, substModel[BaseFreqs], targetFreqs):
                 fi:
             fi:
         fi:
@@ -551,15 +578,20 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
                 else
                     if type(evolution[org,gene,1][i,3], list) then
                         if substModel[Name][1] = 'M' then
+                            #printf('class assignments: %A\n', evolution[org, gene, 1][i,3]):
+                            #printf('length of GCMatrix: %d\n', length(GCMatrix)):
+                            #printf('codon mutate 1\n'):
                             sequence := CodonMutate(sequence, rateFac, GCMatrix, evolution[org, gene, 1][i,3]):
                         else
                             ol := length(sequence):
+                            #printf('codon mutate 2\n'):
                             sequence := CodonMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, gene, 1][i,3]):
                             if ol <> length(sequence) then
                                 printf('ERROR occurred in CodonMutate!\n'):
                             fi:
                         fi:
                     else
+                        #printf('codon mutate 3\n'):
                         sequence := CodonMutate(sequence, rateFac * evolution[org, gene, 1][i,3], GCMatrix):
                     fi:
                 fi:
@@ -821,5 +853,17 @@ MeanGapLength := proc(distr:{'ZIPF', 'QG', 'NEGBIN', 'EXP', 'CUSTOM'}, maxLength
         for i to length(params) do
             m := m + i * params[i]:
         od:
+    fi:
+end:
+
+EventOrderFunction := proc(e1, e2) -> boolean;
+    if e1[1] < e2[1] then
+        return(true):
+    elif e1[1] > e2[1] then
+        return(false):
+    elif e1[3] = 'S' then
+        return(true):
+    else
+        return(false):
     fi:
 end:

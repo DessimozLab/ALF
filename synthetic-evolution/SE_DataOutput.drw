@@ -3,13 +3,13 @@
 # it is assumed that the order of amino acids and codons is always the same and the matrix is
 # re-ordered to correspond to the order used by Darwin.
 LoadPAMLMatrixFile := proc(file:string, mtype:{'Peptide', 'Codon'})
-    global AF, logPAM1, CodonLogPAM1, NewLogPAM1;
+    global AF, logPAM1, CodonLogPAM1, NewLogPAM1, command;
     if mtype = 'Peptide' then
-        size := 20:
+        msize := 20:
         SA := [A,  R,  N,  D,  C,  Q,  E,  G,  H,  I,  L,  K,  M,  F,  P,  S,  T,  W,  Y,  V]:
         convfunc := AToInt;
     elif mtype = 'Codon' then
-        size := 64:
+        msize := 64:
         SA := [TTT, TTC, TTA, TTG, TCT, TCC, TCA, TCG, TAT, TAC, TGT, TGC, TGG, CTT, CTC, CTA, CTG, CCT, CCC, CCA, 
         CCG, CAT, CAC, CAA, CAG, CGT, CGC, CGA, CGG, ATT, ATC, ATA, ATG, ACT, ACC, ACA, ACG, AAT, AAC, AAA, 
         AAG, AGT, AGC, AGA, AGG, GTT, GTC, GTA, GTG, GCT, GCC, GCA, GCG, GAT, GAC, GAA, GAG, GGT, GGC, GGA, 
@@ -20,80 +20,66 @@ LoadPAMLMatrixFile := proc(file:string, mtype:{'Peptide', 'Codon'})
     fi:
     
     # parse PAML matrix file format
-    OpenReading(file):
-    matrix := CreateArray(1..size, 1..size, 0):
-    freqs := CreateArray(1..size, 0):
-    command := copy('tmpmat := [[], ['):
+    #OpenReading(file):
+    matrix := CreateArray(1..msize, 1..msize, 0):
+    freqs := CreateArray(1..msize, 0):
     
-    l := ReadRawLine():
-    while l <> EOF and (l = '\n' or l = '\r' or l = '\r\n') do l := ReadRawLine() od:
-    if l = EOF then error('unexpected end of file') fi:
-
-    # parse matrix
+    f := SplitLines(ReadRawFile(file)):
+    tmpmat := [[]]:
+    tmpfreqs := []:
+    i := 1:
+    while i <= length(f) and (f[i] = '' or f[i] = '\r' or f[i] = '\n' or f[i] = '\r\n') do i := i+1 od:
+    if i > length(f) then error('unexpected end of file') fi:
+    
+    #parse matrix
     do
-        tokens := SearchDelim(' ', l[1..-2]):
-        for i to length(tokens) do
-            if tokens[i] <> '' and tokens[i] <> '\n' and tokens[i] <> '\r' then command := command.tokens[i].', ' fi:
+        tokens := SearchDelim(' ', f[i]):
+        newline := []:
+        for j to length(tokens) do
+            if tokens[j] = '' or tokens[j] = '\r' or tokens[j] = '\n' or tokens[j] = '\r\n' then next fi:
+            newline := append(newline, op(sscanf(tokens[j], '%g'))):
         od:
-        while {command[-1]} intersect {' ', ',', '\r', '\n', '\t'} <> {} do command := command[1..-2]: od:
-        l := ReadRawLine():
-        if l <> '\n' and l <> '\r' and l <> '\r\n' then
-            command := command.'], [':
-        else
-            command := command.']]:':
-            break:
-        fi:
+        tmpmat := append(tmpmat,newline):
+        
+        i := i + 1:
+        if f[i] = '' or f[i] = '\r' or f[i] = '\n' or f[i] = '\r\n' then break fi
     od:
-    eval(parse(command)):
+    
     if mtype = 'Peptide' and length(tmpmat) <> 20 then error('matrix should have 20 entries'):
     elif mtype = 'Codon' and length(tmpmat) <> 61 then error('matrix should have 61 entries'):
     fi:
-    
-    command := copy('tmpfreqs := ['):
-    while l <> EOF and (l = '\n' or l = '\r' or l = '\r\n') do l := ReadRawLine() od:
-    if l = EOF then error('unexpected end of file') fi:
 
-    tokens := SearchDelim(' ', l):
-    for i to length(tokens) do
-        if tokens[i] <> '' and tokens[i] <> '\n' and tokens[i] <> '\r' then command := command.tokens[i].', ' fi:
+    while i <= length(f) and (f[i] = '' or f[i] = '\r' or f[i] = '\n' or f[i] = '\r\n') do i := i+1 od:
+    if i > length(f) then error('unexpected end of file') fi:
+
+    tokens := SearchDelim(' ', f[i]):
+    for j to length(tokens) do
+        if tokens[j] = '' or tokens[j] = '\r' or tokens[j] = '\n' or tokens[j] = '\r\n' then next fi:
+        tmpfreqs := append(tmpfreqs, op(sscanf(tokens[j], '%g'))):
     od:
-    while {command[-1]} intersect {' ', ',', '\r', '\n', '\t'} <> {} do command := command[1..-2]: od:
-    command := command.']:':
-    eval(parse(command)):
-    while l <> EOF  do l := ReadRawLine() od:
+        
+    printf('tmpfreqs: %A\ntmpmat: %A\n', tmpfreqs,tmpmat):
 
-    if length(tmpfreqs) <> length(tmpmat) then error('matrix size doesn''t match frequency vector') fi:
+    if length(tmpfreqs) <> length(tmpmat) then error(length(tmpfreqs), length(tmpmat), 'matrix size doesn''t match frequency vector') fi:
     
+    tmpfreqs := tmpfreqs/sum(tmpfreqs):
     for i from 1 to length(tmpfreqs) do
         ai := convfunc(SA[i]):
         freqs[ai] := tmpfreqs[i]:
         for j from 1 to i-1 do
             aj := convfunc(SA[j]):
-            matrix[ai,aj] := tmpmat[i,j]*tmpfreqs[j]:
-            matrix[aj,ai] := tmpmat[i,j]*tmpfreqs[i]:
+            matrix[ai,aj] := tmpmat[i,j]*tmpfreqs[i]:
+            matrix[aj,ai] := tmpmat[i,j]*tmpfreqs[j]:
         od:
     od:
         
-    freqmat := CreateArray(1..size,1..size,0):
-    for i to size do
-        freqmat[i,i] := freqs[i]:
-    od:
-    qsum := sum(sum(freqmat*matrix)):
-        
-    matrix := matrix/qsum:
+    qsum := sum(matrix):
+    for i to msize do matrix[i,i] := -qsum[i] od:
     
-    for i to size do
-        v := 0:
-        for j to size do
-           if i <> j then
-               v := v+matrix[i,j]:
-            fi:
-        od:
-        matrix[i,i] := -v:
-    od:
-    freqs := freqs/sum(freqs):
+#    matrix := transpose(matrix):
+    
     if mtype = 'Codon' then
-        CreateCodonMatrices(transpose(matrix), freqs):
+        CreateCodonMatrices(matrix, freqs):
     else
         AF := freqs:
         M := exp(matrix);

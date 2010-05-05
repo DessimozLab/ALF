@@ -588,38 +588,38 @@ end:
 # adapted by daniel dalquen to compute a CodonMatrix based on a target
 # GC content (the bias for the matrix is computed from the target content
 # using a polynomial fit over the empirical convergence values)
-GCBiasMatrix := proc(gccont:numeric;(lnM1=CodonLogPAM1):matrix, simType:string)
-    M1 := exp(lnM1);
-    if simType = 'codon' then
-        # compute the actual bias
-        bias := 5.46135*gccont^3 - 4.53971*gccont^2 + 2.7788*gccont - .92313:
-        GC := CreateArray(1..64):
-        for i to 64 do
-            t := BaseCount(CIntToCodon(i));
-            GC[i] := t[2]+t[3];
-        od;
-        matlen := 64:
-    elif simType = 'nuc' then
-        bias := 5.11693*gccont^3 - 4.74833*gccont^2 + 2.97291*gccont - .91322:
-        GC := [seq(If(NIntToNuc(i) = 'C' or NIntToNuc(i) = 'G', 1, 0), i=1..4)]:
-        matlen := 4:
-    else
-        error('gc amelioration only works for dna and codon simulations'):
-    fi:
-    f := 1+bias;
-    for i to matlen do for j to matlen do M1[i,j] := max(0,M1[i,j]) od od:
-    for i to matlen do  # mutation from i to j
-        for j to matlen do
-            if j=i then next fi;
-            d := GC[j]-GC[i];
-            M1[j,i] := M1[j,i]*f^d;
-        od;
-        s := sum(M1[j,i],j=1..matlen)-M1[i,i];
-        if s<0 or s>1 then error('invalid sum') fi;
-        M1[i,i] := 1-s;
-    od:
-    return(ln(M1));
-end:
+#GCBiasMatrix := proc(gccont:numeric;(lnM1=CodonLogPAM1):matrix, simType:string)
+#    M1 := exp(lnM1);
+#    if simType = 'codon' then
+#        # compute the actual bias
+#        bias := 5.46135*gccont^3 - 4.53971*gccont^2 + 2.7788*gccont - .92313:
+#        GC := CreateArray(1..64):
+#        for i to 64 do
+#            t := BaseCount(CIntToCodon(i));
+#            GC[i] := t[2]+t[3];
+#        od;
+#        matlen := 64:
+#    elif simType = 'nuc' then
+#        bias := 5.11693*gccont^3 - 4.74833*gccont^2 + 2.97291*gccont - .91322:
+#        GC := [seq(If(NIntToNuc(i) = 'C' or NIntToNuc(i) = 'G', 1, 0), i=1..4)]:
+#        matlen := 4:
+#    else
+#        error('gc amelioration only works for dna and codon simulations'):
+#    fi:
+#    f := 1+bias;
+#    for i to matlen do for j to matlen do M1[i,j] := max(0,M1[i,j]) od od:
+#    for i to matlen do  # mutation from i to j
+#        for j to matlen do
+#            if j=i then next fi;
+#            d := GC[j]-GC[i];
+#            M1[j,i] := M1[j,i]*f^d;
+#        od;
+#        s := sum(M1[j,i],j=1..matlen)-M1[i,i];
+#        if s<0 or s>1 then error('invalid sum') fi;
+#        M1[i,i] := 1-s;
+#    od:
+#    return(ln(M1));
+#end:
 
 
 makeAreasOmega := proc(substModel:string, aaStart:posint; classFreq:{nonnegative, list(nonnegative)})
@@ -635,7 +635,7 @@ makeAreasOmega := proc(substModel:string, aaStart:posint; classFreq:{nonnegative
         od:
         cdf[length(classFreq)+1] := 1:
     elif substModel = 'M8' then
-        cdf := [seq(i*(1-classFreq)/10, i=1..10)]:
+        cdf := [seq(i*(classFreq)/10, i=1..10)]:
         cdf := append(cdf, 1):
     fi:
     for i to aaStart do

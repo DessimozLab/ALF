@@ -15,9 +15,9 @@ evolTime := 0;
 treeData := []:
 treeData := append(treeData, []):   
 treeEvo := '';
+lgtNum := 0:
 totD := 0; totL := 0;
-spec := [];                   
-GCratio := [];
+spec := [];
 timesteps := CreateArray(1..1);
 geneR := [];
 c := 0;
@@ -73,6 +73,13 @@ if not assigned(modelSwitchD) then
     modelSwitchD := [[1]]:
 fi:
 
+if not assigned(targetFreqs) then
+    enableGCAmelioration := false:
+else
+    enableGCAmelioration := true:
+fi:    
+
+
 if length(FileStat(wdir.'/'.mname)) <> 0 then
     i := 1:
     while length(FileStat(wdir.'/'.mname.'_'.i.'/')) > 0 do
@@ -112,6 +119,7 @@ elif treeType = 'ToLSample' then
 else
     error('no tree selected')
 fi:
+
 # calculation of the needed iteration steps
 #rate := max(geneDuplRate, geneLossRate, lgtRate, lgtGRate,
 #    aaGainRate, aaLossRate, 1);
@@ -133,6 +141,23 @@ if scaleTree then
         error('could not scale tree. make sure your tree is strictly bifurcating and all branches have a non-zero height.'):
     fi:
 fi:
+
+if enableGCAmelioration then
+    if length(substModels) = length(targetFreqs) or length(targetFreqs) = 1 then
+        for i to length(targetFreqs) do
+            if targetFreqs[i] = 'Random' then
+                targetFreqs[i] := CreateRandomTargetFrequencies(substModels[i][Type], tree, NSpecies):
+            else
+                CheckTargetFrequencies(targetFreqs[i], substModels[i][Type], NSpecies):
+            fi:
+        od:
+    else
+        error('Please supply either one set of target frequencies for all models together or for each model separately.'):
+    fi:
+    tree := GenInternalTargetFreqs(targetFreqs, tree):
+    curTargetFreqs := CreateArray(1..NSpecies, tree[-1]):
+fi:
+
 if not webRequest then
     printf('\ntree loaded\n'):
 fi:
@@ -161,7 +186,7 @@ od:
 tptransp := transpose(timePts):
 specTime := tptransp[2]:
 specIndex := tptransp[1]:
-if length(tptransp) = 3 then specModel := tptransp[3]: fi: # model switches
+if length(tptransp) = 3 then specModels := tptransp[3]: fi: # model switches
 
 # if there's a list of duplication time points prepare it
 # TODO: implement this kind of duplication (for version 2?)
@@ -188,13 +213,13 @@ if res[2] <> [] then
     dtptransp := transpose(dupTimePts):
     dupTime := dtptransp[2]:
     dupIndex := dtptransp[1]:
-    dupModel := dtptransp[3]: # model switches
+    dupModels := dtptransp[3]: # model switches
 else
     dupTime := []:
     dupIndex := []:
 fi:
 
-branches := EnumerateBranches(tree, timePts):
+branches := EnumerateBranches(tree, timePts, enableGCAmelioration):
 branches := sort(branches, x->x[3]):
 
 leafHeights := CreateArray(1..NSpecies, 0):
@@ -215,7 +240,7 @@ cSpecies := length(specTime) + 1:
 
 if amongSiteDistr = 'Gamma' then
 #    gammaRates := GammaRates(alphaG, areas) * mutRate / maxSteps:
-    gammaRates := GammaRates(alphaG, areas):
+    gammaRates := GammaRates(alphaG, areas) / (1-motifFreq):
     gammaRates := append(gammaRates, 1/DBL_MAX):
 fi:
 
@@ -294,7 +319,7 @@ if realseed = true then # generates the first organism with real data
         if amongGeneDistr = 'Gamma' then
             evolution[1, i, 10] := [[mutRate, Rand(GammaDistr(aGAlpha))/aGAlpha]]:
         elif amongGeneDistr = 'Custom' then
-            evolution[1, i, 10] := [[mutRate, customRates[i]]:            
+            evolution[1, i, 10] := [[mutRate, customRates[i]]]:            
         fi:
         evolution[1, i, 11] := 0:
         geneR[1, i] := i;
@@ -318,10 +343,16 @@ else
             evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, amongSiteDistr, motifFreq);
         fi:
         if substModel[Type] <> 'aa' then
-            if substModel[Type] = 'nuc' and not substModel[NeutralDNA] then
-                evolution[1, i, 6] := CreateRandSeq(3*aaStart, substModel[BaseFreqs]);
+            if enableGCAmelioration then
+                nOfGCTargets := length(curTargetFreqs[1]):
+                bf := curTargetFreqs[1][min(nOfGCTargets, modelAssignments[i])]:
             else
-                evolution[1, i, 6] := CreateRandSeq(aaStart, substModel[BaseFreqs]);
+                bf := substModel[BaseFreqs]:
+            fi:
+            if substModel[Type] = 'nuc' and not substModel[NeutralDNA] then
+                evolution[1, i, 6] := CreateRandSeq(3*aaStart, bf);
+            else
+                evolution[1, i, 6] := CreateRandSeq(aaStart, bf);
             fi:
         fi:
         if substModel[Type] = 'aa' then
@@ -340,7 +371,7 @@ else
         evolution[1, i, 9] := modelAssignments[i]:
         evolution[1, i, 10] := []:
         if amongGeneDistr = 'Gamma' then
-            evolution[1, i, 10] := [[mutRate, Rand(GammaDistr(aGAlpha))/aGAlpha]]:            
+            evolution[1, i, 10] := [[mutRate, Rand(GammaDist(aGAlpha))/aGAlpha]]:            
         fi:
         evolution[1, i, 11] := 0:
         geneR[1, i] := i;
@@ -352,9 +383,9 @@ maxID := length(evolution[1]);    # highest unique gene ID number
 clusters := [seq([], maxID)]: # gene families
 
 # definition of the GC amelioration for the first organism
-if enableGCAmelioration then
-    GCratio := append(GCratio, Rand(0.3..0.7)):
-fi:
+#if enableGCAmelioration then
+#    GCratio := append(GCratio, Rand(0.3..0.7)):
+#fi:
 
 # write out DB file of first organism
 DBoutAnc(evolution[1], 1, 1, 0);
@@ -407,7 +438,6 @@ lprint():
 #    printf('\n');
 #od;
 lprint();
-
 rateSum := geneDuplRate + geneLossRate + fusionRate + fissionRate + invers + transloc:
 
 ngenes := [length(evolution[1])]:
@@ -416,7 +446,6 @@ curT := 0:
 events := [seq([], floor(max(leafHeights)/10)+1)]:
 
 seind := 1:
-
 for i to length(branches) do
     if seind > 1 then
         totalRate := ngenes[branches[i,1]] * rateSum + (ngenes[branches[i,1]] + 1) * (lgtRate + lgtGRate):        
@@ -425,6 +454,11 @@ for i to length(branches) do
     fi:
     #printf('rateSum: %.4g, totalRate: %.4g\n', rateSum, totalRate):
     curT := branches[i,2]:
+    if enableGCAmelioration then
+        curInd := floor(curT/10)+1:
+        events[curInd] := append(events[curInd], [curT, branches[i,1], 'GC', branches[i, 4]]):
+    fi:    
+    
     if totalRate > 0 then
         do
             curInt := Rand(Exponential(0,1/totalRate)):
@@ -504,7 +538,8 @@ for i to length(timePts) do
 od:
 
 for i to length(events) do
-    events[i] := sort(events[i], x->x[1]):
+#    events[i] := sort(events[i], x->x[1]):
+    events[i] := sort(events[i], EventOrderFunction):
 od:
 
 if aaGainRate > 0 or aaLossRate > 0 then
@@ -552,6 +587,9 @@ for i to length(events) do
         elif cure = 'S' then
             # speciation
             PerformSpeciation(events[i,j,2], events[i,j,1]):
+        elif cure = 'GC' then
+            # change of GC target content
+            PerformNewGCTarget(events[i,j,2], events[i,j,1], events[i,j,4]):
         else
             error('unknown event!'):
         fi:
@@ -564,7 +602,7 @@ OpenWriting(previous);
 # saves real tree, updates all organisms
 branchesSet := {op(branches)}:
 for i to length(branchesSet) do
-    treeEvo[op(treeData[branchesSet[i,1]])]:=Leaf('SE'.sprintf('%03d', branchesSet[i,1]), branchesSet[i,3]); 
+    treeEvo[op(treeData[branchesSet[i,1]])]:=Leaf('SE'.sprintf('%03d', branchesSet[i,1]), branchesSet[i,3], treeEvo[op(treeData[branchesSet[i,1]])][3]); 
 od:
 DrawTree(treeEvo, ArcRadial, OrderLeaves=LeftHeavy, Legend, 
     Title = 'synthetic evolution');
@@ -636,9 +674,14 @@ if lgtRate > 0 or lgtGRate > 0 then
 fi:
 if enableGCAmelioration then
     printf('\nGC amelioration:');
-    printf('\norganism #\ttarget GC content\tinitialized GC ratio\n'); 
-    for i to length(GCratio) do
-        printf('\norganism %i\t%.2f\t\t%.2f', i, GCratio[i], calGCcont(evolution[i])); 
+    printf('\norganism #\ttarget GC content\tactual GC content\n'); 
+    for i to NSpecies do
+        printf('\norganism %i\t', i):
+        for j to length(curTargetFreqs[i]) do
+            printf('%.2g\t\t', ComputeTargetGCContent(curTargetFreqs[i,j])):
+            if j < length(curTargetFreqs[i]) then printf(', ') fi
+        od:
+        printf('%.2g', calGCcont(evolution[i])); 
     od;
 fi:
 OpenWriting(previous);

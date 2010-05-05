@@ -76,12 +76,14 @@ SubstitutionModel := proc(Name:string, Params:list(anything), BaseFreqs:list(num
             error('specify whether simulation should assume neutral dna'):
         else
             if Name = 'M8' then
-                CreateCodonModelMatrices(Name, BaseFreqs, Params[1], Params[2], Params[4], Params[5]):
+                m := CreateCodonModelMatrices(Name, BaseFreqs, Params[1], Params[2], Params[3], Params[4], Params[5]):
+            elif Name = 'M0' then
+                m := CreateCodonModelMatrices(Name, BaseFreqs, Params[1], Params[2]):
             else
-                CreateCodonModelMatrices(Name, BaseFreqs, Params[1], Params[2]):
+                m := CreateCodonModelMatrices(Name, BaseFreqs, Params[1], Params[2], Params[3]):
             fi:
             f := copy(BaseFreqs):
-            m := copy(YCodonLogPAM1):
+#            m := copy(YCodonLogPAM1):
             noeval(SubstitutionModel(Name, Params, f, false, 'codon', m, 3)):
         fi:
     else # nucleotide models

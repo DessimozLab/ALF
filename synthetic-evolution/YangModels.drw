@@ -3,61 +3,64 @@
 # syn/non-syn ratios; p and q - parameters of beta-distribution (for M7/8)
 # creates the following global objects:
 # - ...
-CreateCodonModelMatrices := proc(model:{'M0','M2','M3','M8'}, freq:list(nonnegative), kappa:nonnegative, w:{nonnegative, set(nonnegative)}; p:positive, q:positive)
-    global YCM, YCMS, YCodonLogPAM1, CF, CM, CMS, CodonLogPAM1:
-    YCM := []:
-    YCMS := []:
-    YCodonLogPAM1 := []:
+CreateCodonModelMatrices := proc(model:{'M0','M2','M3','M8'}, freq:list(nonnegative), kappa:nonnegative, w:{nonnegative, set(nonnegative)}; (props_=[]):{nonnegative, list(nonnegative)}, p:positive, q:positive)
+    #global YCM, YCMS, YCodonLogPAM1, CF, CM, CMS, CodonLogPAM1:
+    if type(props_, list) then
+        props := copy(props_):
+        pn := 1-sum(props):
+        if pn < 0 then error('proportions add up to > 1!'): fi:
+        if pn > 0 then props := append(props, pn): fi:
+    fi:
     if model = 'M0' then
         if type(w, set) then
             error('M0 requres a single w-value!'):
         fi:
-        CreateParametricQMatrix(freq, kappa, w):
-        YCM := append(YCM, CM):
-        YCMS := append(YCMS, CMS):
-        YCodonLogPAM1 := append(YCodonLogPAM1, CodonLogPAM1):
+        Q := CreateParametricQMatrix(freq, kappa, w):
+        k := -sum(Q[i,i]*freq[i],i=1..64);
+        Q := Q/k;
+        Qarr := [CreatePAM1Matrix(Q, freq)]:
     elif model = 'M2' then
         if not type(w, nonnegative) then
             error('M2 requires exactly one w-value! If you want to simulate M1 using M2, set w to 1.'):
         fi:
-        
-        warr := {0,1}:
+        warr := copy([0,1]):
         warr := append(warr, w):
-        
-        for i to length(warr) do
-            CreateParametricQMatrix(freq, kappa, warr[i]):
-            YCM := append(YCM, CM):
-            YCMS := append(YCMS, CMS):
-            YCodonLogPAM1 := append(YCodonLogPAM1, CodonLogPAM1):
+        nw := length({op(warr)}):
+        if length(props) <> nw then error('number of proportions does not match number of w classes.'): fi:
+        Qarr := CreateArray(1..nw,0):
+        for i to nw do
+            Qarr[i] := CreateParametricQMatrix(freq, kappa, warr[i]):
         od:
+        
     elif model = 'M3' then
         if not type(w, set) or length(w) < 2 then
             error('M3 should have at least 2 classes! Use M0 instead.'):
         fi:
+        if not type(props_, list) or length(w) <> length(props) then error('number of proportions does not match number of w classes.') fi:
+        Qarr := CreateArray(1..length(w), 0):
         for i to length(w) do
-            CreateParametricQMatrix(freq, kappa, w[i]):
-            YCM := append(YCM, CM):
-            YCMS := append(YCMS, CMS):
-            YCodonLogPAM1 := append(YCodonLogPAM1, CodonLogPAM1):
+            Qarr[i] := CreateParametricQMatrix(freq, kappa, w[i]):
         od:            
     elif model = 'M8' then
         if not (type(w, nonnegative) and assigned(p) and assigned(q)) then
             error('M8 requires exactly one w-value >= 1 as well as parameters p and q!'):
         fi:
+        if type(props_, list) then error('M0 requires exactly one proportion.'): fi:
+        props := [seq(props_/10,10)]:
+        props := append(props, 1-props_):
+        Qarr := CreateArray(1..11, 0):
         for k from 0 to 9 do
             w1 := InverseCDFBeta(k/10, p, q):
             w2 := InverseCDFBeta((k+1)/10, p, q):
-            CreateParametricQMatrix(freq, kappa, (w1+w2)/2):
-            YCM := append(YCM, CM):
-            YCMS := append(YCMS, CMS):
-            YCodonLogPAM1 := append(YCodonLogPAM1, CodonLogPAM1):
+            Qarr[k+1] := CreateParametricQMatrix(freq, kappa, (w1+w2)/2):
         od:
-        CreateParametricQMatrix(freq, kappa, w):
-        YCM := append(YCM, CM):
-        YCMS := append(YCMS, CMS):
-        YCodonLogPAM1 := append(YCodonLogPAM1, CodonLogPAM1):        
+        Qarr[11] := CreateParametricQMatrix(freq, kappa, w):
     fi:
-    NULL
+    
+    if model <> 'M0' then
+        Qarr := CreatePAM1Matrices(Qarr, freq, props):
+    fi:
+    Qarr
 end:
 
 
@@ -89,35 +92,69 @@ CreateParametricQMatrix := proc(freq, kappa, win)
         od;
     od:
     
-    OpenWriting('alfqmat.txt'):
-    SA := [TTT, TTC, TTA, TTG, TCT, TCC, TCA, TCG, TAT, TAC, TGT, TGC, TGG, CTT, CTC, CTA, CTG, CCT, CCC, CCA, 
-        CCG, CAT, CAC, CAA, CAG, CGT, CGC, CGA, CGG, ATT, ATC, ATA, ATG, ACT, ACC, ACA, ACG, AAT, AAC, AAA, 
-        AAG, AGT, AGC, AGA, AGG, GTT, GTC, GTA, GTG, GCT, GCC, GCA, GCG, GAT, GAC, GAA, GAG, GGT, GGC, GGA, 
-        GGG, TAA, TAG, TGA]:
-    for i to 64 do for j to 64 do
-        if i = j then
-            printf('%0.4g\t', -sum(Q[CodonToCInt(SA[i])]))
-        else
-            printf('%0.4g\t', Q[CodonToCInt(SA[i]),CodonToCInt(SA[j])])
-        fi
-    od: printf('\n') od:
-    OpenWriting(previous): 
+#    qsum := sum(Q):
+#    for i to 64 do
+#        Q[i,i] := -qsum[i]:
+#    od:
+#    OpenWriting('alfqmat.txt'):
+#    SA := [TTT, TTC, TTA, TTG, TCT, TCC, TCA, TCG, TAT, TAC, TGT, TGC, TGG, CTT, CTC, CTA, CTG, CCT, CCC, CCA, 
+#        CCG, CAT, CAC, CAA, CAG, CGT, CGC, CGA, CGG, ATT, ATC, ATA, ATG, ACT, ACC, ACA, ACG, AAT, AAC, AAA, 
+#        AAG, AGT, AGC, AGA, AGG, GTT, GTC, GTA, GTG, GCT, GCC, GCA, GCG, GAT, GAC, GAA, GAG, GGT, GGC, GGA, 
+#        GGG, TAA, TAG, TGA]:
+#    for i to 64 do for j to 64 do
+#        if i = j then
+#            printf('%0.4g\t', -sum(Q[CodonToCInt(SA[i])]))
+#        else
+#            printf('%0.4g\t', Q[CodonToCInt(SA[i]),CodonToCInt(SA[j])])
+#        fi
+#    od: printf('\n') od:
+#    OpenWriting(previous): 
 
-    freqmat := CreateArray(1..64, 1..64, 0):
-    for i to 64 do
-        freqmat[i,i] := freq[i]:
-    od:
+#    freqmat := CreateArray(1..64, 1..64, 0):
+#    for i to 64 do
+#        freqmat[i,i] := freq[i]:
+#    od:
     
-    qsum := sum(sum(freqmat*Q)):
-    Q := Q/qsum:
+#    qsum := sum(sum(freqmat*Q)):
+#    printf('qsum: %g\n', qsum):
+#    Q := Q/qsum:
     
     for i to 64 do
         Q[i,i] := -sum(Q[i]):
     od:
    
-    CreateCodonMatrices(transpose(Q), freq):
-    
+#     CreateCodonMatrices(transpose(Q), freq):
+    transpose(Q)
 end:
+
+
+CreatePAM1Matrix := proc(Q_, freq)
+    Q := copy(Q_):
+    M := exp(Q):
+    t := M*freq-freq:
+    if max(t)>1e-6 or min(t)<-1e-6 then
+        error('M*f should be f, but is',t) fi;
+    
+    do  d := sum( freq[i]*(1-M[i,i]), i=1..64 );
+        if |d-0.01| < DBL_EPSILON then break fi;
+        Q := Q * 0.01/d;
+        M := exp(Q)
+    od:
+    Q
+end:
+
+CreatePAM1Matrices := proc(Qarr_, freq, props)
+    Qarr := copy(Qarr_):
+    M := [seq(exp(Qarr[i]),i=1..length(Qarr))]:
+    
+    do d := sum(props[i]*sum(freq[j]*(1-M[i,j,j]), j=1..64), i=1..length(Qarr)):
+        if |d-0.01| < DBL_EPSILON then break fi:
+        Qarr := Qarr * 0.01/d:
+        M := [seq(exp(Qarr[i]),i=1..length(Qarr))]:
+    od:
+    Qarr
+end:
+    
 
 # Returns distribution function of the standard form of the beta distribution, 
 # that is, the incomplete beta ratio I_x(p,q).

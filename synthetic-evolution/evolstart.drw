@@ -8,8 +8,9 @@
 # Sereina Riniker, Christophe Dessimoz, Daniel Margadant; CBRG; 2006
 Set(printgc=false);
 starttime := UTCTime();
-basedir := '~/Orthologues/dan/synthetic-evolution/';
-#basedir :='/Users/ddalquen/Documents/Darwin/source/bio-recipes/Orthologues/dan/synthetic-evolution/';
+Set(gc=2e7): SetRandSeed(); # Set(quiet):
+#basedir := '/home/darwin/Orthologues/dan/synthetic-evolution/';
+basedir :='/Users/ddalquen/Documents/Darwin/source/bio-recipes/Orthologues/dan/synthetic-evolution/';
 if not assigned(paramfile) then
 	paramfile := basedir.'parameters/p_pas-test.drw';
 #	paramfile := basedir.'parameters/p_pas-seminar.drw';
@@ -30,6 +31,7 @@ ReadProgram(basedir.'SE_Rearrangement.drw');
 ReadProgram(basedir.'SE_procedures.drw');
 ReadProgram(basedir.'SE_AllAllTree.drw'):
 ReadProgram(basedir.'SE_RandomSubtree.drw'):
+ReadProgram(basedir.'SE_GCContent.drw'):
 printf('\n'):
 
 ReadProgram(paramfile);
