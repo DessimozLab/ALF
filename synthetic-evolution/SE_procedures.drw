@@ -415,19 +415,23 @@ GQG := proc(n, c, t)
                    + 6.141e-4*exp(-n*c/(14.3*t)) + 2.090e-5*exp(-n*c/(81.7*t))) / fac:
 end:
 
-randGapLength := proc(maxLen:nonnegative, indelType:{'ZIPF', 'QG', 'NEGBIN', 'EXP', 'CUSTOM'} ; params:list(numeric))
+randGapLength := proc(maxLen:nonnegative, indelType:{'ZIPF', 'QG', 'NEGBIN', 'EXP', 'CUSTOM'} ; params:list)
     L := 0; s := 0;
     rp := Rand();
     if indelType = 'ZIPF' then
-        normFactor := ZipfNormalizationFactor(maxLen, params[1]):
-        while s < rp and L < maxLen do
-            L := L + 1;
-            s := s + L^(-params[1]) / normFactor;
-        od;
+        normFactor := remember(ZipfNormalizationFactor(maxLen, params[1])):
+        do
+            while s < rp do
+                L := L + 1;
+                s := s + L^(-params[1]) / normFactor;
+            od;
+            if L <= maxLen then break fi:
+        od:
+
     elif indelType = 'QG' then
         # params should have the form [QG_c, QG_t]
-        normFactor := QGNormalizationFactor(maxLen, params[1], params[2]):
-        c := params[1]: t := params[2]:
+        normFactor := QGNormalizationFactor(maxLen, params[2], params[3]):
+        c := params[2]: t := params[3]:
         while s < rp and L < maxLen do
             L := L + 1:
             s := s + (1.027e-2*exp(-L*c/(0.96*t)) + 3.031e-3*exp(-L*c/(3.13*t))
@@ -435,32 +439,34 @@ randGapLength := proc(maxLen:nonnegative, indelType:{'ZIPF', 'QG', 'NEGBIN', 'EX
         od:
     elif indelType = 'NEGBIN' then
         # params should have the form [NB_r, NB_q]
-        if not type(params[1], posint) or not (type(params[2], nonnegative) and params[2] <= 1) then
+        if not type(params[4], posint) or not (type(params[5], nonnegative) and params[5] <= 1) then
             printf('parameters for negative binomial distribution do not match!'):
         fi:
-        r := params[1]: q := params[2]:
-        normFactor := NBNormalizationFactor(maxLen, r, q):
-        while s < rp and L < maxLen do
-            L := L + 1:
-            s := s + ((r+L-2)!/((L-1)!*(r+1)!)*(1-q)^r*q^(L-1))/normFactor:
+        r := params[4]: q := params[5]:
+#        normFactor := NBNormalizationFactor(maxLen, r, q):
+#        while s < rp and L < maxLen do
+#            L := L + 1:
+#            s := s + ((r+L-2)!/((L-1)!*(r+1)!)*(1-q)^r*q^(L-1))/normFactor:
+#        od:
+        while r > 0 do
+            L := L + floor(log(1-Rand())/log(q)):
+            r := r - 1:
         od:
     elif indelType = 'EXP' then
-#        a := params[1]: b := params[2]:
-#        normFactor := ExpNormalizationFactor(maxLen, a, b):
-        normFactor := ExpNormalizationFactor(maxLen, params[1]):
-        while s < rp and L < maxLen do
-            L := L + 1:
-#            s := 1 - exp(-(L-a)/b) / normFactor:
-            s := 1 - ( 1 - params[1])^L / normFactor:
-       od:
+#        normFactor := ExpNormalizationFactor(maxLen, params[6]):
+#        while s < rp and L < maxLen do
+#            L := L + 1:
+#            s := 1 - ( 1 - params[6])^L / normFactor:
+#       od:
+        L := 1 + floor(log(1-Rand())/log(params[6])):
     else
         # param[i] should contain the probability of a gap of length i from the custom distribution
-        if length(params) <> maxLen then
+        if length(params[7]) <> maxLen then
             error('length of array of gap length probabilities must match the maximum gap length!'):
         fi:
         while s < rp and L < maxLen do
             L := L + 1:
-            s := s + params[L]:
+            s := s + params[7,L]:
         od:
     fi:
     L
@@ -868,6 +874,92 @@ ComputeIndelPos := proc(e, sms, gr)
     od;
     # assignes a random value between 0..indelSum
     indelPos := Rand() * indelSum
+end:
+
+
+
+###########################
+# tree-related procedures #
+###########################
+ListTimePoints := proc(tree:Tree, prefix:string)
+    if type(tree, Leaf) then
+        res := copy([[],[]]):
+    else
+    	lt := ListTimePoints(tree[Left], prefix.'.1'):
+    	rt := ListTimePoints(tree[Right], prefix.'.2'):
+    	if length(tree) > 3 then
+    		if tree[xtra][1] = 'S' then
+	    		res := [[[prefix, tree[Height], tree[xtra][2]], op(lt[1]), op(rt[1])], [op(lt[2]), op(rt[2])]]:
+	    	elif tree[xtra][1] = 'D' then
+	    		res := [[op(lt[1]), op(rt[1])], [[prefix, tree[Height], tree[xtra][2]], op(lt[2]), op(rt[2])]]:
+	        else
+                res := [[[prefix, tree[Height]], op(lt[1]), op(rt[1])],[]]:
+	    	fi:
+   		else
+	        res := [[[prefix, tree[Height]], op(lt[1]), op(rt[1])],[]]:
+	    fi:
+    fi:
+    res
+end:
+    
+EnumerateBranches := proc(tree:Tree, specPts, gc:boolean)
+	branches := append(EnumerateBranches_R(tree[Left], tree[Height], gc), op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
+	branches := sort(branches, x->x[1]):
+	if gc then
+        res := copy([[1, 0, specPts[1, 2], tree[-1]]]):
+    else
+        res := copy([[1, 0, specPts[1, 2]]]):
+    fi:
+	n := 2:
+	for i to length(specPts) do
+		res := append(res, [specPts[i, 1], op(branches[2*i-1])], [n, op(branches[2*i])]):
+		n := n + 1:
+	od:
+	res
+end:
+
+EnumerateBranches_R := proc(tree:Tree, start:nonnegative, gc:boolean)
+	if type(tree, Leaf) then 
+	    if gc then
+	        return([[start, tree[Height], tree[-1]]]):
+	    else
+	        return([[start, tree[Height]]]):
+	    fi:
+	fi:
+	res := EnumerateBranches_R(tree[Left], tree[Height], gc):
+	if gc then
+	    res := append(res, [start, tree[Height], tree[-1]], op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
+	else
+	    res := append(res, [start, tree[Height]], op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
+	fi:
+end:
+
+# prevent branches of length 0 by adding a small value
+CheckBranchLengths := proc(tree:Tree)
+    CheckBranchLengths_R(tree, 0):
+end:
+
+CheckBranchLengths_R := proc(tree:Tree, inc:nonnegative) option internal;
+    if type(tree, Leaf) then return() fi:
+
+    linc := inc + If(tree[Height] = tree[Left][Height], 1e-10, 0):
+    CheckBranchLengths_R(tree[Left], linc):
+    tree[Left][Height] := tree[Left][Height] + linc:
+
+    rinc := inc + If(tree[Height] = tree[Right][Height], 1e-10, 0):
+    CheckBranchLengths_R(tree[Right], rinc):
+    tree[Right][Height] := tree[Right][Height] + rinc:
+end:
+
+UpdateTreeLGT := proc(t:Tree)
+    for i to length(t[-1]) do
+        t[-1,i,3] := t[Height] - t[-1,i,3]:
+    od:
+    if not type(t,Leaf) then
+        UpdateTreeLGT(t[Left]):
+        UpdateTreeLGT(t[Right]):
+    fi:
+    NULL
 end:
 
 

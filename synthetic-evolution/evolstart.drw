@@ -18,13 +18,13 @@ if not assigned(paramfile) then
 fi:
 
 printf('\n'):
-ReadProgram(basedir.'Gamma.drw'):
+#ReadProgram(basedir.'Gamma.drw'):
 ReadProgram(basedir.'AAMutateGamma.drw'):
 ReadProgram(basedir.'KHG_Matrix.drw'):
-ReadProgram(basedir.'YangModels.drw'):
+#ReadProgram(basedir.'YangModels.drw'):
 ReadProgram(basedir.'NucleotideMatrix.drw'):
 #ReadProgram(basedir.'BirthDeathTree.drw'):
-ReadProgram(basedir.'BirthDeathTreeNew'):
+#ReadProgram(basedir.'BirthDeathTree'):
 ReadProgram(basedir.'SubstitutionModel'):
 ReadProgram(basedir.'SE_DataOutput.drw');
 ReadProgram(basedir.'SE_Rearrangement.drw');

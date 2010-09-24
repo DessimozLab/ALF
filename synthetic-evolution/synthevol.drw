@@ -33,6 +33,24 @@ fi:
 if not assigned(geneDuplRate) then
     geneDuplRate := 0:
 fi:
+if not assigned(transDupl) then
+    transDupl := 0:
+fi:
+if not assigned(fusionDupl) then
+    fusionDupl := 0:
+fi:
+if not assigned(fissionDupl) then
+    fissionDupl := 0:
+fi:
+if not assigned(P_pseudogene) then
+    P_pseudogene := 0;
+fi:
+if not assigned(P_neofunc) then
+    P_neofunc := 0;
+fi:
+if not assigned(P_subfunc) then
+    P_subfunc := 0;
+fi:
 if not assigned(geneLossRate) then
     geneLossRate := 0:
 fi:
@@ -72,14 +90,23 @@ fi:
 if not assigned(modelSwitchD) then
     modelSwitchD := [[1]]:
 fi:
+if not assigned(amongSiteDistr) then
+    amongSiteDistr := 'None':
+fi:
+if not assigned(motifFreq) then
+    motifFreq := 0:
+fi:
+if not assigned(substModels) then
+    substModels := []:
+fi:
 
-if not assigned(targetFreqs) then
+if length(substModels) = 0 or not assigned(targetFreqs) then
     enableGCAmelioration := false:
 else
     enableGCAmelioration := true:
 fi:    
 
-
+printf('setting up work directory\n'):
 if length(FileStat(wdir.'/'.mname)) <> 0 then
     i := 1:
     while length(FileStat(wdir.'/'.mname.'_'.i.'/')) > 0 do
@@ -88,8 +115,11 @@ if length(FileStat(wdir.'/'.mname)) <> 0 then
     mname := mname.'_'.i:
 fi:
 wdir := wdir.'/'.mname.'/':
+CallSystem('mkdir -p '.wdir):
+Set(plotoutput=wdir.'/temp.ps'):
 
 # get tree
+printf('determining tree\n'):
 if treeType = 'Custom' then
     if not assigned(treeFile) and not assigned(tree) then
         error('no tree given'):
@@ -111,10 +141,12 @@ elif treeType = 'BDTree' then
     tree := BirthDeathTree(birthRate, deathRate, NSpecies, mutRate):
     if not ultrametric then
         # create deviation using method defined in Guindon and Gascuel, 2003
-        AddDeviation(tree):
+        tree := AddDeviation(tree):
     fi:
 elif treeType = 'ToLSample' then
+    #printf('sample from tree of life\n'):
     D := GetAllDistMatrix():
+    printf('generating tree with %d species\n', NSpecies):
     tree := GenRandomTree(D, NSpecies):
 else
     error('no tree selected')
@@ -136,21 +168,30 @@ fi:
 # scale tree to branch lengths matching the number of iterations
 #err := traperror(ScaleTree(tree, maxSteps)):
 if scaleTree then
-    err := traperror(ScaleTree(tree, mutRate)); ##### NEW: scale tree to height defined in parameters #####
-    if err = lasterror then
+    #print('attempting to scale tree'):
+    tree := traperror(ScaleTree(tree, mutRate)); ##### NEW: scale tree to height defined in parameters #####
+    if tree = lasterror then
         error('could not scale tree. make sure your tree is strictly bifurcating and all branches have a non-zero height.'):
     fi:
 fi:
 
+#print('before gc-if'):
 if enableGCAmelioration then
-    if length(substModels) = length(targetFreqs) or length(targetFreqs) = 1 then
+    if length(substModels) = length(targetFreqs) then
         for i to length(targetFreqs) do
             if targetFreqs[i] = 'Random' then
-                targetFreqs[i] := CreateRandomTargetFrequencies(substModels[i][Type], tree, NSpecies):
+                targetFreqs[i] := CreateRandomTargetFrequencies(tree, NSpecies, substModels[i][Type]):
             else
-                CheckTargetFrequencies(targetFreqs[i], substModels[i][Type], NSpecies):
+                CheckTargetFrequencies(targetFreqs[i], NSpecies, substModels[i][Type]):
             fi:
-        od:
+        od:    
+    elif length(targetFreqs) = 1 then
+        if targetFreqs[1] = 'Random' then
+            targetFreqs := CreateRandomTargetFrequencies(tree, NSpecies, [seq(substModels[i][Type], i=1..length(substModels))]):
+        else
+            #CheckTargetFrequencies(targetFreqs[1], NSpecies, substModels[1][Type]):
+            error('Please supply target frequencies for all models.'):
+        fi:
     else
         error('Please supply either one set of target frequencies for all models together or for each model separately.'):
     fi:
@@ -235,11 +276,8 @@ mutRate := max(leafHeights):
 nextDupIndex := 1:
 cSpecies := length(specTime) + 1:
     
-#AAfactor := Nprot * Naa / maxSteps;
-#Gfactor := Nprot / maxSteps;
 
 if amongSiteDistr = 'Gamma' then
-#    gammaRates := GammaRates(alphaG, areas) * mutRate / maxSteps:
     gammaRates := GammaRates(alphaG, areas) / (1-motifFreq):
     gammaRates := append(gammaRates, 1/DBL_MAX):
 fi:
@@ -250,20 +288,25 @@ if realseed then
 else
     malen := protStart:
 fi:
-if length(modelAssignments) <> malen then
+if length(substModels) = 0 then
+    modelAssignments := [seq(0, malen)]:
+elif length(substModels) = 1 then
+    modelAssignments := [seq(1, malen)]:
+elif length(substModels) > 1 and length(modelAssignments) <> malen then
     modelProbs := modelAssignments:
     for i from 2 to length(modelProbs) do
         modelProbs[i] := modelProbs[i-1] + modelProbs[i]:
     od:
     modelAssignments := CreateArray(1..malen):
     for i to malen do
-        r := Rand():
-        for j to length(modelProbs) do
-            if r <= modelProbs[j] then
-                modelAssignments[i] := j:
-                break:
-            fi:
-        od:
+#        r := Rand():
+#        for j to length(modelProbs) do
+#            if r <= modelProbs[j] then
+#                modelAssignments[i] := j:
+#                break:
+#            fi:
+#        od:
+        modelAssignments[i] := SearchOrderedArray(Rand()*modelProbs[-1], modelProbs) + 1:
     od:
 fi:
 
@@ -284,40 +327,50 @@ if realseed = true then # generates the first organism with real data
     geneR := append(geneR, CreateArray(1..DB[TotEntries]));
     for i to DB[TotEntries] do
         protseq := SearchTag('SEQ', Entry(i));
+        dnaseq := SearchTag('DNA', Entry(i));
+        if protseq = 'AAA' then
+            if length(substModels) = 0 then
+                seqLen := length(dnaseq)/blocksize:
+            else
+                seqLen := length(dnaseq)/susbstModels[modelAssignments[i]][Blocksize]:
+            fi
+        else
+            seqLen := length(protseq)
+        fi:
         # switch for real domainfile
         if (specialAreas = true) then
 	        for j to length(areaSet[i]) do
-#	            areaSet[i, j, 3] := max(areaSet[i, j, 3] / maxSteps, 1/DBL_MAX);
 	            areaSet[i, j, 3] := max(areaSet[i, j, 3], 1/DBL_MAX);
 	        od;
             evolution[1, i, 1] := areaSet[i];
-        else
+        elif length(substModels) > 0 then
             substModel := substModels[modelAssignments[i]]:
             if substModel[Name] = 'M0' then
-                evolution[1, i, 1] := makeAreasOmega(substModel[Name], length(protseq)):
+                evolution[1, i, 1] := makeAreasOmega(substModel[Name], seqLen):
             elif substModel[Name][1] = 'M' then
-                evolution[1, i, 1] := makeAreasOmega(substModel[Name], length(protseq), substModel[Params][3]):
+                evolution[1, i, 1] := makeAreasOmega(substModel[Name], seqLen, substModel[Params][3]):
             else
-#                evolution[1, i, 1] := makeAreas(length(protseq), areas, mutRate, maxSteps, amongSiteDistr, motifFreq);
-                evolution[1, i, 1] := makeAreas(length(protseq), areas, mutRate, amongSiteDistr, motifFreq);
+                evolution[1, i, 1] := makeAreas(seqLen, areas, mutRate, amongSiteDistr, motifFreq);
             fi:
+        else
+            evolution[1, i, 1] := [[1, seqLen, 1]]:
         fi;
         evolution[1, i, 3] := '1';
         evolution[1, i, 4] := i;
         evolution[1, i, 5] := '1';
-        evolution[1, i, 6] := SearchTag('DNA', Entry(i));
-        if protseq = 'AAA' and substModels[modelAssignments[i]][Type] <> 'nuc' then
+        evolution[1, i, 6] := dnaseq;
+        if protseq = 'AAA' and ((length(substModels) > 0 and substModels[modelAssignments[i]][Type] <> 'nuc') or blocksize = 3) then
+            print(evolution[1,i,6]):
             evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]):
         else
             evolution[1, i, 2] := protseq:
         fi:
-        evolution[1, i, 2] := protseq;
         evolution[1, i, 7] := i;
         evolution[1, i, 8] := []:
         evolution[1, i, 9] := modelAssignments[i]:
         evolution[1, i, 10] := []:
         if amongGeneDistr = 'Gamma' then
-            evolution[1, i, 10] := [[mutRate, Rand(GammaDistr(aGAlpha))/aGAlpha]]:
+            evolution[1, i, 10] := [[mutRate, Rand(GammaDist(aGAlpha))/aGAlpha]]:
         elif amongGeneDistr = 'Custom' then
             evolution[1, i, 10] := [[mutRate, customRates[i]]]:            
         fi:
@@ -332,35 +385,53 @@ else
     geneR := append(geneR, CreateArray(1..protStart));
     for i to protStart do
         aaStart := max(minGeneLength, round(gammaLengthDist[2] * Rand(GammaDist(gammaLengthDist[1]))));
-        substModel := substModels[modelAssignments[i]]:
-        if substModel[Name] = 'M0' then
-            evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart):
-        elif substModel[Name][1] = 'M' then
-            evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart, substModel[Params][3]):
-        else
-            #printf('motifs %d - ', i):
-#            evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, maxSteps, amongSiteDistr, motifFreq);
-            evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, amongSiteDistr, motifFreq);
-        fi:
-        if substModel[Type] <> 'aa' then
-            if enableGCAmelioration then
-                nOfGCTargets := length(curTargetFreqs[1]):
-                bf := curTargetFreqs[1][min(nOfGCTargets, modelAssignments[i])]:
+        if length(substModels) > 0 then
+            substModel := substModels[modelAssignments[i]]:
+            if substModel[Name] = 'M0' then
+                evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart):
+            elif substModel[Name][1] = 'M' then
+                evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart, substModel[Params][3]):
             else
-                bf := substModel[BaseFreqs]:
+                #printf('motifs %d - ', i):
+#                evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, maxSteps, amongSiteDistr, motifFreq);
+                evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, amongSiteDistr, motifFreq);
             fi:
-            if substModel[Type] = 'nuc' and not substModel[NeutralDNA] then
-                evolution[1, i, 6] := CreateRandSeq(3*aaStart, bf);
+            if substModel[Type] <> 'aa' then
+                if enableGCAmelioration then
+                    nOfGCTargets := length(curTargetFreqs[1]):
+                    bf := curTargetFreqs[1][min(nOfGCTargets, modelAssignments[i])]:
+                else
+                    bf := substModel[BaseFreqs]:
+                fi:
+                if substModel[Type] = 'nuc' and not substModel[NeutralDNA] then
+                    evolution[1, i, 6] := CreateRandSeq(3*aaStart, bf);
+                else
+                    evolution[1, i, 6] := CreateRandSeq(aaStart, bf);
+                fi:
+            fi:
+            if substModel[Type] = 'aa' then
+                evolution[1, i, 2] := CreateRandSeq(aaStart, substModel[BaseFreqs]):
+            elif substModel[Type] = 'codon' then
+                evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]);
             else
-                evolution[1, i, 6] := CreateRandSeq(aaStart, bf);
+                evolution[1, i, 2] := 'AAA'
             fi:
-        fi:
-        if substModel[Type] = 'aa' then
-            evolution[1, i, 2] := CreateRandSeq(aaStart, substModel[BaseFreqs]):
-        elif substModel[Type] = 'codon' then
-            evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]);
         else
-            evolution[1, i, 2] := 'AAA'
+            evolution[1, i, 1] := [[1, aaStart, 1]]:
+            evolution[1, i, 2] := 'AAA':
+            if blocksize = 1 then
+                evolution[1, i, 6] := Rand(DNA(aaStart)):
+            else
+                dna_value := '':
+                for j to aaStart do
+                    do
+                        curc := Rand(DNA(3)):
+                        if curc <> 'TAG' and curc <> 'TGA' and curc <> 'TAA' then break: fi:
+                    od:
+                    dna_value := dna_value.curc:
+                od:
+                evolution[1, i, 6] := dna_value:
+            fi:
         fi:
         evolution[1, i, 3] := '1';
         evolution[1, i, 4] := i;
@@ -377,7 +448,6 @@ else
         geneR[1, i] := i;
     od:
 fi:
-
 
 maxID := length(evolution[1]);    # highest unique gene ID number
 clusters := [seq([], maxID)]: # gene families
@@ -423,10 +493,10 @@ if transloc > 0 then
     printf('Translocation rate: %.2f, max. Translocation group size: %.2f\n', transloc, transSize);
 fi:
 if aaGainRate > 0 then
-    printf('aa gain rate: %.3f\n', aaGainRate);
+    printf('aa gain rate: %.5f\n', aaGainRate);
 fi:
 if aaLossRate > 0 then
-    printf('aa loss rate= %.3f\n', aaLossRate);
+    printf('aa loss rate= %.5f\n', aaLossRate);
 fi:
 lprint():
 #lprint('mutation rates: g <genenumber> : <domain 1>, <domain 2>, ...');
@@ -542,27 +612,27 @@ for i to length(events) do
     events[i] := sort(events[i], EventOrderFunction):
 od:
 
-if aaGainRate > 0 or aaLossRate > 0 then
-    if indelModel = 'ZIPF' then
-        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [Z_c]):
-    elif indelModel = 'QG' then
-        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [QG_c, QG_t]):
-    elif indelModel = 'NEGBIN' then
-        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [NB_r, NB_q]):
-    elif indelModel = 'EXP' then
-    #    meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_a, E_b]):
-        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_p]):
-    else
-        meanGapLength := MeanGapLength(indelModel, maxIndelLength, indelVector):
-    fi:
-fi:
+#if aaGainRate > 0 or aaLossRate > 0 then
+#    if indelModel = 'ZIPF' then
+#        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [Z_c]):
+#    elif indelModel = 'QG' then
+#        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [QG_c, QG_t]):
+#    elif indelModel = 'NEGBIN' then
+#        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [NB_r, NB_q]):
+#    elif indelModel = 'EXP' then
+#    #    meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_a, E_b]):
+#        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_p]):
+#    else
+#        meanGapLength := MeanGapLength(indelModel, maxIndelLength, indelVector):
+#    fi:
+#fi:
 
 for i to length(events) do
     for j to length(events[i]) do
         cure := events[i,j,3]:
         if cure = 'D' then
             # gene duplication
-            PerformGeneDuplication(events[i,j,2], events[i,j,1]):
+            PerformGeneDuplication(events[i,j,2], events[i,j,1], Rand(1..numberDupl)):
         elif cure = 'L' then
             # gene loss
             PerformGeneLoss(events[i,j,2], events[i,j,1]):
@@ -600,15 +670,17 @@ OpenWriting(previous);
 
 
 # saves real tree, updates all organisms
+#printf('%A\n', treeEvo):
 branchesSet := {op(branches)}:
 for i to length(branchesSet) do
     treeEvo[op(treeData[branchesSet[i,1]])]:=Leaf('SE'.sprintf('%03d', branchesSet[i,1]), branchesSet[i,3], treeEvo[op(treeData[branchesSet[i,1]])][3]); 
 od:
+UpdateTreeLGT(treeEvo):
 DrawTree(treeEvo, ArcRadial, OrderLeaves=LeftHeavy, Legend, 
     Title = 'synthetic evolution');
-TimedCallSystem('mv temp.ps '.wdir.'/RealTree.ps', 2);
+TimedCallSystem('mv '.wdir.'/temp.ps '.wdir.'/RealTree.ps', 2);
 OpenWriting(wdir . 'RealTree.drw');
-printf('RealTree := %a;\n', treeEvo);
+printf('RealTree := %A;\n', treeEvo);
 OpenWriting(previous);
 lprint('...real genome tree saved.');
 OpenAppending(wdir.'/logfile.txt');

@@ -28,6 +28,8 @@ SubstitutionModel := proc(Name:string, Params:list(anything), BaseFreqs:list(num
             f := AF/sum(AF);
             m := copy(NewLogPAM1):
             return(noeval(SubstitutionModel(Name, [], f, false, 'aa', m, 1))):
+        elif Name = 'JC' then #Jukes-Cantor
+            return(SubstitutionModel('TN93', [1,1,1], [0.25,0.25,0.25,0.25], true)):
         elif Name = 'ECM' then
             matrixFile := 'matrices/ecm.dat':
         elif Name = 'ECMu' then
@@ -42,12 +44,12 @@ SubstitutionModel := proc(Name:string, Params:list(anything), BaseFreqs:list(num
             error('too few arguments. please supply necessary model parameters!'):
         fi:
         if Name = 'ECM' or Name = 'ECMu' or Name = 'CustomC' then
-            LoadPAMLMatrixFile(matrixFile, 'Codon'):
+            LoadMatrixFile(matrixFile):
             f := copy(CF):
             m := copy(CodonLogPAM1):
             noeval(SubstitutionModel(Name, [], f, false, 'codon', m, 3)):
         else
-            LoadPAMLMatrixFile(matrixFile, 'Peptide'):
+            LoadMatrixFile(matrixFile):
             f := copy(AF):
             m := copy(NewLogPAM1):
             noeval(SubstitutionModel(Name, [], f, false, 'aa', m, 1)):
@@ -55,12 +57,12 @@ SubstitutionModel := proc(Name:string, Params:list(anything), BaseFreqs:list(num
     elif nargs = 2 then # all other empirical models
         if type(Params[1], string) then # assume file name
             if Name = 'CustomC' then
-                LoadPAMLMatrixFile(Params[1], 'Codon'):
+                LoadMatrixFile(Params[1]):
                 f := copy(CF):
                 m := copy(CodonLogPAM1):
                 noeval(SubstitutionModel(Name, [], f, false, 'codon', m, 3)):
             elif Name = 'CustomP' then
-                LoadPAMLMatrixFile(Params[1], 'Peptide'):
+                LoadMatrixFile(Params[1]):
                 f := copy(AF):
                 printf('AF: %a\n', AF):
                 m := copy(NewLogPAM1):

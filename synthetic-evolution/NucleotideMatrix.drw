@@ -5,6 +5,7 @@ CreateNucleotideMatrix := proc(model: string, baseFreqs:list(nonnegative), param
     fY := baseFreqs[1] + baseFreqs[2]:
     if model = 'GTR' then
         if length(params) <> 6 then error('number of parameters does not match (should be 6).'): fi:
+        a := params[1]: b := params[2]: c := params[3]: d := params[4]: e := params[5]: f := params[6]:
         Q := [[0, a*baseFreqs[2], b*baseFreqs[3], c*baseFreqs[4]],
           [a*baseFreqs[1], 0, d*baseFreqs[3], e*baseFreqs[4]],
           [b*baseFreqs[1], d*baseFreqs[2], 0, f*baseFreqs[4]],
@@ -113,7 +114,7 @@ end:
 
 NucleotideMutateGamma:=proc(seq1:string,time:list(positive), lnM1:matrix, classes:array(posint)) option internal;
     # prepare matrices for the different gamma classes
-    MP := CreateArray(1..length(CodonPam),0):
+    MP := CreateArray(1..length(time),0):
     for i to length(MP) do
         MP[i]:=exp(time[i]*lnM1);
     od:

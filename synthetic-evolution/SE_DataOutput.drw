@@ -2,97 +2,97 @@
 # to the global variables NewLogPAM1 and logPAM1
 # it is assumed that the order of amino acids and codons is always the same and the matrix is
 # re-ordered to correspond to the order used by Darwin.
-LoadPAMLMatrixFile := proc(file:string, mtype:{'Peptide', 'Codon'})
-    global AF, logPAM1, CodonLogPAM1, NewLogPAM1, command;
-    if mtype = 'Peptide' then
-        msize := 20:
-        SA := [A,  R,  N,  D,  C,  Q,  E,  G,  H,  I,  L,  K,  M,  F,  P,  S,  T,  W,  Y,  V]:
-        convfunc := AToInt;
-    elif mtype = 'Codon' then
-        msize := 64:
-        SA := [TTT, TTC, TTA, TTG, TCT, TCC, TCA, TCG, TAT, TAC, TGT, TGC, TGG, CTT, CTC, CTA, CTG, CCT, CCC, CCA, 
-        CCG, CAT, CAC, CAA, CAG, CGT, CGC, CGA, CGG, ATT, ATC, ATA, ATG, ACT, ACC, ACA, ACG, AAT, AAC, AAA, 
-        AAG, AGT, AGC, AGA, AGG, GTT, GTC, GTA, GTG, GCT, GCC, GCA, GCG, GAT, GAC, GAA, GAG, GGT, GGC, GGA, 
-        GGG, TAA, TAG, TGA]:
-        convfunc := CodonToCInt;
-    else
-        error('could not determine size'):
-    fi:
-    
-    # parse PAML matrix file format
-    #OpenReading(file):
-    matrix := CreateArray(1..msize, 1..msize, 0):
-    freqs := CreateArray(1..msize, 0):
-    
-    f := SplitLines(ReadRawFile(file)):
-    tmpmat := [[]]:
-    tmpfreqs := []:
-    i := 1:
-    while i <= length(f) and (f[i] = '' or f[i] = '\r' or f[i] = '\n' or f[i] = '\r\n') do i := i+1 od:
-    if i > length(f) then error('unexpected end of file') fi:
-    
-    #parse matrix
-    do
-        tokens := SearchDelim(' ', f[i]):
-        newline := []:
-        for j to length(tokens) do
-            if tokens[j] = '' or tokens[j] = '\r' or tokens[j] = '\n' or tokens[j] = '\r\n' then next fi:
-            newline := append(newline, op(sscanf(tokens[j], '%g'))):
-        od:
-        tmpmat := append(tmpmat,newline):
-        
-        i := i + 1:
-        if f[i] = '' or f[i] = '\r' or f[i] = '\n' or f[i] = '\r\n' then break fi
-    od:
-    
-    if mtype = 'Peptide' and length(tmpmat) <> 20 then error('matrix should have 20 entries'):
-    elif mtype = 'Codon' and length(tmpmat) <> 61 then error('matrix should have 61 entries'):
-    fi:
-
-    while i <= length(f) and (f[i] = '' or f[i] = '\r' or f[i] = '\n' or f[i] = '\r\n') do i := i+1 od:
-    if i > length(f) then error('unexpected end of file') fi:
-
-    tokens := SearchDelim(' ', f[i]):
-    for j to length(tokens) do
-        if tokens[j] = '' or tokens[j] = '\r' or tokens[j] = '\n' or tokens[j] = '\r\n' then next fi:
-        tmpfreqs := append(tmpfreqs, op(sscanf(tokens[j], '%g'))):
-    od:
-        
-    printf('tmpfreqs: %A\ntmpmat: %A\n', tmpfreqs,tmpmat):
-
-    if length(tmpfreqs) <> length(tmpmat) then error(length(tmpfreqs), length(tmpmat), 'matrix size doesn''t match frequency vector') fi:
-    
-    tmpfreqs := tmpfreqs/sum(tmpfreqs):
-    for i from 1 to length(tmpfreqs) do
-        ai := convfunc(SA[i]):
-        freqs[ai] := tmpfreqs[i]:
-        for j from 1 to i-1 do
-            aj := convfunc(SA[j]):
-            matrix[ai,aj] := tmpmat[i,j]*tmpfreqs[i]:
-            matrix[aj,ai] := tmpmat[i,j]*tmpfreqs[j]:
-        od:
-    od:
-        
-    qsum := sum(matrix):
-    for i to msize do matrix[i,i] := -qsum[i] od:
-    
-#    matrix := transpose(matrix):
-    
-    if mtype = 'Codon' then
-        CreateCodonMatrices(matrix, freqs):
-    else
-        AF := freqs:
-        M := exp(matrix);
-        logPAM1 := matrix;
-        n := length(AF):
-        do  d := sum( AF[i]*(1-M[i,i]), i=1..n );
-            if |d-0.01| < DBL_EPSILON then break fi;
-            logPAM1 := logPAM1 * 0.01/d;
-            M := exp(logPAM1)
-        od;
-        NewLogPAM1 := logPAM1:
-    fi:
-end:
+#LoadPAMLMatrixFile := proc(file:string, mtype:{'Peptide', 'Codon'})
+#    global AF, logPAM1, CodonLogPAM1, NewLogPAM1;
+#    if mtype = 'Peptide' then
+#        msize := 20:
+#        SA := [A,  R,  N,  D,  C,  Q,  E,  G,  H,  I,  L,  K,  M,  F,  P,  S,  T,  W,  Y,  V]:
+#        convfunc := AToInt;
+#    elif mtype = 'Codon' then
+#        msize := 64:
+#        SA := [TTT, TTC, TTA, TTG, TCT, TCC, TCA, TCG, TAT, TAC, TGT, TGC, TGG, CTT, CTC, CTA, CTG, CCT, CCC, CCA, 
+#        CCG, CAT, CAC, CAA, CAG, CGT, CGC, CGA, CGG, ATT, ATC, ATA, ATG, ACT, ACC, ACA, ACG, AAT, AAC, AAA, 
+#        AAG, AGT, AGC, AGA, AGG, GTT, GTC, GTA, GTG, GCT, GCC, GCA, GCG, GAT, GAC, GAA, GAG, GGT, GGC, GGA, 
+#        GGG, TAA, TAG, TGA]:
+#        convfunc := CodonToCInt;
+#    else
+#        error('could not determine size'):
+#    fi:
+#    
+#    # parse PAML matrix file format
+#    #OpenReading(file):
+#    matrix := CreateArray(1..msize, 1..msize, 0):
+#    freqs := CreateArray(1..msize, 0):
+#    
+#    f := SplitLines(ReadRawFile(file)):
+#    tmpmat := [[]]:
+#    tmpfreqs := []:
+#    i := 1:
+#    while i <= length(f) and (f[i] = '' or f[i] = '\r' or f[i] = '\n' or f[i] = '\r\n') do i := i+1 od:
+#    if i > length(f) then error('unexpected end of file') fi:
+#    
+#    #parse matrix
+#    do
+#        tokens := SearchDelim(' ', f[i]):
+#        newline := []:
+#        for j to length(tokens) do
+#            if tokens[j] = '' or tokens[j] = '\r' or tokens[j] = '\n' or tokens[j] = '\r\n' then next fi:
+#            newline := append(newline, op(sscanf(tokens[j], '%g'))):
+#        od:
+#        tmpmat := append(tmpmat,newline):
+#        
+#        i := i + 1:
+#        if f[i] = '' or f[i] = '\r' or f[i] = '\n' or f[i] = '\r\n' then break fi
+#    od:
+#    
+#    if mtype = 'Peptide' and length(tmpmat) <> 20 then error('matrix should have 20 entries'):
+#    elif mtype = 'Codon' and length(tmpmat) <> 61 then error('matrix should have 61 entries'):
+#    fi:
+#
+#    while i <= length(f) and (f[i] = '' or f[i] = '\r' or f[i] = '\n' or f[i] = '\r\n') do i := i+1 od:
+#    if i > length(f) then error('unexpected end of file') fi:
+#
+#    tokens := SearchDelim(' ', f[i]):
+#    for j to length(tokens) do
+#        if tokens[j] = '' or tokens[j] = '\r' or tokens[j] = '\n' or tokens[j] = '\r\n' then next fi:
+#        tmpfreqs := append(tmpfreqs, op(sscanf(tokens[j], '%g'))):
+#    od:
+#        
+#    #printf('tmpfreqs: %A\ntmpmat: %A\n', tmpfreqs,tmpmat):
+#
+#    if length(tmpfreqs) <> length(tmpmat) then error(length(tmpfreqs), length(tmpmat), 'matrix size doesn''t match frequency vector') fi:
+#    
+#    tmpfreqs := tmpfreqs/sum(tmpfreqs):
+#    for i from 1 to length(tmpfreqs) do
+#        ai := convfunc(SA[i]):
+#        freqs[ai] := tmpfreqs[i]:
+#        for j from 1 to i-1 do
+#            aj := convfunc(SA[j]):
+#            matrix[ai,aj] := tmpmat[i,j]*tmpfreqs[i]:
+#            matrix[aj,ai] := tmpmat[i,j]*tmpfreqs[j]:
+#        od:
+#    od:
+#        
+#    qsum := sum(matrix):
+#    for i to msize do matrix[i,i] := -qsum[i] od:
+#    
+##    matrix := transpose(matrix):
+#    
+#    if mtype = 'Codon' then
+#        CreateCodonMatrices(matrix, freqs):
+#    else
+#        AF := freqs:
+#        M := exp(matrix);
+#        logPAM1 := matrix;
+#        n := length(AF):
+#        do  d := sum( AF[i]*(1-M[i,i]), i=1..n );
+#            if |d-0.01| < DBL_EPSILON then break fi;
+#            logPAM1 := logPAM1 * 0.01/d;
+#            M := exp(logPAM1)
+#        od;
+#        NewLogPAM1 := logPAM1:
+#    fi:
+#end:
 
 
 # DB output
@@ -122,10 +122,10 @@ DBout := proc()
             if (geneR[i, loc] < 0) then
                 loc := -loc;
             fi;
-            printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
+            printf('<E><ID>G%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
                 evolution[i, j, 4], loc, evolution[i, j, 3], 
                 evolution[i, j, 5], evolution[i, j, 7], evolution[i,j,1], evolution[i, j, 2]);
-            if substModels[evolution[i,j,9]][Type] <> 'aa' then
+            if (length(substModels) = 0 and (blocksize = 3 or evolution[i,j,2] = 'AAA')) or (length(substModels) > 0 and substModels[evolution[i,j,9]][Type] <> 'aa') then
                 printf('<DNA>%s</DNA>', evolution[i, j, 6]);
             fi:
             printf('</E>\n'):
@@ -143,13 +143,15 @@ DBoutFASTA := proc()
     fi;
     for i to livingOrgs do
         for j to length(evolution[i]) do
-            OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'.fasta.aa');
-            printf('>%a (SE%03d)\n%s\n\n', evolution[i, j, 4], i,
-                evolution[i, j, 2]);
-            OpenWriting(previous);
-            if substModels[evolution[i,j,9]][Type] <> 'aa' then
-                OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'.fasta.dna');
-                printf('>%a (SE%03d)\n%s\n\n', evolution[i, j, 4], i,
+            if (length(substModels) = 0 and (blocksize = 3 or evolution[i,j,2] <> 'AAA')) or (length(substModels) > 0 and (substModels[evolution[i,j,9]][Type] <> 'nuc' or not substModels[evolution[i,j,9]][NeutralDNA])) then
+                OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'_aa.fa');
+                printf('>G%a_SE%03d\n%s\n\n', evolution[i, j, 4], i,
+                    evolution[i, j, 2]);
+                OpenWriting(previous);
+            fi:
+            if (length(substModels) = 0 and (blocksize = 3 or evolution[i,j,2] = 'AAA')) or (length(substModels) > 0 and substModels[evolution[i,j,9]][Type] <> 'aa') then
+                OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'_dna.fa');
+                printf('>G%a_SE%03d\n%s\n\n', evolution[i, j, 4], i,
                     evolution[i, j, 6]);
                 OpenWriting(previous);
             fi:
@@ -187,7 +189,7 @@ DBoutAnc := proc(organism, parent, child, birth)
         fi;
         printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
             organism[j, 4], loc, organism[j, 3], organism[j, 5], organism[j, 7], organism[j,1], organism[j, 2]): 
-        if substModels[organism[j,9]][Type] <> 'aa' then
+        if (length(substModels) = 0 and (blocksize = 3 or organism[j,2] = 'AAA')) or (length(substModels) > 0 and substModels[organism[j,9]][Type] <> 'aa') then
             printf('<DNA>%s</DNA>', organism[j, 6]);
         fi:
         printf('</E>\n'):
@@ -201,13 +203,25 @@ CreateRealMSA := proc(cls, evol)
     if length(cls) = 0 then
         return():
     fi:
-    simType := substModels[evol[cls[1,1],cls[1,2], 9]][Type]:
-    blockSize := substModels[evol[cls[1,1],cls[1,2], 9]][Blocksize]:
+    id := evol[cls[1,1], cls[1,2], 7]:
+    if length(FileStat(wdir.'MSA')) = 0 then CallSystem('mkdir -p '.wdir.'/MSA') fi:
+    if length(substModels) > 0 then
+        simType := substModels[evol[cls[1,1],cls[1,2], 9]][Type]:
+        blockSize := substModels[evol[cls[1,1],cls[1,2], 9]][Blocksize]:
+    else
+        blockSize := blocksize:
+        if blocksize = 3 or evol[cls[1,1],cls[1,2],2] = 'AAA' then
+            simType := 'nuc'
+        else
+            simType := 'aa'
+        fi
+    fi:
     # gather sequences and events
     insertions := [seq([], length(cls))]:
     seqs := [seq([seq(0,3)], length(cls))]:
     seqInd := If(simType = 'aa', 2, 6):
     for i to length(seqs) do
+        #printf('sequence %d\n', i):
         seqs[i,1] := cls[i,1]:
         seqs[i,2] := evol[cls[i,1], cls[i,2], 4]:
         seqs[i,3] := copy(evol[cls[i,1], cls[i,2], seqInd]):
@@ -217,13 +231,16 @@ CreateRealMSA := proc(cls, evol)
                 #printf('i: %d, j: %d, length(seqs): %d, length(events): %d\n', i, j, length(seqs), length(events)):
                 #dprint(seqs[i,3]):
                 #printf('events[j]: %A\n', events[j]):
-                seqs[i, 3] := seqs[i, 3, 1..events[j,3]-1].CreateString(events[j,4], '_').seqs[i, 3, events[j,3]..-1]:
+                seqs[i, 3] := seqs[i, 3, 1..events[j,3]-1].CreateString(events[j,4], '-').seqs[i, 3, events[j,3]..-1]:
                 for k to length(insertions[i]) do
                     if events[j,3] <= insertions[i,k,3] then
                         insertions[i,k,3] := insertions[i,k,3] + events[j, 4]:
                     fi:
                 od:
             else # insertion
+                #print(length(seqs[i,3])):
+                #print(events[j,3]):
+                #print(events[j,4]):
                 insertion := seqs[i,3, events[j,3]+1..events[j,3]+events[j,4]]:
                 insertions[i] := append(insertions[i], [events[j,1], i, events[j,3], insertion]):
                 seqs[i,3] := seqs[i,3,1..events[j,3]].seqs[i,3,events[j,3]+events[j,4]+1..-1]:
@@ -258,34 +275,52 @@ CreateRealMSA := proc(cls, evol)
             if k > 0 then
                 seqs[j,3] := seqs[j,3,1..insertions[i,3]].insertions[i,4,k].seqs[j,3,insertions[i,3]+1..-1]:
             else
-                seqs[j,3] := seqs[j,3,1..insertions[i,3]].CreateString(length(insertions[i,4,1]),'_').seqs[j,3,insertions[i,3]+1..-1]:
+                seqs[j,3] := seqs[j,3,1..insertions[i,3]].CreateString(length(insertions[i,4,1]),'-').seqs[j,3,insertions[i,3]+1..-1]:
             fi:
         od:
     od:
     
     # print alignment
     if simType <> 'aa' then
-        OpenAppending(wdir.'MSAs.dna'):
+        outfile1 := noeval(OpenAppending(wdir.'MSA/MSA_'.id.'_dna.fa')):
+        outfile2 := noeval(OpenAppending(wdir.'MSA/MSA_all_dna.phy')):
     else
-        OpenAppending(wdir.'MSAs.aa'):
+        outfile1 := noeval(OpenAppending(wdir.'MSA/MSA_'.id.'_aa.fa')):
+        outfile2 := noeval(OpenAppending(wdir.'MSA/MSA_all_aa.phy')):
     fi:
+    eval(outfile2):
+    printf('%d %d\n', length(seqs), length(seqs[1,3])):
     for i to length(seqs) do
-        printf('SE%03d/%05d\t%s\n', seqs[i,1],seqs[i,2],seqs[i,3]):
+        printf('SE%03d/%05d      %s\n', seqs[i,1], seqs[i,2], seqs[i,3]):
+        OpenWriting(previous):
+        eval(outfile1):
+        printf('>SE%03d/%05d\n%s\n', seqs[i,1],seqs[i,2],seqs[i,3]):
+        OpenWriting(previous):
+        eval(outfile2):
     od:
     printf('\n\n'):
     OpenWriting(previous):
+    
     if simType <> 'aa' and blockSize = 3 then
-        OpenAppending(wdir.'MSAs.aa'):
+        outfile1 := noeval(OpenAppending(wdir.'MSA/MSA_'.id.'_aa.fa')):
+        outfile2 := noeval(OpenAppending(wdir.'MSA/MSA_all_aa.phy')):
+        eval(outfile2):
+        printf('%d %d\n', length(seqs), length(seqs[1,3])/3):
         for i to length(seqs) do
             curseq := '':
             for j to length(seqs[i,3]) by 3 do
-                if seqs[i, 3, j..j+2] = '___' then
-                    curseq := curseq.'_':
+                if seqs[i, 3, j..j+2] = '---' then
+                    curseq := curseq.'-':
                 else
                     curseq := curseq.CodonToA(seqs[i, 3, j..j+2]):
                 fi:
             od:
-            printf('SE%03d/%05d\t%s\n', seqs[i,1],seqs[i,2],curseq):
+            printf('SE%03d/%05d      %s\n', seqs[i,1], seqs[i,2], curseq):
+            OpenWriting(previous):
+            eval(outfile1):
+            printf('>SE%03d/%05d\n%s\n', seqs[i,1],seqs[i,2],curseq):
+            OpenWriting(previous):
+            eval(outfile2):
         od:
         printf('\n\n'):
         OpenWriting(previous):
@@ -315,7 +350,7 @@ CreateGeneTrees := proc(clsts, evol, lheights)
     
     # loop over all clusters
     for c to length(clsts) do
-#        printf('cluster %d\n', c):
+        #printf('cluster %d\n', c):
         cls := sort(clsts[c],x->x[1]):
         
         if length(cls) = 0 then next fi:
@@ -345,7 +380,7 @@ CreateGeneTrees := proc(clsts, evol, lheights)
                         curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-%d(%dLo%g)%d'):
                         if length(curg) = 5 then
                             # LGT orthologous replacement
-                            nodes := append(nodes, [curg[5], gid, curg[2], curg[3], curg[4], 'Lo']):
+                            nodes := append(nodes, [curg[5], gid, curg[2], curg[3], curg[4], 'L']):
                             gid := curg[3]:
                             break:
                         fi:
@@ -360,6 +395,20 @@ CreateGeneTrees := proc(clsts, evol, lheights)
                         if length(curg) = 3 then
                             # speciation
                             nodes := append(nodes, [curg[3], gid, curg[1], gid, curg[2], 'S']):
+                            break:
+                        fi:
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-(%dFi%g)%d'):
+                        if length(curg) = 4 then
+                            # fission
+                            if gid = curg[2] then break fi:
+                            nodes := append(nodes, [curg[4], gid, curg[4], curg[2], curg[3], 'Fi']):
+                            gid := curg[2]:
+                            break:
+                        fi:
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-(%dFu%g)%d'):
+                        if length(curg) = 4 then
+                            # fusion
+                            nodes := append(nodes, [curg[4], gid, curg[4], curg[2], curg[3], 'Fu']):
                             break:
                         fi:
                         error('unknown format: %s', evolution[cls[i,1], cls[i,2], 3, j..-1]):
@@ -389,9 +438,11 @@ CreateGeneTrees := proc(clsts, evol, lheights)
         od:
         
         # remove genes that were lost during evolution
-        remnodes := {op(nodes)} minus {op(cls)}:
+#        remnodes := {op(nodes)} minus {op(cls)}:
+        remnodes := {op(nodes)} minus {seq([cls[i,1], evolution[cls[i,1], cls[i,2], 4]],i=1..length(cls))}:
         for i to length(remnodes) do
-            tree := RemoveNode(tree, sprintf('SE%03d/%05d', remnodes[i,1], remnodes[i,2])):
+            nt := RemoveNode(tree, sprintf('SE%03d/%05d', remnodes[i,1], remnodes[i,2])):
+            tree := If(nt=NULL,NULL,nt[1]):
         od:
         
         # correct leaf heights
@@ -399,11 +450,12 @@ CreateGeneTrees := proc(clsts, evol, lheights)
         
         # store tree
         OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.drw'):
-        printf('tree_%d := %A\n\n', c, tree):
+#        printf('tree_%d := %A\n\n', c, tree):
+        printf('%A\n\n', tree):
         OpenWriting(previous):
         if not type(tree, Leaf) then
-            DrawTree(tree):
-            CallSystem('mv temp.ps '.wdir.'/GeneTrees/GeneTree'.c.'.ps'):
+            DrawTree(tree, InternalNodes=ShowNodeType, CrossReference):
+            CallSystem('mv '.wdir.'/temp.ps '.wdir.'/GeneTrees/GeneTree'.c.'.ps'):
         fi:
         trees := append(trees, tree):
     od:
@@ -415,8 +467,10 @@ end:
 # being inserted into an inner node.
 InsertNode := proc(t:Tree, n:list, msteps) option internal;
     if type(t, Leaf) then
-        if t[Label] = sprintf('SE%03d/%05d', n[3], n[4]) then
+        if t[Label][1..11] = sprintf('SE%03d/%05d', n[3], n[4]) then
             return(Tree(t, n[5], Leaf(sprintf('SE%03d/%05d', n[1], n[2]), msteps), n[6])):
+        elif n[6] = 'Fu' and t[Label] = sprintf('SE%03d/%05d', n[1], n[2]) then
+            return(Leaf(t[Label].sprintf('/Fu%05d-%g', n[4], n[5]), msteps)):
         else
             return(NULL):
         fi:
@@ -438,28 +492,44 @@ end:
 # remove leaf node with label l from tree t.
 RemoveNode := proc(t:Tree, l:string) option internal:
     if type(t, Leaf) then
-        if t[Label] = l then
+        if t[Label,1..11] = l then
             return(NULL):
         fi:
     else
         if type(t[Right], Leaf) then
-            if t[Right, Label] = l then
-                return(t[Left]):
+            if t[Right, Label,1..11] = l then
+                return([t[Left], t[xtra]]):
             fi:
         fi:
         if type(t[Left], Leaf) then
-            if t[Left, Label] = l then
-                return(t[Right]):
+            if t[Left, Label,1..11] = l then
+                return([t[Right],t[xtra]]):
             fi:
         fi:
         if not type(t[Right], Leaf) then
-            t[Right] := RemoveNode(t[Right], l):
+            st := RemoveNode(t[Right], l):
+            t[Right] := st[1]:
+            if st[2] <> 0 and st[2,1] = 'L' then
+                if t[xtra] = 'L' then
+                    t[xtra] := 'LL':
+                else
+                    t[xtra] := st[2]:
+                fi
+            fi:
         fi:
         if not type(t[Left], Leaf) then
-            t[Left] := RemoveNode(t[Left], l):
+            st := RemoveNode(t[Left], l):
+            t[Left] := st[1]:
+            if st[2] <> 0 and st[2,1] = 'L' then
+                if t[xtra] = 'L' then
+                    t[xtra] := 'LL':
+                else
+                    t[xtra] := st[2]:
+                fi
+            fi:
         fi:
     fi:
-    return(t):
+    return([t, 0]):
 end:
 
 CorrectLeafHeights := proc(tree:Tree, lheights:list)
@@ -473,27 +543,111 @@ CorrectLeafHeights := proc(tree:Tree, lheights:list)
     return(tree):
 end:
 
+ShowNodeType := proc()
+option internal;
+if nargs=3 then # called by InternalNodes
+    t := args[1];
+    x := args[2];
+    y := args[3];
+    c := [0,0,0]:
+    if length([op(t)])=4 and type(t[4],string) then
+        return([LTEXT(x,y,t[xtra],color=c),
+                CIRCLE(x,y,1,color=c)])
+    else
+        return([])
+    fi;
+fi;
+end:
+
+
+#WriteOrthologs := proc(trees, norgs)
+#    VPs := CreateArray(1..norgs, 1..norgs, []):
+#    
+#    for i to length(trees) do
+#        curt := trees[i]:
+#        GetOrthologs(curt, VPs):
+#    od:
+#    
+#    OPs := CreateArray(1..norgs, 1..norgs, []):
+#    PPs := CreateArray(1..norgs, 1..norgs, []):
+#    XPs := CreateArray(1..norgs, 1..norgs, []):
+#    for i to norgs do
+#        for j to norgs do
+#            for n to length(VPs[i,j]) do
+#                if VPs[i,j,n, 3] = 'S' then
+#                    OPs[i,j] := append(OPs[i,j], VPs[i,j,n,1..2]):
+#                elif VPs[i,j,n, 3] = 'D' then
+#                    PPs[i,j] := append(PPs[i,j], VPs[i,j,n,1..2]):
+#                else
+#                    XPs[i,j] := append(XPs[i,j], VPs[i,j,n,1..2]):
+#                fi:
+#            od:
+#        od:
+#    od:
+#    
+#    # store orthologs, paralogs and xenologs in separate files
+#    CallSystem('mkdir '.wdir.'/VP'):
+#    for i to norgs do
+#        CallSystem('mkdir '.wdir.sprintf('/VP/SE%03d', i)):
+#        for j to norgs do
+#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.op', i, j)):
+#            printf('OP := %A\n', OPs[i,j]):
+#            OpenWriting(previous):
+#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.pp', i, j)):
+#            printf('PP := %A\n', PPs[i,j]):
+#            OpenWriting(previous):
+#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.xp', i, j)):
+#            printf('XP := %A\n', XPs[i,j]):
+#            OpenWriting(previous):
+#        od:
+#    od:
+#end:
+
 WriteOrthologs := proc(trees, norgs)
-    VPs := CreateArray(1..norgs, 1..norgs, []):
-    
+    global evolution:
+    VPs := CreateArray(1..norgs, 1..norgs, 0):
+    idArr := CreateArray(1..norgs,0):
+
+    for i to norgs do
+        idArr[i] := transpose(evolution[i])[4]:
+        for j to norgs do
+            VPs[i,j] := CreateArray(1..length(evolution[i]), []):
+        od:
+    od:
+#    print('initialization complete'):
+
     for i to length(trees) do
+        #printf('cluster %d\n', i):
         curt := trees[i]:
-        GetOrthologs(curt, VPs):
+        GetOrthologs(curt, VPs, idArr):
     od:
     
-    OPs := CreateArray(1..norgs, 1..norgs, []):
-    PPs := CreateArray(1..norgs, 1..norgs, []):
-    XPs := CreateArray(1..norgs, 1..norgs, []):
+    HPs := CreateArray(1..norgs, 1..norgs, 0):
+    OPs := CreateArray(1..norgs, 1..norgs, 0):
+    PPs := CreateArray(1..norgs, 1..norgs, 0):
+    XPs := CreateArray(1..norgs, 1..norgs, 0):
     for i to norgs do
         for j to norgs do
-            for n to length(VPs[i,j]) do
-                if VPs[i,j,n, 3] = 'S' then
-                    OPs[i,j] := append(OPs[i,j], VPs[i,j,n,1..2]):
-                elif VPs[i,j,n, 3] = 'D' then
-                    PPs[i,j] := append(PPs[i,j], VPs[i,j,n,1..2]):
-                else
-                    XPs[i,j] := append(XPs[i,j], VPs[i,j,n,1..2]):
-                fi:
+            HPs[i,j] := CreateArray(1..length(evolution[i]), []):
+            OPs[i,j] := CreateArray(1..length(evolution[i]), []):
+            PPs[i,j] := CreateArray(1..length(evolution[i]), []):
+            XPs[i,j] := CreateArray(1..length(evolution[i]), []):
+        od:
+    od:
+    
+    for i to norgs do
+        for j to norgs do
+            for g to length(VPs[i,j]) do
+                for n to length(VPs[i,j,g]) do
+                    if VPs[i,j,g, n, 2] = 'S' then
+                        OPs[i,j,g] := append(OPs[i,j,g], VPs[i,j,g,n,1]):
+                    elif VPs[i,j,g,n, 2] = 'D' then
+                        PPs[i,j,g] := append(PPs[i,j,g], VPs[i,j,g,n,1]):
+                    elif  VPs[i,j,g,n, 2] = 'L' then
+                        XPs[i,j,g] := append(XPs[i,j,g], VPs[i,j,g,n,1]):
+                    fi:
+                    HPs[i,j,g] := append(HPs[i,j,g], VPs[i,j,g,n,1]):
+                od:
             od:
         od:
     od:
@@ -504,51 +658,102 @@ WriteOrthologs := proc(trees, norgs)
         CallSystem('mkdir '.wdir.sprintf('/VP/SE%03d', i)):
         for j to norgs do
             OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.op', i, j)):
-            printf('OP := %A\n', OPs[i,j]):
+            printf('OP := %A:\n', OPs[i,j]):
             OpenWriting(previous):
             OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.pp', i, j)):
-            printf('PP := %A\n', PPs[i,j]):
+            printf('PP := %A:\n', PPs[i,j]):
             OpenWriting(previous):
             OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.xp', i, j)):
-            printf('XP := %A\n', XPs[i,j]):
+            printf('XP := %A:\n', XPs[i,j]):
+            OpenWriting(previous):
+            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.hp', i, j)):
+            printf('HP := %A:\n', HPs[i,j]):
             OpenWriting(previous):
         od:
     od:
 end:
 
-GetOrthologs := proc(t:Tree, VPs:list(list(list))) option internal:
-    if type(t, Leaf) then return(NULL): fi:
+#GetOrthologs := proc(t:Tree, VPs:list(list(list))) option internal:
+#    if type(t, Leaf) then return(NULL): fi:
+#
+#    norgs := length(VPs):
+#    curgl := CreateArray(1..norgs, []):
+#    curgr := CreateArray(1..norgs, []):
+#    lleaves := [GetTreeLabels(t[Left])]:
+#    rleaves := [GetTreeLabels(t[Right])]:
+#    for i to length(lleaves) do
+#        o := atoi(lleaves[i,3..5]):
+#        g := atoi(lleaves[i,7..-1]):
+#        curgl[o] := append(curgl[o], g):
+#    od:
+#    for i to length(rleaves) do
+#        o := atoi(rleaves[i,3..5]):
+#        g := atoi(rleaves[i,7..11]):
+#        curgr[o] := append(curgr[o], g):
+#    od:
+#    for i to norgs do
+#        if curgl[i] = [] then next fi:
+#        for j from i+1 to norgs do
+#            if curgr[j] = [] then next fi:
+#            VPs[i, j] := append(VPs[i,j], [curgl[i], curgr[j], t[xtra]]):
+#            VPs[j, i] := append(VPs[j,i], [curgr[j], curgl[i], t[xtra]]):
+#        od:
+#        VPs[i, i] := append(VPs[i,i], [curgl[i], curgr[i], t[xtra]]):
+#    od:
+#
+#    GetOrthologs(t[Left], VPs):
+#    GetOrthologs(t[Right], VPs):
+#
+#    NULL:
+#end:
 
+GetOrthologs := proc(t:Tree, VPs:list(list(list(list))), idArr:list(list)) #option internal:
+    global evolution;
+    if type(t, Leaf) then return(NULL) fi:
+    
     norgs := length(VPs):
-    curgl := CreateArray(1..norgs, []):
-    curgr := CreateArray(1..norgs, []):
-    lleaves := [GetTreeLabels(t[Left])]:
-    rleaves := [GetTreeLabels(t[Right])]:
-    for i to length(lleaves) do
-        o := atoi(lleaves[i,3..5]):
-        g := atoi(lleaves[i,7..-1]):
-        curgl[o] := append(curgl[o], g):
-    od:
-    for i to length(rleaves) do
-        o := atoi(rleaves[i,3..5]):
-        g := atoi(rleaves[i,7..-1]):
-        curgr[o] := append(curgr[o], g):
-    od:
-    for i to norgs do
-        if curgl[i] = [] then next fi:
-        for j from i+1 to norgs do
-            if curgr[j] = [] then next fi:
-            VPs[i, j] := append(VPs[i,j], [curgl[i], curgr[j], t[xtra]]):
-            VPs[j, i] := append(VPs[j,i], [curgr[j], curgl[i], t[xtra]]):
-        od:
-        VPs[i, i] := append(VPs[i,i], [curgl[i], curgr[i], t[xtra]]):
-    od:
 
-    GetOrthologs(t[Left], VPs):
-    GetOrthologs(t[Right], VPs):
+#    lleaves := [GetTreeLabels(t[Left])]:
+#    rleaves := [GetTreeLabels(t[Right])]:
+    lleaves := GetLeafLabels(t[Left], t[xtra]):
+    rleaves := GetLeafLabels(t[Right], t[xtra]):
+    
+    for i to length(lleaves) do
+        for j to length(rleaves) do
+            lo := lleaves[i,1]: #atoi(lleaves[i,1,3..5]):
+            lg := lleaves[i,2]: #atoi(lleaves[i,1,7..-1]):
+            lg := SearchArray(lg, idArr[lo]):
+            le := lleaves[i,3]:
+            ro := rleaves[j,1]: #atoi(rleaves[j,1,3..5]):
+            rg := rleaves[j,2]: #atoi(rleaves[j,1,7..-1]):
+            rg := SearchArray(rg, idArr[ro]):
+            re := rleaves[j,3]:
+            
+            ev := le:
+            if re[1] = 'L' then ev := re fi:
+            
+            VPs[lo,ro,lg] := append(VPs[lo,ro,lg], [rg, ev]):
+            VPs[ro,lo,rg] := append(VPs[ro,lo,rg], [lg, ev]):
+        od:
+    od:
+    
+    GetOrthologs(t[Left], VPs, idArr):
+    GetOrthologs(t[Right], VPs, idArr):
 
     NULL:
 end:
+
+GetLeafLabels := proc(t:Tree, ev:string)
+    if type(t,Leaf) then
+        o := atoi(t[Label, 3..5]):
+        g := atoi(t[Label,7..-1]):
+        #printf('Label: %s -> o: %d / g: %d\n', t[Label],o,g):
+        return([[o, g, ev]]):
+    else
+        return([op(GetLeafLabels(t[Left], If(t[xtra] = 'LL', 'L', ev))), op(GetLeafLabels(t[Right], If(t[xtra,1] = 'L', t[xtra], ev)))]):
+    fi:
+end:
+    
 
 ReadTreeFile := proc(fileName:string)
     tree := ReadRawFile(fileName):
