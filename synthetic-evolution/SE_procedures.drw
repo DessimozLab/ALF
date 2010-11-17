@@ -962,5 +962,14 @@ UpdateTreeLGT := proc(t:Tree)
     NULL
 end:
 
+ConvertToPam := proc(t:Tree) option internal;
+    t[Height] := 100*t[Height]:
+    if not type(tree,Leaf) then
+        ConvertToPam(t[Right]):
+        ConvertToPam(t[Left]):
+    fi:
+    NULL
+end:
+
 
 lprint('Procedures for Synthetic Evolution sucessfully loaded');

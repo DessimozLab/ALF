@@ -466,10 +466,12 @@ end:
 # leaves of the tree. Hence, the insertion is reduced to combining an existing leaf with the one
 # being inserted into an inner node.
 InsertNode := proc(t:Tree, n:list, msteps) option internal;
+    label1 := sprintf('SE%03d/%05d', n[3], n[4]):
+    label2 := sprintf('SE%03d/%05d', n[1], n[2]):
     if type(t, Leaf) then
-        if t[Label][1..11] = sprintf('SE%03d/%05d', n[3], n[4]) then
-            return(Tree(t, n[5], Leaf(sprintf('SE%03d/%05d', n[1], n[2]), msteps), n[6])):
-        elif n[6] = 'Fu' and t[Label] = sprintf('SE%03d/%05d', n[1], n[2]) then
+        if t[Label][1..11] = label1 then
+            return(Tree(t, n[5], Leaf(label2, msteps), n[6])):
+        elif n[6] = 'Fu' and t[Label, 1..11] = label2 then
             return(Leaf(t[Label].sprintf('/Fu%05d-%g', n[4], n[5]), msteps)):
         else
             return(NULL):
@@ -491,46 +493,111 @@ end:
 
 # remove leaf node with label l from tree t.
 RemoveNode := proc(t:Tree, l:string) option internal:
+    # if the tree only consists of one leaf
     if type(t, Leaf) then
         if t[Label,1..11] = l then
             return(NULL):
-        fi:
-    else
-        if type(t[Right], Leaf) then
-            if t[Right, Label,1..11] = l then
-                return([t[Left], t[xtra]]):
-            fi:
-        fi:
-        if type(t[Left], Leaf) then
-            if t[Left, Label,1..11] = l then
-                return([t[Right],t[xtra]]):
-            fi:
-        fi:
-        if not type(t[Right], Leaf) then
-            st := RemoveNode(t[Right], l):
-            t[Right] := st[1]:
-            if st[2] <> 0 and st[2,1] = 'L' then
-                if t[xtra] = 'L' then
-                    t[xtra] := 'LL':
-                else
-                    t[xtra] := st[2]:
-                fi
-            fi:
-        fi:
-        if not type(t[Left], Leaf) then
-            st := RemoveNode(t[Left], l):
-            t[Left] := st[1]:
-            if st[2] <> 0 and st[2,1] = 'L' then
-                if t[xtra] = 'L' then
-                    t[xtra] := 'LL':
-                else
-                    t[xtra] := st[2]:
-                fi
-            fi:
+        else
+            return([t, 0]):
         fi:
     fi:
-    return([t, 0]):
+
+    # tree consists of more than just a leaf
+    # right subtree is a leaf
+    if type(t[Right], Leaf) then
+        # check whether it should be deleted
+        if t[Right, Label,1..11] = l then
+            return([t[Left], 0]):
+        fi:
+    else
+        # if right subtree is not a leaf, try to remove leaf in there
+        st := RemoveNode(t[Right], l):
+        t[Right] := st[1]:
+        # if the next level down, the left leaf of an LGT node was deleted, mark current node as LGT
+        if st[2] = 'L' then
+            t[xtra] := 'L':
+        fi:
+    fi:
+    # left subtree is a leaf
+    if type(t[Left], Leaf) then
+        # check whether it should be deleted
+        if t[Left, Label,1..11] = l then
+            if type(t[Right], Leaf) then
+                return([t[Right], t[xtra]]):
+            else
+                if t[Right,xtra] = 'L' then
+                    t[Right,xtra] := 'LL':
+                fi:
+                return([t[Right], 0]):
+            fi:
+        fi:
+    else
+        # if left subtree is not a leaf, try to remove leaf in there
+        st := RemoveNode(t[Left], l):
+        if st[2] = 'L' and t[xtra] = 'S' then
+            t[Left] := t[Right]:
+            t[Right] := st[1]:
+            t[xtra] := 'L':
+        elif st[2] = 'L' and t[xtra] = 'D' then
+            t[Left] := st[1]:
+            t[xtra] := 'LD':
+        elif st[2] = 'L' and t[xtra] = 'L' then
+            t[Left] := st[1]:
+            t[xtra] := 'LL':
+#        elif st[2] = 'Fi' then
+#            t[Left] := t[Right]:
+#            t[Right] := st[1]:
+#            t[xtra] := t[xtra].'Fi':            
+        else
+            t[Left] := st[1]:
+        fi:    
+    fi:
+                    
+    return([t,0]):
 end:
+
+#RemoveNode := proc(t:Tree, l:string) option internal:
+#    if type(t, Leaf) then
+#        if t[Label,1..11] = l then
+#            return(NULL):
+#        fi:
+#    else
+#        if type(t[Right], Leaf) then
+#            if t[Right, Label,1..11] = l then
+#                return([t[Left], t[xtra]]):
+#            fi:
+#        fi:
+#        if type(t[Left], Leaf) then
+#            if t[Left, Label,1..11] = l then
+#                return([t[Right],t[xtra]]):
+#            fi:
+#        fi:
+#        if not type(t[Right], Leaf) then
+#            st := RemoveNode(t[Right], l):
+#            t[Right] := st[1]:
+#            if st[2] <> 0 and st[2,1] = 'L' then
+#                if t[xtra] = 'L' then
+#                    t[xtra] := 'LL':
+#                else
+#                    t[xtra] := st[2]:
+#                fi
+#            fi:
+#        fi:
+#        if not type(t[Left], Leaf) then
+#            st := RemoveNode(t[Left], l):
+#            t[Left] := st[1]:
+#            if st[2] <> 0 and st[2,1] = 'L' then
+#                if t[xtra] = 'L' then
+#                    t[xtra] := 'LL':
+#                else
+#                    t[xtra] := st[2]:
+#                fi
+#            fi:
+#        fi:
+#    fi:
+#    return([t, 0]):
+#end:
+
 
 CorrectLeafHeights := proc(tree:Tree, lheights:list)
     if type(tree, Leaf) then
@@ -750,7 +817,7 @@ GetLeafLabels := proc(t:Tree, ev:string)
         #printf('Label: %s -> o: %d / g: %d\n', t[Label],o,g):
         return([[o, g, ev]]):
     else
-        return([op(GetLeafLabels(t[Left], If(t[xtra] = 'LL', 'L', ev))), op(GetLeafLabels(t[Right], If(t[xtra,1] = 'L', t[xtra], ev)))]):
+        return([op(GetLeafLabels(t[Left], If(t[xtra] = 'LL' or t[xtra] = 'LD', 'L', ev))), op(GetLeafLabels(t[Right], If(t[xtra] = 'LD', 'D', If(t[xtra,1] = 'L', t[xtra], ev))))]):
     fi:
 end:
     

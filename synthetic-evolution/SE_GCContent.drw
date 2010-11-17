@@ -1,0 +1,187 @@
+CheckTargetFrequencies := proc(tf, nspec, mtype)
+    len := If(mtype='nuc',4,64):
+    if length(tf) <> nspec then error('number of target frequency vectors does not match number of species!') fi:
+    for i to length(tf) do
+        if length(tf[i,2]) <> len then error('frequency vector should contain '.len.' entries.') fi:
+        if |1-sum(tf[i,2])| > 1e-6 then error('frequency vector should add to 1.'): fi:
+    od:
+end:
+
+CreateRandomTargetFrequencies := proc(tree:Tree, nspec, mtype:{'nuc','codon',list({'nuc','codon'})})
+    len := 12:
+    if type(mtype, list) then
+        baseFreqs := CreateRandomTargetFrequencies_12(tree, nspec):
+        #printf('base freqs: %A\n', baseFreqs):
+        NewFreqs := CreateArray(1..length(mtype), 1..nspec,0):
+        for i to length(mtype) do
+            j := 0:
+            #printf('mtype %d\n', i):
+            if mtype[i] = 'nuc' then
+                for l in Leaves(tree) do
+                    j := j + 1:
+                    NewFreqs[i,j] := [l[Label], sum(baseFreqs[j])/3]:
+                od:
+            else
+                for l in Leaves(tree) do
+                    j := j + 1:
+                    #printf('leaf %d\n', j):
+                    NewFreqs[i, j] := [l[Label], 0]:
+                    #printf('leaf %d after first assign\n', j):
+                    NewFreqs[i, j, 2] := CreateArray(1..64,0):
+                    #printf('leaf %d after second assign\n', j):
+                    for x to 4 do
+                        b1 := NIntToNuc(x):
+                        for y to 4 do
+                            b2 := NIntToNuc(y):
+                            for z to 4 do
+                                b3 := NIntToNuc(z):
+                                #printf('leaf %d before third assign\n', j):
+                                NewFreqs[i, j, 2, CodonToCInt(b1.b2.b3)] := baseFreqs[j,1,x]*baseFreqs[j,2,y]*baseFreqs[j,3,z]:
+                            od
+                        od
+                    od:
+                    #printf('leaf %d end\n', j):
+                od
+            fi
+        od:
+    else
+        NewFreqs := CreateArray(1..nspec, 0):
+        if mtype = 'nuc' then len := 4 fi:
+        
+        i := 0:
+        if mtype='nuc' then
+            for l in Leaves(tree) do
+                i := i + 1:
+                gc := Rand(0.3..0.7):
+                r1:= Rand(0.3..0.7):
+                r2 := Rand(0.3..0.7):
+                NewFreqs[i] := [l[Label], [(1-gc)*r1, gc*r2, (1-gc)*(1-r1), gc*(1-r2)]]:
+            od:
+        else
+            baseFreqs := CreateRandomTargetFrequencies_12(tree, nspec):
+            for l in Leaves(tree) do
+                i := i + 1:
+                NewFreqs[i] := [l[Label], 0]:
+                NewFreqs[i,2] := CreateArray(1..64,0):
+                for x to 4 do
+                    b1 := NIntToNuc(x):
+                    for y to 4 do
+                        b2 := NIntToNuc(y):
+                        for z to 4 do
+                            b3 := NIntToNuc(z):
+                            NewFreqs[i, 2, CodonToCInt(b1.b2.b3)] := baseFreqs[i,1,x]*baseFreqs[i,2,y]*baseFreqs[i,3,z]:
+                        od
+                    od
+                od
+            od
+        fi
+    fi:    
+    NewFreqs
+end:
+
+CreateRandomTargetFrequencies_12 := proc(tree:Tree, nspec:posint)
+    i := 0:
+    baseFreqs := CreateArray(1..nspec, 1..3,0):
+    for l in Leaves(tree) do
+        i := i + 1:
+        gc := Rand(0.3..0.7):
+        for j to 3 do
+            gc1 := Rand(gc-.1..gc+.1):
+            r1 := Rand(0.3..0.7):
+            r2 := Rand(0.3..0.7):
+            baseFreqs[i, j] := [(1-gc1)*r1, gc1*r2, (1-gc1)*(1-r1), gc1*(1-r2)]:
+        od:
+    od:
+    baseFreqs
+end:
+
+
+GenInternalTargetFreqs := proc(targetFreqs, tree)
+    if type(tree[Left], Leaf) then
+        #printf('current leaf: %A\n', tree[Left][Label]):
+        curFreqs := CreateArray(1..length(targetFreqs),0):
+        for i to length(targetFreqs) do
+            for j to length(targetFreqs[i]) do
+                #printf('current label: %A\n', targetFreqs[i,j,1]):
+                if targetFreqs[i,j,1] = tree[Left][Label] then
+                    #printf('model %d, species %s: freqs found\n', i, tree[Left][Label]):
+                    curFreqs[i] := targetFreqs[i,j,2]:
+                    break:
+                fi:
+            od:
+        od:
+        tree[Left] := append(tree[Left], curFreqs):
+    else
+        tree[Left] := GenInternalTargetFreqs(targetFreqs, tree[Left]):
+    fi:
+    if type(tree[Right], Leaf) then
+        curFreqs := CreateArray(1..length(targetFreqs),0):
+        for i to length(targetFreqs) do
+            for j to length(targetFreqs[i]) do
+                if targetFreqs[i,j,1] = tree[Right][Label] then
+                    #printf('model %d, species %s: freqs found\n', i, tree[Right][Label]):
+                    curFreqs[i] := targetFreqs[i,j,2]:
+                    break:
+                fi:
+            od:
+        od:
+        tree[Right] := append(tree[Right], curFreqs):    
+    else
+        tree[Right] := GenInternalTargetFreqs(targetFreqs, tree[Right]):
+    fi:
+    bl := tree[Left][Height] - tree[Height]:
+    br := tree[Right][Height] - tree[Height]:
+    bsum := bl+br:
+    res := append(tree, br/bsum*tree[Left][-1]+bl/bsum*tree[Right][-1]):
+end:
+
+ComputeTargetGCContent := proc(tf)
+    if length(tf) = 4 then
+        res := tf[NucToNInt('G')] + tf[NucToNInt('C')]:
+    else
+        res := 0:
+        for i to 64 do
+            curc := CIntToCodon(i):
+            for j to 3 do
+                if curc[j] = 'C' or curc[j] = 'G' then
+                    res := res + tf[i]/3:
+                fi
+            od
+        od
+    fi:
+    res
+end:
+
+PerformNewGCTarget := proc(orgsource, evolTime, tf)
+    global curTargetFreqs:
+    printf('New GC content target in organism %d at time %g\n', orgsource, evolTime):
+    curTargetFreqs[orgsource] := tf:
+end:
+
+# generates a CodonMatrix for GC amelioration (by adrian schneider)
+# adapted by daniel dalquen to compute a CodonMatrix based on a target
+# GC content (the bias for the matrix is computed from the target content
+# using a polynomial fit over the empirical convergence values)
+GCBiasMatrix := proc(lnM1:matrix, oldFreqs:list, newFreqs:list)
+    ratio := CreateArray(1..length(newFreqs),1..length(newFreqs),0):
+    for i to length(newFreqs) do
+        if oldFreqs[i] = 0 then
+            ratio[i,i] := newFreqs[i]:
+        else
+            ratio[i,i] := newFreqs[i]/oldFreqs[i]
+        fi
+    od:
+    if length(lnM1) > length(newFreqs) then
+        newQ := CreateArray(1..length(newFreqs),1..length(newFreqs), 0):
+        for i to length(newFreqs) do for j to length(newFreqs) do
+            newQ[i,j] := lnM1[i,j]
+        od od:
+    else
+        newQ := copy(lnM1):
+    fi:
+    for i to length(newQ) do newQ[i,i] := 0 od:
+    newQ := ratio * newQ:
+    qsum := sum(newQ):
+    for i to length(newQ) do newQ[i,i] := -qsum[i] od:
+    newQ
+end:

@@ -16,7 +16,7 @@ treeData := []:
 treeData := append(treeData, []):   
 treeEvo := '';
 lgtNum := 0:
-totD := 0; totL := 0;
+totD := 0: totL := 0: totDgenes := 0: totLgenes := 0: totGenes := 0:
 spec := [];
 timesteps := CreateArray(1..1);
 geneR := [];
@@ -99,6 +99,25 @@ fi:
 if not assigned(substModels) then
     substModels := []:
 fi:
+if not assigned(unitIsPam) then
+    unitIsPam := true:
+fi:
+    
+if not unitIsPam then
+    mutRate := muteRate * 100:
+    geneDuplRate := geneDuplRate / 100:
+    geneLossRate := geneLossRate / 100:
+    lgtRate := lgtRate / 100:
+    lgtGRate := lgtGRate / 100:
+    invers := invers / 100:
+    transloc := transloc / 100:
+    invtrans := invtrans / 100:
+    fissionRate := fissionRate / 100:
+    fusionRate := fusionRate / 100:
+    aaGainRate := aaGainRate / 100:
+    aaLossRate := aaLossRate / 100:
+fi:
+
 
 if length(substModels) = 0 or not assigned(targetFreqs) then
     enableGCAmelioration := false:
@@ -128,6 +147,9 @@ if treeType = 'Custom' then
     fi:
     tree := CheckTree(tree):
 #    tree := ReadTreeFile(treeFile):
+    if not unitIsPam then
+        ConvertToPam(tree):
+    fi:
     CheckBranchLengths(tree):
     NSpecies := 0:
     for l in Leaves(tree) do NSpecies := NSpecies + 1 od:
@@ -466,11 +488,10 @@ print('\n\nEvolution!\n\n');
 OpenWriting(wdir.'/logfile.txt'); 
 lprint('Synthetic evolution\n-------------------\n');
 #printf('%i iteration steps\n', maxSteps);
-printf('height of tree: %a\n', mutRate);
 printf('first organism (%s): %i proteins with %i aa (average)\n', 
     If(realseed = true, 'biological sequences', 'artificial sequences'), 
     Nprot, Naa);
-printf('Mutation rate: %.2f, Speciations: %i\n', 
+printf('height of tree: %.2f, Speciations: %i\n', 
     mutRate, cSpecies);
 if geneDuplRate > 0 then
     printf('Gene duplication rate: %.2f, transloc. Dupl.: %.2f\n', 
@@ -545,6 +566,7 @@ for i to length(branches) do
             for j from 2 to length(cumProb) do
                 cumProb[j] := cumProb[j-1] + cumProb[j]:
             od:
+            #printf('cumProb: %A\n', cumProb):
             cumProb := cumProb / cumProb[-1]:
             r := Rand():
             #printf('cumProb[1]: %.4g, r: %.4g\n', cumProb[1], r):
@@ -557,33 +579,42 @@ for i to length(branches) do
                 # gene duplication
                 events[curInd] := append(events[curInd], [curT, branches[i,1], 'D']):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
-                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                totalRate := totalRate + rateSum + If(seind > 1, lgtRate + lgtGRate,0):
+                totD := totD + 1:
             elif event = 2 then
                 # gene loss
                 events[curInd] := append(events[curInd], [curT, branches[i,1], 'L']):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] - 1:
-                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                totalRate := totalRate - rateSum - If(seind > 1, lgtRate + lgtGRate,0):
             elif event = 7 then
                 # lgt
                 events[curInd] := append(events[curInd], [curT, branches[i,1], 'LGT']):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
-                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                totalRate := totalRate + rateSum + If(seind > 1, lgtRate + lgtGRate,0):
+                totL := totL + 1:
             elif event = 8 then
                 # group lgt
                 numg := Rand(2..lgtGSize):
                 events[curInd] := append(events[curInd], [curT, branches[i,1], 'LGTG', numg]):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + numg:
-                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                totalRate := totalRate + numg * (rateSum + If(seind > 1, lgtRate + lgtGRate,0)):
+                totL := totL + numg:
             elif event = 3 then
                 # fusion
                 events[curInd] := append(events[curInd], [curT, branches[i,1], 'FU']):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] - 1:
-                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                totalRate := totalRate - rateSum - If(seind > 1, lgtRate + lgtGRate,0):
             elif event = 4 then
                 # fission
                 events[curInd] := append(events[curInd], [curT, branches[i,1], 'FI']):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
-                totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
+                totalRate := totalRate + rateSum + If(seind > 1, lgtRate + lgtGRate,0):
             elif event = 5 then
                 # inversion
                 events[curInd] := append(events[curInd], [curT, branches[i,1], 'IV']):
@@ -711,12 +742,14 @@ lprint('...main calculation finished.');
 
 # calculates total number of lgt and duplication and gathers gene families
 for i to livingOrgs do
-    for j to length(evolution[i]) do
+    curlen := length(evolution[i]):
+    totGenes := totGenes + curlen:
+    for j to curlen do
     	if SearchString('D', evolution[i, j, 3]) > -1 then
-	        totD := totD + 1;
+	        totDgenes := totDgenes + 1;
     	fi;
 	    if SearchString('L', evolution[i, j, 3]) > -1 then
-	        totL := totL + 1;
+	        totLgenes := totLgenes + 1;
     	fi;
     	clusters[evolution[i,j,7]] := append(clusters[evolution[i,j,7]], [i,j]):
     od:
@@ -737,12 +770,12 @@ WriteOrthologs(geneTrees, livingOrgs):
 
 # logfile footer, DB output, GenomeSummaries
 OpenAppending(wdir.'/logfile.txt');
-printf('\n\n\n\%i species generated\n', livingOrgs);
+printf('\n\n\n%d genes in %i species generated\n', totGenes, livingOrgs);
 if geneDuplRate > 0 then
-printf('%.0f gene duplications\n', totD):
+printf('%.0f gene duplications resulting in %d genes\n', totD, totDgenes):
 fi:
 if lgtRate > 0 or lgtGRate > 0 then
-    printf('%.0f lgt events\n', totL);
+    printf('%.0f lgt events resulting in %d genes\n', totL, totLgenes);
 fi:
 if enableGCAmelioration then
     printf('\nGC amelioration:');
