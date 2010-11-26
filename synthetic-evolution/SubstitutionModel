@@ -13,7 +13,7 @@
 # LogPAM1: mutation matrix (or list of mutation matrices)
 SubstitutionModel := proc(Name:string, Params:list(anything), BaseFreqs:list(numeric), NeutralDNA:boolean,
                           Type:{'aa','codon','nuc'}, LogPAM1:{matrix(numeric), list(matrix(numeric))}, Blocksize:posint)
-    global AF, NewLogPAM1, CodonLogPAM1, CF, YCodonLogPAM1, DNALogPAM1;
+    global AF, NewLogPAM1, CodonLogPAM1, CF, YCodonLogPAM1, DNALogPAM1, SEbasedir;
     if nargs = 0 then
         error('too few arguments. need at least a Model name!'): fi:
     if nargs = 1 then
@@ -31,15 +31,15 @@ SubstitutionModel := proc(Name:string, Params:list(anything), BaseFreqs:list(num
         elif Name = 'JC' then #Jukes-Cantor
             return(SubstitutionModel('TN93', [1,1,1], [0.25,0.25,0.25,0.25], true)):
         elif Name = 'ECM' then
-            matrixFile := 'matrices/ecm.dat':
+            matrixFile := SEbasedir.'/matrices/ecm.dat':
         elif Name = 'ECMu' then
-            matrixFile := 'matrices/ecmu.dat':
+            matrixFile := SEbasedir.'/matrices/ecmu.dat':
         elif Name = 'JTT' then
-            matrixFile := 'matrices/jtt.dat':
+            matrixFile := SEbasedir.'/matrices/jtt.dat':
         elif Name = 'WAG' then
-            matrixFile := 'matrices/wag.dat':
+            matrixFile := SEbasedir.'/matrices/wag.dat':
         elif Name = 'LG' then
-            matrixFile := 'matrices/lg.dat':           
+            matrixFile := SEbasedir.'/matrices/lg.dat':           
         else
             error('too few arguments. please supply necessary model parameters!'):
         fi:

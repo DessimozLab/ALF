@@ -9,37 +9,39 @@
 Set(printgc=false);
 starttime := UTCTime();
 Set(gc=2e7): SetRandSeed(); # Set(quiet):
-basedir := '/home/darwin/Orthologues/dan/synthetic-evolution/';
-#basedir :='/Users/ddalquen/Documents/Darwin/source/bio-recipes/Orthologues/dan/synthetic-evolution/';
+#SEbasedir := '/home/darwin/Orthologues/dan/synthetic-evolution/';
+SEbasedir :='/Users/ddalquen/Documents/Darwin/source/bio-recipes/Orthologues/dan/synthetic-evolution/';
 if not assigned(paramfile) then
-	paramfile := basedir.'parameters/p_pas-test.drw';
-#	paramfile := basedir.'parameters/p_pas-seminar.drw';
+	paramfile := SEbasedir.'parameters/p_pas-test.drw';
+#	paramfile := SEbasedir.'parameters/p_pas-seminar.drw';
 	printf('paramfile not specified. use %s!!\n',paramfile);
 fi:
 
 printf('\n'):
-#ReadProgram(basedir.'Gamma.drw'):
-ReadProgram(basedir.'AAMutateGamma.drw'):
-ReadProgram(basedir.'KHG_Matrix.drw'):
-#ReadProgram(basedir.'YangModels.drw'):
-ReadProgram(basedir.'NucleotideMatrix.drw'):
-#ReadProgram(basedir.'BirthDeathTree.drw'):
-#ReadProgram(basedir.'BirthDeathTree'):
-ReadProgram(basedir.'SubstitutionModel'):
-ReadProgram(basedir.'SE_DataOutput.drw');
-ReadProgram(basedir.'SE_Rearrangement.drw');
-ReadProgram(basedir.'SE_procedures.drw');
-ReadProgram(basedir.'SE_AllAllTree.drw'):
-ReadProgram(basedir.'SE_RandomSubtree.drw'):
-ReadProgram(basedir.'SE_GCContent.drw'):
-printf('\n'):
+if not assigned(libsLoaded) then
+    libsLoaded := true:
+    #ReadProgram(SEbasedir.'Gamma.drw'):
+    ReadProgram(SEbasedir.'AAMutateGamma.drw'):
+    ReadProgram(SEbasedir.'KHG_Matrix.drw'):
+    #ReadProgram(SEbasedir.'YangModels.drw'):
+    ReadProgram(SEbasedir.'NucleotideMatrix.drw'):
+    #ReadProgram(SEbasedir.'BirthDeathTree.drw'):
+    #ReadProgram(SEbasedir.'BirthDeathTree'):
+    ReadProgram(SEbasedir.'SubstitutionModel'):
+    ReadProgram(SEbasedir.'SE_DataOutput.drw');
+    ReadProgram(SEbasedir.'SE_Rearrangement.drw');
+    ReadProgram(SEbasedir.'SE_procedures.drw');
+    ReadProgram(SEbasedir.'SE_AllAllTree.drw'):
+    ReadProgram(SEbasedir.'SE_RandomSubtree.drw'):
+    ReadProgram(SEbasedir.'SE_GCContent.drw'):
+    ReadProgram(SEbasedir.'SE_Evolutionary_Events.drw'):
+    printf('\n'):
+fi:
 
 ReadProgram(paramfile);
 printf('\nparameter file read\n'):
 
-ReadProgram(basedir.'SE_Evolutionary_Events.drw'):
-
-ReadProgram(basedir.'synthevol.drw');
+ReadProgram(SEbasedir.'synthevol.drw');
 CallSystem('cp ' . paramfile . ' ' . wdir . 'used_parameters.drw'):
 endtime := (UTCTime() - starttime) / 60:
 printf('\n\nsynthetic evolution completed in %.2f minutes!\n\n', endtime):
