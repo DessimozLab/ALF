@@ -562,6 +562,7 @@ end:
 seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
     global evolution, substModels, curTargetFreqs, enableGCAmelioration;
     oldLen := length(evolution[org,gene,2]):
+    #printf('seqmutation(%d,%d): site rates: %a\n',org,gene, evolution[org,gene,1]):
     # apply rate modifications from duplications
     rateFac := curT - evolution[org,gene,11]:
     if rateFac <= 0 then return() fi:
@@ -789,6 +790,7 @@ geneFission := proc(org:posint, g:posint, etime:nonnegative)
     else
         bDom := 1:
         #printf('breakpoint: %d\n', breakPoint):
+        #printf('curlength: %d\n', length(evolution[org,gene,2])):
         while bDom <= length(evolution[org,gene,1]) and evolution[org,gene,1,bDom,1] <= breakPoint do bDom := bDom + 1: od:
         #print('bla 2'):
         bDom := bDom - 1;
@@ -823,7 +825,8 @@ geneFission := proc(org:posint, g:posint, etime:nonnegative)
     fi:
     #print('did some more shit'):
     if simType = 'aa' then
-        newGene[2] := evolution[org,gene,2,newGene[1,1,1]..-1]:
+#        newGene[2] := evolution[org,gene,2,newGene[1,1,1]..-1]: ### bugfix 14.1.2011 DD
+        newGene[2] := evolution[org,gene,2,breakPoint+1..-1]:
     else
         newGene[6] := evolution[org,gene,6, breakPoint*blockSize+1..-1]:
         if simType = 'codon' or not neutralDNA then
@@ -864,6 +867,8 @@ geneFission := proc(org:posint, g:posint, etime:nonnegative)
     evolution[org] := append(evolution[org], newGene):
     geneR[org] := append(geneR[org], evolution[org, -1, 4]):
     transLoc(org, g, SearchArray(evolution[org, -1, 4], abs(geneR[org])), 1);
+    #printf('length1 after fission: %d\nsite rates: %a\n', length(evolution[org,gene,2]), evolution[org,gene,1]);
+    #printf('length2 after fission: %d\nsite rates: %a\n', length(evolution[org,-1,2]), evolution[org,-1,1]);
     #print('appended new gene'):
 end:
 

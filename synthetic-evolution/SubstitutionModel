@@ -17,55 +17,58 @@ SubstitutionModel := proc(Name:string, Params:list(anything), BaseFreqs:list(num
     if nargs = 0 then
         error('too few arguments. need at least a Model name!'): fi:
     if nargs = 1 then
-        if Name = 'CPAM' then # CodonPAM model
-            CreateCodonMatrices():
+        if Name = 'CPAM' or Name = 'ECM' or Name = 'ECMu' then # CodonPAM model
+            CreateCodonMatrices(Name):
             f := copy(CF):
             m := copy(CodonLogPAM1):
             return(noeval(SubstitutionModel(Name, [], f, false, 'codon', m, 3))):
-        elif Name = 'GCB' then # PAM model with Gonnet matrix
-            M := exp(NewLogPAM1):
-            AF := [seq(M[i,1]/M[1,i], i=1..20)]:
-            f := AF/sum(AF);
-            m := copy(NewLogPAM1):
+        elif Name = 'GCB' or Name = 'JTT' or Name = 'WAG' or Name = 'LG' then # PAM model with Gonnet matrix
+            CreateDayMatrices(Name):
+            f := copy(AF);
+            m := copy(logPAM1):
             return(noeval(SubstitutionModel(Name, [], f, false, 'aa', m, 1))):
         elif Name = 'JC' then #Jukes-Cantor
             return(SubstitutionModel('TN93', [1,1,1], [0.25,0.25,0.25,0.25], true)):
-        elif Name = 'ECM' then
-            matrixFile := SEbasedir.'/matrices/ecm.dat':
-        elif Name = 'ECMu' then
-            matrixFile := SEbasedir.'/matrices/ecmu.dat':
-        elif Name = 'JTT' then
-            matrixFile := SEbasedir.'/matrices/jtt.dat':
-        elif Name = 'WAG' then
-            matrixFile := SEbasedir.'/matrices/wag.dat':
-        elif Name = 'LG' then
-            matrixFile := SEbasedir.'/matrices/lg.dat':           
+#        elif Name = 'ECM' then
+#            matrixFile := SEbasedir.'/matrices/ecm.dat':
+#        elif Name = 'ECMu' then
+#            matrixFile := SEbasedir.'/matrices/ecmu.dat':
+#        elif Name = 'JTT' then
+#            matrixFile := SEbasedir.'/matrices/jtt.dat':
+#        elif Name = 'WAG' then
+#            matrixFile := SEbasedir.'/matrices/wag.dat':
+#        elif Name = 'LG' then
+#            matrixFile := SEbasedir.'/matrices/lg.dat':           
         else
             error('too few arguments. please supply necessary model parameters!'):
         fi:
-        if Name = 'ECM' or Name = 'ECMu' or Name = 'CustomC' then
-            LoadMatrixFile(matrixFile):
-            f := copy(CF):
-            m := copy(CodonLogPAM1):
-            noeval(SubstitutionModel(Name, [], f, false, 'codon', m, 3)):
-        else
-            LoadMatrixFile(matrixFile):
-            f := copy(AF):
-            m := copy(NewLogPAM1):
-            noeval(SubstitutionModel(Name, [], f, false, 'aa', m, 1)):
-        fi:        
+#        if Name = 'ECM' or Name = 'ECMu' or Name = 'CustomC' then
+#            res := LoadMatrixFile(matrixFile):
+#            CreateCodonMatrices(op(res)):
+#            f := copy(CF):
+#            m := copy(CodonLogPAM1):
+#            noeval(SubstitutionModel(Name, [], f, false, 'codon', m, 3)):
+#        else
+#            res := LoadMatrixFile(matrixFile):
+#            CreateDayMatrices(op(res)):
+#            f := copy(AF):
+#            m := copy(logPAM1):
+#            noeval(SubstitutionModel(Name, [], f, false, 'aa', m, 1)):
+#        fi:        
     elif nargs = 2 then # all other empirical models
         if type(Params[1], string) then # assume file name
             if Name = 'CustomC' then
-                LoadMatrixFile(Params[1]):
+                res := LoadMatrixFile(Params[1]):
+                CreateCodonMatrices(op(res)):
                 f := copy(CF):
                 m := copy(CodonLogPAM1):
                 noeval(SubstitutionModel(Name, [], f, false, 'codon', m, 3)):
             elif Name = 'CustomP' then
-                LoadMatrixFile(Params[1]):
+                res := LoadMatrixFile(matrixFile):
+                CreateDayMatrices(op(res)):
                 f := copy(AF):
                 printf('AF: %a\n', AF):
-                m := copy(NewLogPAM1):
+                m := copy(logPAM1):
                 noeval(SubstitutionModel(Name, [], f, false, 'aa', m, 1)):
             else
                 error('unknown model: '.Name):
