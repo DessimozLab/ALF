@@ -112,38 +112,62 @@ end:
 PerformDeletion := proc(org:integer, gene, evolTime:nonnegative, indelLength_:posint)
     global evolution, substModels, indelModel, Z_c, QG_c, QG_t, NB_r, NB_q, amongSiteDistr;
 #    printf('performing aa loss\n'):
-
+#        printf('org: %a/gene: %a\n', org,gene):
     if length(substModels) > 0 then
+#        print('bla1'):
         substModel := substModels[evolution[org,gene,9]]:
+#        print('bla2'):
         simType := substModel[Type]:
+#        print('bla3'):
         blockSize := substModel[Blocksize]:
+#        print('bla4'):
         neutralDNA := substModel[NeutralDNA]:
     else
+#        print('bla5'):
         blockSize := blocksize:
+#        print('bla6'):
         if blocksize = 3 or evolution[org, gene, 2] = 'AAA' then
+#        print('bla7'):
             simType := 'nuc':
+#        print('bla8'):
             neutralDNA := If(blocksize = 1, true, false):
+#        print('bla9'):
         else
+#        print('bla10'):
             simType := 'aa':
+#        print('bla11'):
         fi:
     fi:
     
     # constrain deletion to one gene
     # TODO: allow deletions across gene borders
+#        print('bla12'):
     if not simType = 'aa' then
+#        print('bla13'):
         dnaLen := length(evolution[org,gene,6]):
+#        print('bla14'):
+#        printf('dnalen: %d\n', dnaLen):
         if not neutralDNA and CodonToA(evolution[org,gene,6,-3..-1]) = '$' then
+#        print('bla15'):
             dnaLen := dnaLen - 3:
+#        print('bla16'):
         fi:
     fi:
 
+#        print('bla17'):
     if simType = 'aa' then
-        seqLen := length(evolution[org,gene,2])
+#        print('bla18'):
+        seqLen := length(evolution[org,gene,2]):
+#        print('bla19'):
     else
-        seqLen := dnaLen/blockSize
+#        print('bla20'):
+        seqLen := dnaLen/blockSize:
+#        print('bla21'):
     fi:
 #    indelLength := min(indelLength_, If(simType = 'aa', length(evolution[org,gene,2]), dnaLen/blockSize));
+#        print('bla22'):
     indelLength := indelLength_: # allow for start/end of deletion outside of sequence 21.7.10 DD
+#        print('bla23'):
     printf('time %0004.4f: deletion of length %d in org/gene %d/%d\n', evolTime, indelLength, org, gene):
 #    maxStart := If(simType = 'aa', length(evolution[org,gene,2]), dnaLen/blockSize)-indelLength+1:
     maxStart := seqLen; # allow for start/end of deletion outside of sequence 21.7.10 DD
@@ -205,9 +229,30 @@ PerformGeneDuplication := proc(org:integer, evolTime:nonnegative; (ndupl=1):posi
     printf('performing gene duplication of %d genes\n', ndupl):
     geneSourceIndex := Rand(1..length(evolution[org]) - ndupl + 1); 
     idArr := transpose(evolution[org])[4]:
+    k := 0:
+    while k < ndupl do
+        printf('k: %d, ndupl: %d\n', k, ndupl):
+        geneSource := SearchArray(abs(geneR[org,geneSourceIndex+k]), idArr):
+        oldOrgLength := length(evolution[org]):
+        seqmutation(org, geneSource, evolTime):
+        curOrgLength := length(evolution[org]):
+        if curOrgLength < oldOrgLength then
+            idArr := transpose(evolution[org])[4]:
+            if geneSourceIndex + k > curOrgLength then
+                if geneSourceIndex - 1 < 1 then
+                    ndupl := k:
+                    break:
+                fi:
+                geneSourceIndex := geneSourceIndex - 1:
+                k := 0:
+            fi:
+        else
+            k := k + 1:
+        fi:
+    od:
+
     for k from 0 to ndupl - 1 do
         geneSource := SearchArray(abs(geneR[org,geneSourceIndex+k]), idArr):
-        seqmutation(org, geneSource, evolTime):
         evolution[org] := append(evolution[org], copy(evolution[org, geneSource]));
         evolution[org, -1, 3] := evolution[org, -1, 3].'-('.copy(evolution[org, geneSource, 4]).'D'.string(evolTime).')'.org;
         maxID := maxID + 1;
@@ -275,6 +320,7 @@ PerformGeneLoss := proc(j:integer, evolTime:nonnegative; (nloss=1):posint)
     geneSourceIndex := Rand(1..length(evolution[j])-nloss+1);
     idArr := transpose(evolution[j])[4]:
     for k from nloss-1 to 0 by -1 do
+        printf('k: %d, nloss: %d\n', k, nloss):
         geneSource := SearchArray(abs(geneR[j,geneSourceIndex+k]), idArr):
         printf ('time %0004.4f: gene loss in organism %i with gene %i\n', evolTime, j, evolution[j, geneSource, 4]);
         # gene rearrangement
@@ -282,11 +328,15 @@ PerformGeneLoss := proc(j:integer, evolTime:nonnegative; (nloss=1):posint)
         # deleting the gene
         if geneSource = 1 then
             evolution[j] := evolution[j][2..-1];
+            idArr := idArr[2..-1]:
         elif geneSource = length(evolution[j]) then
             evolution[j] := evolution[j][1..-2];
+            idArr := idArr[1..-2]:
         else 
             evolution[j] := [op(evolution[j][1..geneSource - 1]), op(evolution[j][geneSource + 1..-1])];
+            idArr := [op(idArr[1..geneSource-1]), op(idArr[geneSource+1..-1])]:
         fi;
+    if length(evolution[j]) = 0 then error('species '.j.' contains no sequences anymore!'): fi:
     od:
 end:
 
@@ -297,49 +347,73 @@ PerformLGT := proc(j:integer, evolTime:nonnegative)
 #    donors := {seq(i, i = 1..livingOrgs)} minus {j};
 #    donors := donors minus {seq(If(leafHeights[i] < evolTime,i,NULL),i=1..length(leafHeights))};
     orgDonor := Rand(donors);
-    gd1 := transpose(evolution[orgDonor])[4];
-    gd2 := transpose(evolution[j])[4];
-    gdint := {op(gd1)} intersect {op(gd2)}:
     # lgt - orthologous replacement
-    if Rand() < orthRep and gdint <> {} then
+    if Rand() < orthRep then
         printf('performing lgto\n'):
-        # finds donor (recipient is current organism j)
-        gD := Rand(gdint);
-        geneSource := SearchArray(gD, gd2);
-        geneDonor := SearchArray(gD, gd1);
-        # copies entry and updates description
-        seqmutation(orgDonor, geneDonor, evolTime):
-        evolution[j] := append(evolution[j], copy(evolution[orgDonor, geneDonor]));
-        evolution[j, -1, 3] := evolution[j, -1, 3].'-'.orgDonor.'('.
-            copy(evolution[orgDonor, geneDonor, 4]).'Lo'.string(evolTime).')'.j;
-        maxID := maxID + 1;
-        evolution[j, -1, 4] := maxID;
-        # lgt shouldn't produce a new cluster
-#                evolution[j, -1, 7] := sprintf('%d',maxID); # new cluster 
-        evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
-        printf ('time %0004.4f: lgt from organism %i with gene %i to '.
-            'organism %i, now gene %i\n', evolTime, orgDonor, 
-            evolution[orgDonor, geneDonor, 4], j, evolution[j, -1, 4]);
-        printf('\torthologues replacement, gene %i in organism %i '.
-            'deleted\n', evolution[j, geneSource, 4], j);
-        geneR[j, SearchArray(gD, abs(geneR[j]))] := maxID;
-        # deletes own version of gene in recipient
-        if geneSource = 1 then
-            evolution[j] := evolution[j][2..-1];
-        elif geneSource = length(evolution[j]) then
-            evolution[j] := evolution[j][1..-2];
-        else
-            evolution[j] := [op(evolution[j][1..geneSource - 1]),
-                op(evolution[j][geneSource + 1..-1])];
-        fi;
-
+        do
+            # finds donor (recipient is current organism j)
+            gd1 := transpose(evolution[orgDonor])[4];
+            gd2 := transpose(evolution[j])[4];
+            gdint := {op(gd1)} intersect {op(gd2)}:
+            
+            if gdint = {} then break fi:
+            
+            gD := Rand(gdint);
+            geneSource := SearchArray(gD, gd2);
+            geneDonor := SearchArray(gD, gd1);
+            
+            oldDonorLength := length(evolution[orgDonor]):
+            seqmutation(orgDonor, geneDonor, evolTime):
+            if length(evolution[orgDonor]) = oldDonorLength then
+                break:
+            fi:
+        od:
+        
+        if gdint <> {} then
+            # copies entry and updates description
+            evolution[j] := append(evolution[j], copy(evolution[orgDonor, geneDonor]));
+            evolution[j, -1, 3] := evolution[j, -1, 3].'-'.orgDonor.'('.
+                copy(evolution[orgDonor, geneDonor, 4]).'Lo'.string(evolTime).')'.j;
+            maxID := maxID + 1;
+            evolution[j, -1, 4] := maxID;
+            # lgt shouldn't produce a new cluster
+    #                evolution[j, -1, 7] := sprintf('%d',maxID); # new cluster 
+            evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
+            printf ('time %0004.4f: lgt from organism %i with gene %i to '.
+                'organism %i, now gene %i\n', evolTime, orgDonor, 
+                evolution[orgDonor, geneDonor, 4], j, evolution[j, -1, 4]);
+            printf('\torthologues replacement, gene %i in organism %i '.
+                'deleted\n', evolution[j, geneSource, 4], j);
+            geneR[j, SearchArray(gD, abs(geneR[j]))] := maxID;
+            # deletes own version of gene in recipient
+            if geneSource = 1 then
+                evolution[j] := evolution[j][2..-1];
+            elif geneSource = length(evolution[j]) then
+                evolution[j] := evolution[j][1..-2];
+            else
+                evolution[j] := [op(evolution[j][1..geneSource - 1]),
+                    op(evolution[j][geneSource + 1..-1])];
+            fi;
+            return():
+        fi:
+    fi:
 
     # lgt - novel gene acquisition
-    else
+#    else
         printf('performing lgtn\n'):
         # finds donor (recipient is current organism j)
         geneDonor := trunc(Rand() * length(evolution[orgDonor])) + 1;
-        seqmutation(orgDonor, geneDonor, evolTime);
+        oldDonorLength := length(evolution[orgDonor]):
+        do
+            seqmutation(orgDonor, geneDonor, evolTime);
+            curDonorLength := length(evolution[orgDonor]):
+            if curDonorLength = oldDonorLength then
+                break:
+            else
+                oldDonorLength := curDonorLength:
+                geneDonor := min(geneDonor, curDonorLength):
+            fi:
+        od:
         # copies entry and updates description
         evolution[j] := append(evolution[j], 
             copy(evolution[orgDonor, geneDonor]));
@@ -357,7 +431,7 @@ PerformLGT := proc(j:integer, evolTime:nonnegative)
         geneR[j] := append(geneR[j], maxID);
         place := Rand(0..length(geneR[j]) - 1);
         transLoc(j, place, length(geneR[j]), 1);
-    fi;
+#    fi;
     
     if not type(treeEvo[op(treeData[orgDonor])], Leaf) then
         error(treeEvo[op(treeData[orgDonor])], 'donor is not a leaf - should not happen!'):
@@ -374,45 +448,112 @@ PerformLGT := proc(j:integer, evolTime:nonnegative)
     lgtNum := lgtNum + 1:
 end:
 
-PerformLGTG := proc(j:integer, evolTime:nonnegative, lgtSize)
-    global evolution, geneR, maxID, treeData, treeEvo, lgtNum; #, livingOrgs;
-    printf('performing lgtm\n'):
-    # finds donor (recipient is current organism j)
-    donors := GetDonorOrgs(evolTime) minus {j}:
+#PerformLGTG := proc(j:integer, evolTime:nonnegative, lgtSize)
+#    global evolution, geneR, maxID, treeData, treeEvo, lgtNum; #, livingOrgs;
+#    printf('performing lgtm\n'):
+#    # finds donor (recipient is current organism j)
+#    donors := GetDonorOrgs(evolTime) minus {j}:
+#    if length(donors) = 0 then return() fi:
+#    #donors := {seq(i, i = 1..livingOrgs)} minus {j};
+#    #donors := donors minus {seq(If(leafHeights[i] < evolTime,i,NULL),i=1..length(leafHeights))};
+#    orgDonor := Rand(donors);
+#    geneDonor := trunc(Rand() * (length(evolution[orgDonor]) - lgtSize)) + 1;	
+#    # copies entries for lgtSize proteins
+#    for i to lgtSize do
+#        seqmutation(orgDonor, geneDonor, evolTime):
+#        evolution[j] := append(evolution[j], copy(evolution[orgDonor, geneDonor]));
+#        evolution[j, -1, 3] := evolution[j, -1, 3].'-'.orgDonor.'('.copy(evolution[orgDonor, geneDonor, 4]).'L'.string(evolTime).')'.j;
+#        maxID := maxID + 1;
+#        evolution[j, -1, 4] := maxID;
+#        evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
+#        printf ('time %0004.4f: lgt from organism %i with gene %i '.
+#            'to organism %i, now gene %i\n', 
+#        evolTime, orgDonor, evolution[orgDonor, geneDonor, 4],
+#            j, evolution[j, -1, 4]);
+#        geneR[j] := append(geneR[j], evolution[j, -1, 4]);
+#        geneDonor := geneDonor + 1;
+#    od;
+#    # gene rearrangement
+#    place := Rand(0..length(geneR[j]) - lgtGSize - 1);
+#    transLoc(j, place, length(geneR[j]) - lgtGSize + 1, lgtGSize);
+#
+#    if not type(treeEvo[op(treeData[orgDonor])], Leaf) then
+#        error(treeEvo[op(treeData[orgDonor])], 'donor is not a leaf - should not happen!'):
+#    fi:
+#    if not type(treeEvo[op(treeData[j])], Leaf) then
+#        error(treeEvo[op(treeData[j])], 'receipient is not a leaf - should not happen!'):
+#    fi:
+#    print('---'):
+#    dprint(treeEvo):
+#    treeEvo[op(treeData[orgDonor])][3] := append(treeEvo[op(treeData[orgDonor])][3], ['LGT'.lgtNum, 'start', evolTime]):
+#    treeEvo[op(treeData[j])][3] := append(treeEvo[op(treeData[j])][3], ['LGT'.lgtNum, 'end', evolTime]):
+#    dprint(treeEvo):
+#    print('---'):
+#    lgtNum := lgtNum + 1:
+#end:
+
+PerformLGTG := proc(org:integer, evolTime:nonnegative, lgtSize)
+    global evolution, geneR, maxID, treeData, treeEvo, lgtNum;
+    print('performing lgtm'):
+    
+    donors := GetDonorOrgs(evolTime) minus {org}:
     if length(donors) = 0 then return() fi:
-    #donors := {seq(i, i = 1..livingOrgs)} minus {j};
-    #donors := donors minus {seq(If(leafHeights[i] < evolTime,i,NULL),i=1..length(leafHeights))};
-    orgDonor := Rand(donors);
-    geneDonor := trunc(Rand() * (length(evolution[orgDonor]) - lgtSize)) + 1;	
-    # copies entries for lgtSize proteins
-    for i to lgtSize do
+    
+    orgDonor := Rand(donors):
+    geneDonorIndex := trunc(Rand() * (length(evolution[orgDonor]) - lgtSize)) + 1:
+    idArr := transpose(evolution[org])[4]:
+
+    # copy entries for lgtSize proteins
+    k := 0:
+    while k < lgtSize do
+        geneDonor := SearchArray(abs(geneR[org,geneDonorIndex+k]), idArr):
+        oldDonorLength := length(evolution[orgDonor]):
         seqmutation(orgDonor, geneDonor, evolTime):
-        evolution[j] := append(evolution[j], copy(evolution[orgDonor, geneDonor]));
-        evolution[j, -1, 3] := evolution[j, -1, 3].'-'.orgDonor.'('.copy(evolution[orgDonor, geneDonor, 4]).'L'.string(evolTime).')'.j;
+        curDonorLength := length(evolution[orgDonor]):
+        if curDonorLength < oldDonorLength then
+            idArr := transpose(evolution[org])[4]:
+            if geneDonorIndex + k > length(evolution[orgDonor]) then
+                if geneDonnorIndex - 1 < 1 then
+                    lgtSize := k:
+                    break:
+                fi:
+                geneDonorIndex := geneDonorIndex - 1:
+                k := 0:
+            fi:
+        else
+            k := k + 1:
+        fi:
+    od:
+
+    for i from 0 to lgtSize-1 do
+        geneDonor := SearchArray(abs(geneR[orgDonor,geneDonorIndex+k]), idArr):
+        evolution[org] := append(evolution[org], copy(evolution[orgDonor, geneDonor]));
+        evolution[org, -1, 3] := evolution[org, -1, 3].'-'.orgDonor.'('.copy(evolution[orgDonor, geneDonor, 4]).'L'.string(evolTime).')'.org;
         maxID := maxID + 1;
-        evolution[j, -1, 4] := maxID;
-        evolution[j, -1, 5] := copy(evolution[j, -2, 5]);
+        evolution[org, -1, 4] := maxID;
+        evolution[org, -1, 5] := copy(evolution[org, -2, 5]);
         printf ('time %0004.4f: lgt from organism %i with gene %i '.
             'to organism %i, now gene %i\n', 
         evolTime, orgDonor, evolution[orgDonor, geneDonor, 4],
-            j, evolution[j, -1, 4]);
-        geneR[j] := append(geneR[j], evolution[j, -1, 4]);
-        geneDonor := geneDonor + 1;
-    od;
+            org, evolution[org, -1, 4]);
+        geneR[org] := append(geneR[org], evolution[org, -1, 4]);
+        geneDonor := geneDonor - 1;
+    od:
+    
     # gene rearrangement
-    place := Rand(0..length(geneR[j]) - lgtGSize - 1);
-    transLoc(j, place, length(geneR[j]) - lgtGSize + 1, lgtGSize);
+    place := Rand(0..length(geneR[org]) - lgtSize + 1);
+    transLoc(org, place, length(geneR[org]) - lgtSize + 1, lgtSize);
 
     if not type(treeEvo[op(treeData[orgDonor])], Leaf) then
         error(treeEvo[op(treeData[orgDonor])], 'donor is not a leaf - should not happen!'):
     fi:
-    if not type(treeEvo[op(treeData[j])], Leaf) then
-        error(treeEvo[op(treeData[j])], 'receipient is not a leaf - should not happen!'):
+    if not type(treeEvo[op(treeData[org])], Leaf) then
+        error(treeEvo[op(treeData[org])], 'receipient is not a leaf - should not happen!'):
     fi:
     print('---'):
     dprint(treeEvo):
     treeEvo[op(treeData[orgDonor])][3] := append(treeEvo[op(treeData[orgDonor])][3], ['LGT'.lgtNum, 'start', evolTime]):
-    treeEvo[op(treeData[j])][3] := append(treeEvo[op(treeData[j])][3], ['LGT'.lgtNum, 'end', evolTime]):
+    treeEvo[op(treeData[org])][3] := append(treeEvo[op(treeData[org])][3], ['LGT'.lgtNum, 'end', evolTime]):
     dprint(treeEvo):
     print('---'):
     lgtNum := lgtNum + 1:
@@ -560,7 +701,7 @@ end:
 
 # mutates gene k of organism org for a certain amount of time steps, 15.12.06
 seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
-    global evolution, substModels, curTargetFreqs, enableGCAmelioration;
+    global evolution, substModels, curTargetFreqs, enableGCAmelioration, geneR;
     oldLen := length(evolution[org,gene,2]):
     #printf('seqmutation(%d,%d): site rates: %a\n',org,gene, evolution[org,gene,1]):
     # apply rate modifications from duplications
@@ -665,7 +806,33 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
             addIndels(org, gene, curT, rateF):
         fi:
     fi:
-    evolution[org,gene,11] := curT:
+
+    if assigned(substModel) then
+        if substModel[Type] = 'aa' then
+            geneLen := length(evolution[org,gene,2]):
+        else
+            geneLen := length(evolution[org,gene,6]) / substModel[Blocksize]:
+        fi:
+    else
+        geneLen := length(evolution[org,gene,6]) / blocksize:
+    fi:
+
+    if geneLen = 0 then
+        printf ('time %0004.4f: gene loss by deletion in organism %i with gene %i\n', curT, org, evolution[org, gene, 4]);
+        # gene rearrangement
+        deleteItem(org, SearchArray(evolution[org, gene, 4], abs(geneR[org])));
+        # deleting the gene
+        if gene = 1 then
+            evolution[org] := evolution[org][2..-1];
+        elif gene = length(evolution[org]) then
+            evolution[org] := evolution[org][1..-2];
+        else 
+            evolution[org] := [op(evolution[org][1..gene - 1]), op(evolution[org][gene + 1..-1])];
+        fi;
+        if length(evolution[org]) = 0 then error('species '.org.' contains no sequences anymore!'): fi:
+    else
+        evolution[org,gene,11] := curT:
+    fi:            
 end:
 
 # performs a gene fusion event
@@ -911,7 +1078,7 @@ makeAreas := proc(aaStart, areas, mutRate, distr:{'None', 'Poisson', 'Gamma'}; m
 end:
 
 addIndels := proc(org:posint, gene:posint, evolTime:nonnegative, rateFac:nonnegative; substModel:structure)
-    global evolution, aaGainRate, aaLossRate, blocksize, Z_c, QG_c, NB_r, NB_q, E_p, indelVector, indelModel, maxIndelLength;
+    global evolution, aaGainRate, aaLossRate, blocksize, Z_c, QG_c, NB_r, NB_q, E_p, indelVector, indelModel, maxIndelLength, geneR;
     curT := evolution[org,gene,11]:
     if evolTime <= curT then return() fi:
     deltaTime := evolTime-curT;
@@ -926,6 +1093,10 @@ addIndels := proc(org:posint, gene:posint, evolTime:nonnegative, rateFac:nonnega
         else
             geneLen := length(evolution[org,gene,6]) / blocksize:
         fi:
+        
+        if geneLen = 0 then
+            break:
+        fi:            
 #        if rateFac <> 1 then print(rateFac) fi:
         totalRate := ((geneLen + 1) * aaGainRate + (meanLen - 1 + geneLen) * aaLossRate) * rateFac;
         curInt := Rand(Exponential(0,1/totalRate)):

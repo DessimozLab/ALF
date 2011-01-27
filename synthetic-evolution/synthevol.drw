@@ -577,15 +577,17 @@ for i to length(branches) do
     
             if event = 1 then
                 # gene duplication
-                events[curInd] := append(events[curInd], [curT, branches[i,1], 'D']):
-                ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
+                numg := min(Rand(1..numberDupl), ngenes[branches[i,1]]):
+                events[curInd] := append(events[curInd], [curT, branches[i,1], 'D', numg]):
+                ngenes[branches[i,1]] := ngenes[branches[i,1]] + numg:
                 #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
                 totalRate := totalRate + rateSum + If(seind > 1, lgtRate + lgtGRate,0):
                 totD := totD + 1:
             elif event = 2 then
                 # gene loss
-                events[curInd] := append(events[curInd], [curT, branches[i,1], 'L']):
-                ngenes[branches[i,1]] := ngenes[branches[i,1]] - 1:
+                numg := min(Rand(1..numberLoss), ngenes[branches[i,1]]):
+                events[curInd] := append(events[curInd], [curT, branches[i,1], 'L', numg]):
+                ngenes[branches[i,1]] := ngenes[branches[i,1]] - numg:
                 #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
                 totalRate := totalRate - rateSum - If(seind > 1, lgtRate + lgtGRate,0):
             elif event = 7 then
@@ -663,10 +665,10 @@ for i to length(events) do
         cure := events[i,j,3]:
         if cure = 'D' then
             # gene duplication
-            PerformGeneDuplication(events[i,j,2], events[i,j,1], Rand(1..numberDupl)):
+            PerformGeneDuplication(events[i,j,2], events[i,j,1], events[i,j,4]):
         elif cure = 'L' then
             # gene loss
-            PerformGeneLoss(events[i,j,2], events[i,j,1]):
+            PerformGeneLoss(events[i,j,2], events[i,j,1], events[i,j,4]):
         elif cure = 'LGT' then
             # LGT
             PerformLGT(events[i,j,2], events[i,j,1]):
