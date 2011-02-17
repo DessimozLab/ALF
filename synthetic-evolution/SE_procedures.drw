@@ -458,7 +458,8 @@ randGapLength := proc(maxLen:nonnegative, indelType:{'ZIPF', 'QG', 'NEGBIN', 'EX
 #            L := L + 1:
 #            s := 1 - ( 1 - params[6])^L / normFactor:
 #       od:
-        L := 1 + floor(log(1-Rand())/log(params[6])):
+#        L := 1 + floor(log(1-Rand())/log(params[6])):
+        L := 1 + floor(log(Rand())/log(1-params[6])):
     else
         # param[i] should contain the probability of a gap of length i from the custom distribution
         if length(params[7]) <> maxLen then
