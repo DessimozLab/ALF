@@ -8,7 +8,7 @@
 # Daniel Dalquen, Christophe Dessimoz; CBRG; 2010
 Set(printgc=false);
 starttime := UTCTime();
-Set(gc=2e7): SetRandSeed(); # Set(quiet):
+Set(gc=2e8): SetRandSeed(); # Set(quiet):
 #SEbasedir := '/home/darwin/Orthologues/dan/synthetic-evolution/';
 SEbasedir :='/home/ddalquen/repos/simulator/synthetic-evolution/';
 if not assigned(paramfile) then
