@@ -1,5 +1,5 @@
 PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative, indelLength:posint)
-    global evolution, substModels, amongSiteDistr, blocksize;
+    global evolution, substModels, amongSiteDistr, blocksize, curTargetFreqs, enableGCAmelioration;
 #    printf('performing aa gain\n'):
 
     if length(substModels) > 0 then
@@ -7,13 +7,20 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative, indelLen
         simType := substModel[Type]:
         blockSize := substModel[Blocksize]:
         neutralDNA := substModel[NeutralDNA]:
+        if enableGCAmelioration then
+            baseFreqs := curTargetFreqs[org][min(length(curTargetFreqs[org]), evolution[org, gene, 9])]:
+        else
+            baseFreqs := substModel[BaseFreqs]:
+        fi:
     else
         blockSize := blocksize:
         if blocksize = 3 or evolution[org, gene, 2] = 'AAA' then
             simType := 'nuc':
             neutralDNA := If(blocksize = 1, true, false):
+            baseFreqs := [seq(.25,4)]:
         else
             simType := 'aa':
+            baseFreqs := [seq(.05,20)]:
         fi:
     fi:
 
@@ -26,6 +33,7 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative, indelLen
     #printf('indel start: %d\n', indelStart):
 
 #    OpenAppending(wdir.'insertions.txt'):
+#    printf('%g\n', r/evolution[org,gene,1,-1,2]):
 #    printf('%d\t%d\t%d\n', indelLength, indelStart, evolution[org,gene,1,-1,2]):
 #    OpenWriting(previous):
 #    OpenAppending(wdir.'indels.txt'):
@@ -33,18 +41,23 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative, indelLen
 #    OpenWriting(previous):
 
     # performs aa gain
-    if simType = 'nuc' then
-        if neutralDNA then
-            dna_value := Rand(DNA(indelLength)):
-        else
-            dna_value := '':
-            for i to indelLength do
-                do
-                    curc := Rand(DNA(3)):
-                    if curc <> TAG and curc <> TGA and curc <> TAA then break: fi:
+    if simType <> 'aa' then
+        if simType = 'nuc' then
+            if neutralDNA then
+                dna_value := CreateRandSeq(indelLength, baseFreqs):
+            else
+                dna_value := '':
+                for i to indelLength do
+                    do
+                        curc := CreateRandSeq(3, baseFreqs):
+                        if curc <> TAG and curc <> TGA and curc <> TAA then break: fi:
+                    od:
+                    dna_value := dna_value.curc:
                 od:
-                dna_value := dna_value.curc:
-            od:
+            fi:
+        else
+#            dna_value := Rand(CodingDNA(3*indelLength)):
+            dna_value := CreateRandSeq(indelLength, baseFreqs):
         fi:
         if indelStart = 0 then
             evolution[org, gene, 6] := dna_value.string(evolution[org, gene, 6]);
@@ -54,23 +67,24 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative, indelLen
             evolution[org, gene, 6] := string(evolution[org, gene,6])
             [1..indelStart].dna_value.string(evolution[org, gene, 6])[indelStart + 1..-1];
         fi;
-       if not neutralDNA then evolution[org, gene, 2] := ProteinSeq(evolution[org, gene, 6]); fi:
-    elif simType = 'codon' then
+       if simType = 'codon' or not neutralDNA then evolution[org, gene, 2] := ProteinSeq(evolution[org, gene, 6]); fi:
+#    elif simType = 'codon' then
         # we insert the whole string at once instead of codon by codon
         # TODO: make sure this doesn't create any conficts...
-        dna_value := Rand(CodingDNA(3*indelLength)):
-        if indelStart = 0 then
-            evolution[org, gene, 6] := dna_value.string(evolution[org, gene, 6]);
-        elif indelStart = length(evolution[org, gene, 6]) then
-            evolution[org, gene, 6] := string(evolution[org, gene, 6]).dna_value;
-        else
-            evolution[org, gene, 6] := string(evolution[org, gene,6])
-            [1..indelStart].dna_value.string(evolution[org, gene, 6])[indelStart + 1..-1];
-        fi;
-        evolution[org, gene, 2] := ProteinSeq(evolution[org, gene, 6]);
+#        dna_value := Rand(CodingDNA(3*indelLength)):
+#        if indelStart = 0 then
+#            evolution[org, gene, 6] := dna_value.string(evolution[org, gene, 6]);
+#        elif indelStart = length(evolution[org, gene, 6]) then
+#            evolution[org, gene, 6] := string(evolution[org, gene, 6]).dna_value;
+#        else
+#            evolution[org, gene, 6] := string(evolution[org, gene,6])
+#            [1..indelStart].dna_value.string(evolution[org, gene, 6])[indelStart + 1..-1];
+#        fi;
+#        evolution[org, gene, 2] := ProteinSeq(evolution[org, gene, 6]);
         
     else
-        aa_value := Rand(Protein(indelLength)):
+#        aa_value := Rand(Protein(indelLength)):
+        aa_value := CreateRandSeq(indelLength, baseFreqs):
         if indelStart = 0 then
             evolution[org, gene, 2] := aa_value.string(evolution[org, gene, 2]):
         elif indelStart = length(evolution[org, gene, 2]) then
@@ -164,16 +178,16 @@ PerformDeletion := proc(org:integer, gene, evolTime:nonnegative, indelLength_:po
         seqLen := dnaLen/blockSize:
 #        print('bla21'):
     fi:
-#    indelLength := min(indelLength_, If(simType = 'aa', length(evolution[org,gene,2]), dnaLen/blockSize));
+    indelLength := min(indelLength_, seqLen);
 #        print('bla22'):
-    indelLength := indelLength_: # allow for start/end of deletion outside of sequence 21.7.10 DD
+#    indelLength := indelLength_: # allow for start/end of deletion outside of sequence 21.7.10 DD
 #        print('bla23'):
     printf('time %0004.4f: deletion of length %d in org/gene %d/%d\n', evolTime, indelLength, org, gene):
-#    maxStart := If(simType = 'aa', length(evolution[org,gene,2]), dnaLen/blockSize)-indelLength+1:
-    maxStart := seqLen; # allow for start/end of deletion outside of sequence 21.7.10 DD
+    maxStart := seqLen-indelLength+1:
+#    maxStart := seqLen; # allow for start/end of deletion outside of sequence 21.7.10 DD
     # searches a random start position for the deletion (constrained by the length of the deletion
-#    indelStart := Rand(0..(maxStart-1))*blockSize+1;
-    indelStart := Rand(-indelLength+1..(maxStart-1)); # allow for start/end of deletion outside of sequence 21.7.10 DD
+    indelStart := Rand(0..(maxStart-1));
+#    indelStart := Rand(-indelLength+1..(maxStart-1)); # allow for start/end of deletion outside of sequence 21.7.10 DD
 #    printf('deletion starts at %d\t', indelStart):
     if indelStart < 0 then
         indelLength := indelLength-indelStart:
@@ -864,7 +878,7 @@ geneFusion := proc(org:posint, g1:posint, g2:posint, etime:nonnegative)
             blockSize := substModels[evolution[org, gene2, 9]][Blocksize]:
             simType := substModels[evolution[org, gene2, 9]][Type]:
         fi:
-        evolution[org, gene2, 8] := append(evolution[org, gene2, 8], [etime, 'I', 0, offset*blockSize]):
+        evolution[org, gene2, 8] := append(evolution[org, gene2, 8], [etime+.0001, 'I', 0, offset*blockSize]):
         newGene := gene2:
         oldGene := gene1:
         og := g1:
@@ -873,7 +887,7 @@ geneFusion := proc(org:posint, g1:posint, g2:posint, etime:nonnegative)
             blockSize := substModels[evolution[org, gene1, 9]][Blocksize]:
             simType := substModels[evolution[org, gene1, 9]][Type]:
         fi:
-        evolution[org, gene1, 8] := append(evolution[org, gene1, 8], [etime, 'I', offset*blockSize, l2*blockSize]):
+        evolution[org, gene1, 8] := append(evolution[org, gene1, 8], [etime+.0001, 'I', offset*blockSize, l2*blockSize]):
         newGene := gene1:
         oldGene := gene2:
         og := g2:
@@ -1008,7 +1022,7 @@ geneFission := proc(org:posint, g:posint, etime:nonnegative)
     newGene[4] := maxID:
     newGene[5] := copy(evolution[org,gene,5]):
     newGene[7] := copy(evolution[org,gene,7]):
-    newGene[8] := append(copy(evolution[org,gene,8]), [etime, 'D', 1, blockSize*breakPoint]):
+    newGene[8] := append(copy(evolution[org,gene,8]), [etime+.0001, 'D', 1, blockSize*breakPoint]):
     newGene[9] := copy(evolution[org,gene,9]):
     newGene[10] := copy(evolution[org,gene,10]):
     newGene[11] := copy(evolution[org,gene,11]):
@@ -1024,7 +1038,7 @@ geneFission := proc(org:posint, g:posint, etime:nonnegative)
             evolution[org,gene,2] := ProteinSeq(evolution[org,gene,6]):
         fi:
     fi:
-    evolution[org,gene,8] := append(evolution[org,gene,8], [etime, 'D', blockSize*evolution[org,gene,1,-1,2]+1, len]):
+    evolution[org,gene,8] := append(evolution[org,gene,8], [etime+.0001, 'D', blockSize*evolution[org,gene,1,-1,2]+1, len]):
     #print('updated original gene'):
     # update evolutionary history?
     evolution[org, gene, 3] := evolution[org, gene, 3].'-('.copy(evolution[org, gene, 4]).'Fi'.string(etime).')'.org;
