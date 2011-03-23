@@ -1,15 +1,19 @@
 # create rate matrix for mechanistic models
 CreateNucleotideMatrix := proc(model: string, baseFreqs:list(nonnegative), params:list(numeric))
     global NM, NMS, NF, DNALogPAM1:
-    fR := baseFreqs[3] + baseFreqs[4]:
-    fY := baseFreqs[1] + baseFreqs[2]:
+    fR := baseFreqs[1] + baseFreqs[3]:
+    fY := baseFreqs[2] + baseFreqs[4]:
     if model = 'GTR' then
         if length(params) <> 6 then error('number of parameters does not match (should be 6).'): fi:
         a := params[1]: b := params[2]: c := params[3]: d := params[4]: e := params[5]: f := params[6]:
-        Q := [[0, a*baseFreqs[2], b*baseFreqs[3], c*baseFreqs[4]],
-          [a*baseFreqs[1], 0, d*baseFreqs[3], e*baseFreqs[4]],
-          [b*baseFreqs[1], d*baseFreqs[2], 0, f*baseFreqs[4]],
-          [c*baseFreqs[1], e*baseFreqs[2], f*baseFreqs[3], 0]]:
+#        Q := [[0, a*baseFreqs[2], b*baseFreqs[3], c*baseFreqs[4]],
+#              [a*baseFreqs[1], 0, d*baseFreqs[3], e*baseFreqs[4]],
+#              [b*baseFreqs[1], d*baseFreqs[2], 0, f*baseFreqs[4]],
+#              [c*baseFreqs[1], e*baseFreqs[2], f*baseFreqs[3], 0]]:
+        Q := [[0, d*baseFreqs[2], f*baseFreqs[3], b*baseFreqs[4]],
+              [d*baseFreqs[1], 0, e*baseFreqs[3], a*baseFreqs[4]],
+              [f*baseFreqs[1], e*baseFreqs[2], 0, c*baseFreqs[4]],
+              [b*baseFreqs[1], a*baseFreqs[2], c*baseFreqs[3], 0]]:
     else
         if model = 'HKY' then
             if length(params) <> 2 then error('number of parameters does not match (should be 2).'): fi:
@@ -28,10 +32,14 @@ CreateNucleotideMatrix := proc(model: string, baseFreqs:list(nonnegative), param
         else
             error('Unknown Model!'):
         fi:
-        Q := [[0, alpha1*baseFreqs[2], beta*baseFreqs[3], beta*baseFreqs[4]],
-              [alpha1*baseFreqs[1], 0, beta*baseFreqs[3], beta*baseFreqs[4]],
-              [beta*baseFreqs[1], beta*baseFreqs[2], 0, alpha2*baseFreqs[4]],
-              [beta*baseFreqs[1], beta*baseFreqs[2], alpha2*baseFreqs[3], 0]]:
+#        Q := [[0, alpha1*baseFreqs[2], beta*baseFreqs[3], beta*baseFreqs[4]],
+#              [alpha1*baseFreqs[1], 0, beta*baseFreqs[3], beta*baseFreqs[4]],
+#              [beta*baseFreqs[1], beta*baseFreqs[2], 0, alpha2*baseFreqs[4]],
+#              [beta*baseFreqs[1], beta*baseFreqs[2], alpha2*baseFreqs[3], 0]]:
+        Q := [[0, beta*baseFreqs[2], alpha2*baseFreqs[3], beta*baseFreqs[4]],
+              [beta*baseFreqs[1], 0, beta*baseFreqs[3], alpha1*baseFreqs[4]],
+              [alpha2*baseFreqs[1], beta*baseFreqs[2], 0, beta*baseFreqs[4]],
+              [beta*baseFreqs[1], alpha1*baseFreqs[2], beta*baseFreqs[3], 0]]:
     fi:
     
     freqmat := CreateArray(1..4, 1..4, 0):
@@ -58,13 +66,13 @@ end:
 NucToNInt := proc(n:string)
     nint := 0:
     if n='T' then
-        nint := 1:
+        nint := 4:
     elif n='C' then
         nint := 2:
     elif n='A' then
-        nint := 3:
+        nint := 1:
     elif n='G' then
-        nint := 4:
+        nint := 3:
     else
         error('unknown nucleotide!'):
     fi:
@@ -73,13 +81,13 @@ end:
 
 NIntToNuc := proc(n:posint)
     nstr := 'X':
-    if n = 1 then
+    if n = 4 then
         nstr := 'T':
     elif n = 2 then
         nstr := 'C':
-    elif n = 3 then
+    elif n = 1 then
         nstr := 'A':
-    elif n = 4 then
+    elif n = 3 then
         nstr := 'G':
     else
         error('unknown nucleotide!'):
