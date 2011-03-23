@@ -55,7 +55,8 @@ CreateRandomTargetFrequencies := proc(tree:Tree, nspec, mtype:{'nuc','codon',lis
                 gc := Rand(0.3..0.7):
                 r1:= Rand(0.3..0.7):
                 r2 := Rand(0.3..0.7):
-                NewFreqs[i] := [l[Label], [(1-gc)*r1, gc*r2, (1-gc)*(1-r1), gc*(1-r2)]]:
+#                NewFreqs[i] := [l[Label], [(1-gc)*r1, gc*r2, (1-gc)*(1-r1), gc*(1-r2)]]:
+                NewFreqs[i] := [l[Label], [(1-gc1)*(1-r1), gc1*r2, gc1*(1-r2), (1-gc1)*r1]]:
             od:
         else
             baseFreqs := CreateRandomTargetFrequencies_12(tree, nspec):
@@ -89,7 +90,8 @@ CreateRandomTargetFrequencies_12 := proc(tree:Tree, nspec:posint)
             gc1 := Rand(gc-.1..gc+.1):
             r1 := Rand(0.3..0.7):
             r2 := Rand(0.3..0.7):
-            baseFreqs[i, j] := [(1-gc1)*r1, gc1*r2, (1-gc1)*(1-r1), gc1*(1-r2)]:
+#            baseFreqs[i, j] := [(1-gc1)*r1, gc1*r2, (1-gc1)*(1-r1), gc1*(1-r2)]:
+            baseFreqs[i, j] := [(1-gc1)*(1-r1), gc1*r2, gc1*(1-r2), (1-gc1)*r1]:
         od:
     od:
     baseFreqs
