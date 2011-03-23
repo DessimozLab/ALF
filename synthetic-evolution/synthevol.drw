@@ -28,7 +28,7 @@ fi;
 if amongGeneDistr = 'Custom' then
     customRates := parse(ReadRawFile(aGPath)):
 fi:
-
+    
 # assign variables for features that are turned off
 if not assigned(geneDuplRate) then
     geneDuplRate := 0:
@@ -361,9 +361,9 @@ if realseed = true then # generates the first organism with real data
         fi:
         # switch for real domainfile
         if (specialAreas = true) then
-	        for j to length(areaSet[i]) do
-	            areaSet[i, j, 3] := max(areaSet[i, j, 3], 1/DBL_MAX);
-	        od;
+            for j to length(areaSet[i]) do
+                areaSet[i, j, 3] := max(areaSet[i, j, 3], 1/DBL_MAX);
+            od;
             evolution[1, i, 1] := areaSet[i];
         elif length(substModels) > 0 then
             substModel := substModels[modelAssignments[i]]:
@@ -401,7 +401,7 @@ if realseed = true then # generates the first organism with real data
     od:
 
 # creates the first organism (if realseed is not selected)
-else	
+else
     evolution := []:
     evolution := append(evolution, CreateArray(1..protStart, 1..11)):
     geneR := append(geneR, CreateArray(1..protStart));
@@ -715,6 +715,9 @@ TimedCallSystem('mv '.wdir.'/temp.ps '.wdir.'/RealTree.ps', 2);
 OpenWriting(wdir . 'RealTree.drw');
 printf('RealTree := %A;\n', treeEvo);
 OpenWriting(previous);
+OpenWriting(wdir.'RealTree.nwk'):
+printf('%s;\n', Tree_Newick(treeEvo)):
+OpenWriting(previous):
 lprint('...real genome tree saved.');
 OpenAppending(wdir.'/logfile.txt');
 #leafHeights := CreateArray(1..livingOrgs, 0):
@@ -747,25 +750,26 @@ for i to livingOrgs do
     curlen := length(evolution[i]):
     totGenes := totGenes + curlen:
     for j to curlen do
-    	if SearchString('D', evolution[i, j, 3]) > -1 then
-	        totDgenes := totDgenes + 1;
-    	fi;
-	    if SearchString('L', evolution[i, j, 3]) > -1 then
-	        totLgenes := totLgenes + 1;
-    	fi;
-    	clusters[evolution[i,j,7]] := append(clusters[evolution[i,j,7]], [i,j]):
+        if SearchString('D', evolution[i, j, 3]) > -1 then
+            totDgenes := totDgenes + 1;
+        fi;
+        if SearchString('L', evolution[i, j, 3]) > -1 then
+            totLgenes := totLgenes + 1;
+        fi;
+        clusters[evolution[i,j,7]] := append(clusters[evolution[i,j,7]], [i,j]):
     od:
 od:
-
-# create MSAs
-for i to length(clusters) do
-    CreateRealMSA(clusters[i], evolution):
-od:
-lprint('...real MSAs written.'):
 
 # create gene trees
 #geneTrees := CreateGeneTrees(clusters, evolution, mutRate, leafHeights):
 geneTrees := CreateGeneTrees(clusters, evolution, leafHeights):
+lprint('...gene trees written.'):
+
+# create MSAs
+for i to length(clusters) do
+    CreateRealMSA(clusters[i], evolution, geneTrees[i]):
+od:
+lprint('...real MSAs written.'):
 
 # store orthologs for each pair of genes
 WriteOrthologs(geneTrees, livingOrgs):
