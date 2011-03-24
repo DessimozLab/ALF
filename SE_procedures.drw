@@ -478,9 +478,13 @@ end:
 
 # tranlates DNA to Protein (by Alexander Roth, CBRG)
 ProteinSeq := proc(dna:string)
-    prot := '';
-    for i to length(dna) by 3 do
-        prot := prot.CodonToA(dna[i..i + 2]);
+#    prot := '';
+    lenAA := length(dna)/3:
+    prot := CreateString(lenAA, 'X'):
+#    for i to length(dna) by 3 do
+#        prot := prot.CodonToA(dna[i..i + 2]);
+    for i to lenAA do
+        prot[i] := CodonToA(dna[(i-1)*3+1..(i-1)*3+3]);
     od;
     if length(prot) > 0 and prot[-1] = '$' then
         prot := prot[1..-2]:
