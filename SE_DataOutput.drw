@@ -287,12 +287,20 @@ CreateRealMSA := proc(cls, evol, tree)
         eval(outfile2):
         printf('%d %d\n', length(allSeqs), length(seqTable[allSeqs[1],1])/3):
         for s in allSeqs do
-            curseq := '':
-            for j to length(seqTable[s,1]) by 3 do
-                if seqTable[s, 1, j..j+2] = '---' then
-                    curseq := curseq.'-':
+#            curseq := '':
+            lenAA := length(seqTable[s,1])/3:
+            curseq := CreateString(lenAA, 'X'):
+#            for j to length(seqTable[s,1]) by 3 do
+#                if seqTable[s, 1, j..j+2] = '---' then
+#                    curseq := curseq.'-':
+#                else
+#                    curseq := curseq.CodonToA(seqTable[s, 1, j..j+2]):
+#                fi:
+            for j to lenAA do
+                if seqTable[s,1,j*3-2..j*3] = '---' then
+                    curseq[j] := '-':
                 else
-                    curseq := curseq.CodonToA(seqTable[s, 1, j..j+2]):
+                    curseq[j] := CodonToA(seqTable[s,1,j*3-2..j*3]):
                 fi:
             od:
             printf('SE%03d/%05d      %s\n', s[1], s[2], curseq):

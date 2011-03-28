@@ -622,8 +622,16 @@ end:
 
 PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
     global evolution, geneR, livingOrgs, spec, treeData, treeEvo, GCratio, specModels;
-    for i to length(evolution[orgSource]) do
+    evoLen := length(evolution[orgSource]): i := 1:
+#    for i to length(evolution[orgSource]) do
+    while i <= evoLen do
         seqmutation(orgSource, i, evolTime);
+        evoLenNew := length(evolution[orgSource]):
+        if evoLenNew <> evoLen then
+            evoLen := evoLenNew:
+            next
+        fi:
+        i := i + 1:
     od:
     evolution := append(evolution, copy(evolution[orgSource]));
     geneR := append(geneR, copy(geneR[orgSource]));
@@ -716,6 +724,7 @@ end:
 # mutates gene k of organism org for a certain amount of time steps, 15.12.06
 seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
     global evolution, substModels, curTargetFreqs, enableGCAmelioration, geneR;
+    printf('org %d\tgene %d\n', org, gene):
     oldLen := length(evolution[org,gene,2]):
     #printf('seqmutation(%d,%d): site rates: %a\n',org,gene, evolution[org,gene,1]):
     # apply rate modifications from duplications
@@ -728,7 +737,7 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
         rateF := rateF * evolution[org,gene,10,i,2]:
         # remove rate modifier if it exceeds its lifetime
         if evolution[org,gene,10,i,1] <= curT then
-            [op(evolution[org,gene,10,1..i-1]), op(evolution[org,gene,10,i+1..-1])]:
+            evolution[org,gene,10] := append(evolution[org,gene,10,1..i-1], op(evolution[org,gene,10,i+1..-1])):
         fi:
     od:
     rateFac := rateFac * rateF:

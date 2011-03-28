@@ -174,17 +174,6 @@ else
     error('no tree selected')
 fi:
 
-# calculation of the needed iteration steps
-#rate := max(geneDuplRate, geneLossRate, lgtRate, lgtGRate,
-#    aaGainRate, aaLossRate, 1);
-if realseed = true then
-    DB := ReadDb(realorganism);
-    Nprot := DB[TotEntries];
-    Naa := round(avg(seq(length(SearchTag('SEQ', Entry(e))), e=1..Nprot)));
-else
-    Naa := round(gammaLengthDist[1]*gammaLengthDist[2]);
-    Nprot := protStart;
-fi:
 #maxSteps := max(rate * max(Naa, Nprot), 1000);
 
 # scale tree to branch lengths matching the number of iterations
@@ -306,6 +295,7 @@ fi:
 
 # assign each gene a substitution model
 if realseed then
+    DB := ReadDb(realorganism);
     malen := DB[TotEntries]:
 else
     malen := protStart:
@@ -343,13 +333,34 @@ if not webRequest then
 fi:
 
 # loads real genome as first organism (if realseed is selected)
+Naa := 0:
 if realseed = true then # generates the first organism with real data
     evolution := []:
     evolution := append(evolution, CreateArray(1..DB[TotEntries], 1..11)):
     geneR := append(geneR, CreateArray(1..DB[TotEntries]));
+    remArr := []:
     for i to DB[TotEntries] do
+#        protseq := SearchTag('SEQ', Entry(i));
         protseq := SearchTag('SEQ', Entry(i));
-        dnaseq := SearchTag('DNA', Entry(i));
+        if length(SearchAllString('O',protseq)) > 0 or
+           length(SearchAllString('U',protseq)) > 0 or
+           length(SearchAllString('B',protseq)) > 0 or
+           length(SearchAllString('Z',protseq)) > 0 or
+           length(SearchAllString('J',protseq)) > 0 or
+           length(SearchAllString('X',protseq)) > 0 then remArr := append(remArr, i): next fi:
+        dnaseq := ReplaceString('U','T',SearchTag('DNA', Entry(i)));
+        if length(SearchAllString('R',dnaseq)) > 0 or
+           length(SearchAllString('Y',dnaseq)) > 0 or
+           length(SearchAllString('S',dnaseq)) > 0 or
+           length(SearchAllString('W',dnaseq)) > 0 or
+           length(SearchAllString('K',dnaseq)) > 0 or
+           length(SearchAllString('M',dnaseq)) > 0 or
+           length(SearchAllString('B',dnaseq)) > 0 or
+           length(SearchAllString('D',dnaseq)) > 0 or
+           length(SearchAllString('H',dnaseq)) > 0 or
+           length(SearchAllString('V',dnaseq)) > 0 or
+           length(SearchAllString('N',dnaseq)) > 0 or
+           length(SearchAllString('X',dnaseq)) > 0 then remArr := append(remArr, i): next fi:
         if protseq = 'AAA' then
             if length(substModels) = 0 then
                 seqLen := length(dnaseq)/blocksize:
@@ -359,6 +370,7 @@ if realseed = true then # generates the first organism with real data
         else
             seqLen := length(protseq)
         fi:
+        Naa := Naa + seqLen:
         # switch for real domainfile
         if (specialAreas = true) then
             for j to length(areaSet[i]) do
@@ -400,18 +412,29 @@ if realseed = true then # generates the first organism with real data
         geneR[1, i] := i;
     od:
 
+    # remove empty entries
+    remArr := sort(remArr, x->-x):
+    for i in remArr do
+        evolution[1] := append(evolution[1,1..i-1], op(evolution[1,i+1..-1])):
+        geneR[1] := append(geneR[1,1..i-1], op(geneR[1,i+1..-1])):
+    od:
+    Nprot := length(evolution[1]):
+    maxID := DB[TotEntries];    # highest unique gene ID number
 # creates the first organism (if realseed is not selected)
 else
     evolution := []:
     evolution := append(evolution, CreateArray(1..protStart, 1..11)):
     geneR := append(geneR, CreateArray(1..protStart));
     for i to protStart do
+        #print('creating gene '.i):
         aaStart := max(minGeneLength, round(gammaLengthDist[2] * Rand(GammaDist(gammaLengthDist[1]))));
+        Naa := Naa + aaStart:
         if length(substModels) > 0 then
             substModel := substModels[modelAssignments[i]]:
             if substModel[Name] = 'M0' then
                 evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart):
             elif substModel[Name][1] = 'M' then
+                #print('creating site classes'):
                 evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart, substModel[Params][3]):
             else
                 #printf('motifs %d - ', i):
@@ -428,12 +451,14 @@ else
                 if substModel[Type] = 'nuc' and not substModel[NeutralDNA] then
                     evolution[1, i, 6] := CreateRandSeq(3*aaStart, bf);
                 else
+                    #print('creating sequence'):
                     evolution[1, i, 6] := CreateRandSeq(aaStart, bf);
                 fi:
             fi:
             if substModel[Type] = 'aa' then
                 evolution[1, i, 2] := CreateRandSeq(aaStart, substModel[BaseFreqs]):
             elif substModel[Type] = 'codon' then
+                #print('converting sequence to aa'):
                 evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]);
             else
                 evolution[1, i, 2] := 'AAA'
@@ -469,9 +494,24 @@ else
         evolution[1, i, 11] := 0:
         geneR[1, i] := i;
     od:
+    Nprot := protStart:
+    maxID := length(evolution[1]);    # highest unique gene ID number
 fi:
 
-maxID := length(evolution[1]);    # highest unique gene ID number
+Naa := round(Naa/Nprot):
+
+# calculation of the needed iteration steps
+#rate := max(geneDuplRate, geneLossRate, lgtRate, lgtGRate,
+#    aaGainRate, aaLossRate, 1);
+#if realseed = true then
+#    DB := ReadDb(realorganism);
+#    Nprot := DB[TotEntries];
+#    Naa := round(avg(seq(length(SearchTag('SEQ', Entry(e))), e=1..Nprot)));
+#else
+#    Naa := round(gammaLengthDist[1]*gammaLengthDist[2]);
+#    Nprot := protStart;
+#fi:
+
 clusters := [seq([], maxID)]: # gene families
 
 # definition of the GC amelioration for the first organism
