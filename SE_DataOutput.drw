@@ -823,11 +823,14 @@ end:
 WriteOrthologs := proc(trees, norgs)
     global evolution:
     VPs := CreateArray(1..norgs, 1..norgs, 0):
-    idArr := CreateArray(1..norgs,0):
+#    idArr := CreateArray(1..norgs,0):
+    idTab := CreateArray(1..norgs,0):
 
     #bla1 := time():
     for i to norgs do
-        idArr[i] := transpose(evolution[i])[4]:
+#        idArr[i] := transpose(evolution[i])[4]:
+        idTab[i] := table():
+        for j to length(evolution[i]) do idTab[i,evolution[i,j,4]] := j od:
         for j to norgs do
             VPs[i,j] := CreateArray(1..length(evolution[i]), []):
         od:
@@ -840,7 +843,8 @@ WriteOrthologs := proc(trees, norgs)
         #printf('cluster %d\n', i):
         curt := trees[i]:
         if curt = 0 then next fi:
-        GetOrthologs(curt, VPs, idArr):
+#        GetOrthologs(curt, VPs, idArr):
+        GetOrthologs(curt, VPs, idTab):
     od:
     #print(time()-bla1):
     
@@ -903,7 +907,8 @@ WriteOrthologs := proc(trees, norgs)
 end:
 
 
-GetOrthologs := proc(t:Tree, VPs:list(list(list(list))), idArr:list(list)) #option internal:
+#GetOrthologs := proc(t:Tree, VPs:list(list(list(list))), idArr:list(list)) #option internal:
+GetOrthologs := proc(t:Tree, VPs:list(list(list(list))), idArr:list(table)) #option internal:
     global evolution;
     if type(t, Leaf) then return(NULL) fi:
     
@@ -918,11 +923,13 @@ GetOrthologs := proc(t:Tree, VPs:list(list(list(list))), idArr:list(list)) #opti
         for j to length(rleaves) do
             lo := lleaves[i,1]: #atoi(lleaves[i,1,3..5]):
             lg := lleaves[i,2]: #atoi(lleaves[i,1,7..-1]):
-            lg := SearchArray(lg, idArr[lo]):
+#            lg := SearchArray(lg, idArr[lo]):
+            lg := idArr[lo,lg]:
             le := lleaves[i,3]:
             ro := rleaves[j,1]: #atoi(rleaves[j,1,3..5]):
             rg := rleaves[j,2]: #atoi(rleaves[j,1,7..-1]):
-            rg := SearchArray(rg, idArr[ro]):
+#            rg := SearchArray(rg, idArr[ro]):
+            rg := idArr[ro,rg]:
             re := rleaves[j,3]:
             
             ev := le:

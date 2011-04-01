@@ -96,12 +96,12 @@ NIntToNuc := proc(n:posint)
 end:
 
 # mutate
-NucleotideMutate:=proc(seq1:string,time:{positive, list(positive)}; (lnM1=Q):matrix, classes:array(posint))
+NucleotideMutate:=proc(seq1:string,time:{positive, list(positive)}; (lnM1=Q):matrix, classes:array(posint), (neutral=true):boolean)
     if not assigned(lnM1) then
         error('Q is not assigned.')
     fi;
     if type(time, list) and assigned(classes) then
-        return(NucleotideMutateGamma(seq1, time, lnM1, classes)):
+        return(NucleotideMutateGamma(seq1, time, lnM1, classes, neutral)):
     elif type(time, list) or assigned(classes) then
         error('for gamma model NucleotideMutate requires a list of distances and an array with the class assignment for each site'):
     fi:
@@ -111,16 +111,35 @@ NucleotideMutate:=proc(seq1:string,time:{positive, list(positive)}; (lnM1=Q):mat
     od;
     MP:=transpose(MP);
     len:=length(seq1);
-    seq2:='';
-    for i to len do
-        n0:=NucToNInt(seq1[i]);
-        n:=RandomNucleotide(MP[n0]):
-        seq2:=seq2.n;
-    od;
+    #seq2:='';
+    seq2 := CreateString(len,'X'):
+    if neutral then
+        for i to len do
+            n0:=NucToNInt(seq1[i]);
+            n:=RandomNucleotide(MP[n0]):
+            seq2[i] := n;
+        od;
+    else
+        for i to len by 3 do
+            c := CreateString(3,'X'):
+            do
+                n0 := NucToNInt(seq1[i]):
+                c[1] := RandomNucleotide(MP[n0]):
+                n0 := NucToNInt(seq1[i+1]):
+                c[2] := RandomNucleotide(MP[n0]):
+                n0 := NucToNInt(seq1[i+2]):
+                c[3] := RandomNucleotide(MP[n0]):
+                if CodonToInt(c) <> 22 then break fi:
+            od:
+            seq2[i] := c[1]:
+            seq2[i+1] := c[2]:
+            seq2[i+2] := c[3]:
+        od:
+    fi:
     seq2;
 end:
 
-NucleotideMutateGamma:=proc(seq1:string,time:list(positive), lnM1:matrix, classes:array(posint)) option internal;
+NucleotideMutateGamma:=proc(seq1:string,time:list(positive), lnM1:matrix, classes:array(posint); (neutral=true):boolean) option internal;
     # prepare matrices for the different gamma classes
     MP := CreateArray(1..length(time),0):
     for i to length(MP) do
@@ -136,12 +155,31 @@ NucleotideMutateGamma:=proc(seq1:string,time:list(positive), lnM1:matrix, classe
 
     # now mutate
     len:=length(seq1);
-    seq2:='';
-    for i to len do
-        n0:=NucToNInt(seq1[i]);
-        n:=RandomNucleotide(MP[classes[i], n0]):
-        seq2:=seq2.n;
-    od;
+#    seq2:='';
+    seq2 := CreateString(len,'X'):
+    if neutral then
+        for i to len do
+            n0:=NucToNInt(seq1[i]);
+            n:=RandomNucleotide(MP[classes[i], n0]):
+            seq2[i] := n;
+        od;
+    else
+        for i to len by 3 do
+            c := CreateString(3,'X'):
+            do
+                n0 := NucToNInt(seq1[i]):
+                c[1] := RandomNucleotide(MP[classes[(i+2)/3], n0]):
+                n0 := NucToNInt(seq1[i+1]):
+                c[2] := RandomNucleotide(MP[classes[(i+2)/3], n0]):
+                n0 := NucToNInt(seq1[i+2]):
+                c[3] := RandomNucleotide(MP[classes[(i+2)/3], n0]):
+                if CodonToInt(c) <> 22 then break fi:
+            od:
+            seq2[i] := c[1]:
+            seq2[i+1] := c[2]:
+            seq2[i+2] := c[3]:
+        od:    
+    fi:
     seq2;
 end:
 

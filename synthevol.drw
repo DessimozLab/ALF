@@ -449,15 +449,17 @@ else
                     bf := substModel[BaseFreqs]:
                 fi:
                 if substModel[Type] = 'nuc' and not substModel[NeutralDNA] then
-                    evolution[1, i, 6] := CreateRandSeq(3*aaStart, bf);
-                else
+                    bf := remember(NucToCodonFreqs(bf)):
+#                    evolution[1, i, 6] := CreateRandSeq(3*aaStart, bf);
+                fi:
+#                else
                     #print('creating sequence'):
                     evolution[1, i, 6] := CreateRandSeq(aaStart, bf);
-                fi:
+#                fi:
             fi:
             if substModel[Type] = 'aa' then
                 evolution[1, i, 2] := CreateRandSeq(aaStart, substModel[BaseFreqs]):
-            elif substModel[Type] = 'codon' then
+            elif substModel[Type] = 'codon' or substModel[Blocksize] = 3 then
                 #print('converting sequence to aa'):
                 evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]);
             else

@@ -978,5 +978,21 @@ ConvertToPam := proc(t:Tree) option internal;
     NULL
 end:
 
-
+NucToCodonFreqs := proc(bf:list(nonnegative))
+    if |sum(bf)-1| > 1e-6 or min(bf) < 0 then
+        error(bf, 'base frequencies must be non-negative and sum up to 1'):
+    fi:
+    tf := CreateArray(1..64,0):
+    b := ['A','C','G','T']:
+    for i to 4 do
+        for j to 4 do
+            for k to 4 do
+                tf[CodonToCInt(b[i].b[j].b[k])] := bf[i]*bf[j]*bf[k]
+            od:
+        od:
+    od:
+    tf[CodonToCInt('TAG')] := tf[CodonToCInt('TAA')] := tf[CodonToCInt('TGA')] := 0:
+    tf := tf/sum(tf):
+    tf
+end:
 lprint('Procedures for Synthetic Evolution sucessfully loaded');

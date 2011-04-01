@@ -52,7 +52,7 @@ CreateRandomTargetFrequencies := proc(tree:Tree, nspec, mtype:{'nuc','codon',lis
         if mtype='nuc' then
             for l in Leaves(tree) do
                 i := i + 1:
-                gc := Rand(0.3..0.7):
+                gc1 := Rand(0.3..0.7):
                 r1:= Rand(0.3..0.7):
                 r2 := Rand(0.3..0.7):
 #                NewFreqs[i] := [l[Label], [(1-gc)*r1, gc*r2, (1-gc)*(1-r1), gc*(1-r2)]]:
