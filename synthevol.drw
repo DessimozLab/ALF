@@ -105,6 +105,15 @@ fi:
 if not assigned(webRequest) then
     webRequest := false:
 fi:
+if not assigned(wdir) then
+    wdir := './':
+fi:
+if not assigned(dbdir) then
+    dbdir := 'DB/':
+fi:
+if not assigned(dbAncdir) then
+    dbAncdir := 'DBancestral/':
+fi:
     
 if not unitIsPam then
     mutRate := muteRate * 100:
