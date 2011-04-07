@@ -515,17 +515,19 @@ PerformLGTG := proc(org:integer, evolTime:nonnegative, lgtSize)
     
     orgDonor := Rand(donors):
     geneDonorIndex := trunc(Rand() * (length(evolution[orgDonor]) - lgtSize)) + 1:
-    idArr := transpose(evolution[org])[4]:
+    idArr := transpose(evolution[orgDonor])[4]:
 
     # copy entries for lgtSize proteins
     k := 0:
     while k < lgtSize do
-        geneDonor := SearchArray(abs(geneR[org,geneDonorIndex+k]), idArr):
+        geneDonor := SearchArray(abs(geneR[orgDonor,geneDonorIndex+k]), idArr):
+        printf('org %d, donor gene index %d, donor gene %d\n', org, geneDonorIndex+k, geneDonor):
         oldDonorLength := length(evolution[orgDonor]):
         seqmutation(orgDonor, geneDonor, evolTime):
         curDonorLength := length(evolution[orgDonor]):
         if curDonorLength < oldDonorLength then
-            idArr := transpose(evolution[org])[4]:
+            print('length now different'):
+            idArr := transpose(evolution[orgDonor])[4]:
             if geneDonorIndex + k > length(evolution[orgDonor]) then
                 if geneDonnorIndex - 1 < 1 then
                     lgtSize := k:

@@ -102,6 +102,9 @@ fi:
 if not assigned(unitIsPam) then
     unitIsPam := true:
 fi:
+if not assigned(webRequest) then
+    webRequest := false:
+fi:
     
 if not unitIsPam then
     mutRate := muteRate * 100:
@@ -173,7 +176,6 @@ elif treeType = 'ToLSample' then
 else
     error('no tree selected')
 fi:
-
 #maxSteps := max(rate * max(Naa, Nprot), 1000);
 
 # scale tree to branch lengths matching the number of iterations
