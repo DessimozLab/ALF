@@ -114,6 +114,12 @@ fi:
 if not assigned(dbAncdir) then
     dbAncdir := 'DBancestral/':
 fi:
+if not assigned(realseed) then
+    realseed := false:
+    if not assigned(specialAreas) then
+        specialAreas := false:
+    fi:
+fi:
     
 if not unitIsPam then
     mutRate := muteRate * 100:

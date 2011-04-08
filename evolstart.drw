@@ -42,7 +42,7 @@ ReadProgram(paramfile);
 printf('\nparameter file read\n'):
 
 ReadProgram(SEbasedir.'synthevol.drw');
-CallSystem('cp ' . paramfile . ' ' . wdir . 'used_parameters.drw'):
+CallSystem('cp ' . paramfile . ' ' . wdir . 'used_alf-params.drw'):
 endtime := (UTCTime() - starttime) / 60:
 printf('\n\nsynthetic evolution completed in %.2f minutes!\n\n', endtime):
 
