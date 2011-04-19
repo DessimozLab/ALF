@@ -1,12 +1,9 @@
 # procedures for Synthetic evolution
-# Daniel Margadant, Sereina Riniker, CBRG, 2006
+# Daniel Dalquen, Daniel Margadant, Sereina Riniker, CBRG, 2006
 #
 
-# CreateCodonMatrices();
-
-
 ########################################################################
-# procedures for analyses and reports on EVA data
+# procedures for analyses and reports on ALF data
 
 
 # counts L, Lo and D for a certain array of description strings
@@ -280,103 +277,13 @@ getOrthoSet := proc(org1:string, org2:string)
     ortho2 := {op(ortho2)};
     a := ortho1 intersect ortho2;
     for i in a do
-        orthoSet := append(orthoSet, [SearchArray(i, all1), SearchArray(i, all2)]);
+        orthoSet := append(orthoSet,[SearchArray(i,all1),SearchArray(i,all2)]);
     od;
     result := orthoSet;
 end:
 
 ########################################################################
 # internal procedures for data creation
-
-
-# mutates organisms for a certain amount of time steps, 15.12.06
-######## moved to SE_Evolutionary_Events.drw ########
-#seqmutation := proc(org: posint, ts: posint)
-#    global evolution, substModels;
-#    for k to length(evolution[org]) do
-#        oldLen := length(evolution[org,k,2]):
-#        #printf('seqmutation %d/%d domains: %a\n', org,k,evolution[org,k,1]):
-#        substModel := substModels[evolution[org, k, 9]]:
-#        # apply rate modifications from duplications
-#        rateFac := ts:
-#        for i from length(evolution[org,k,10]) to 1 by -1 do
-#            rateFac := rateFac * evolution[org,k,10,i,2]:
-#            # remove rate modifier if it exceeds its lifetime
-#            if evolution[org,k,10,i,1] <= evolTime then
-#                [op(evolution[org,k,10,1..i-1]), op(evolution[org,k,10,i+1..-1])]:
-#            fi:
-#        od:
-#        # compute CodonMatrix from GC target content
-#        if substModel[Type] <> 'aa' then
-#                GCMatrix := substModel[LogPAM1]:
-#            if enableGCAmelioration then
-#                if substModel[Name][1] = 'M' then
-#                    GCMatrix := CreateArray(1..length(substModel[LogPAM1]),0):
-#                    for i to length(YCodonLogPAM1) do
-#                        GCMatrix[i] := GCBiasMatrix(GCratio[org], substModel[LogPAM1][i], substModel[Type]):
-#                    od:
-#                else
-#                    GCMatrix := GCBiasMatrix(GCratio[org], GCMatrix, substModel[Type]):
-#                fi:
-#            fi:
-#        fi:
-#        seqTot := '';
-#        # loop over all domains for protein k
-#        for i to length(evolution[org, k, 1]) do
-#            if substModel[Type] = 'aa' then
-#                sequence := evolution[org, k, 2][(evolution[org, k, 1][i, 1])..evolution[org, k, 1][i, 2]];
-#                # TODO: mutate amino acid sequence
-#                if type(evolution[org,k,1][i,3], list) then
-#                    #printf('length: %d\n', length(sequence)):
-#                    sequence := AAMutateGamma(sequence, rateFac * gammaRates, evolution[org, k, 1][i,3]):
-#                    #printf('length: %d\n', length(sequence)):
-#                else
-#                    sequence := Mutate(sequence, rateFac * evolution[org, k, 1][i,3]):
-#                fi:
-#            else
-#                if substModel[Blocksize] = 3 then
-#                    sequence := evolution[org, k, 6][(evolution[org, k, 1][i, 1]
-#                        * 3 - 2)..evolution[org, k, 1][i, 2] * 3];
-#                else
-#                    sequence := evolution[org, k, 6][evolution[org, k, 1][i, 1]..evolution[org, k, 1][i, 2]];
-#                fi:
-#                if substModel[Type] = 'nuc' then
-#                    if type(evolution[org,k,1][i,3], list) then
-#                        sequence := NucleotideMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, k, 1][i,3]):
-#                    else
-#                        sequence := NucleotideMutate(sequence, rateFac * evolution[org, k, 1][i, 3], GCMatrix):
-#                    fi:
-#                else
-#                    if type(evolution[org,k,1][i,3], list) then
-#                        if substModel[Name][1] = 'M' then
-#                            sequence := CodonMutate(sequence, rateFac, GCMatrix, evolution[org, k, 1][i,3]):
-#                        else
-#                            ol := length(sequence):
-#                            sequence := CodonMutate(sequence, rateFac * gammaRates, GCMatrix, evolution[org, k, 1][i,3]):
-#                            if ol <> length(sequence) then
-#                                printf('ERROR occurred in CodonMutate!\n'):
-#                            fi:
-#                        fi:
-#                    else
-#                        sequence := CodonMutate(sequence, rateFac * evolution[org, k, 1][i,3], GCMatrix):
-#                    fi:
-#                fi:
-#            fi:
-#            seqTot := seqTot.string(sequence);
-#        od;
-#        if substModel[Type] = 'aa' then
-#            evolution[org, k, 2] := string(seqTot):
-#        else
-#            evolution[org, k, 6] := string(seqTot);
-#            if substModel[Blocksize] = 3 then
-#                evolution[org, k, 2] := ProteinSeq(evolution[org, k, 6]);
-#            fi:
-#        fi:
-#        if oldLen <> length(evolution[org,k,2]) then
-#            printf('error mutating gene %d of org %d\n', k, org):
-#        fi:
-#    od;
-#end:
 
 NBNormalizationFactor := proc(maxLen, r, q)
     res := 0:
@@ -403,19 +310,19 @@ ZipfNormalizationFactor := proc(maxLen, c)
     res
 end:
 
-#ExpNormalizationFactor := proc(maxLen, a, b)
 ExpNormalizationFactor := proc(maxLen, p)
-#    res := 1 - exp(-(maxLen-a)/b)
     res := 1 - (1 - p)^maxLen
 end:
 
 GQG := proc(n, c, t)
     fac := QGNormalizationFactor(100, c, t):
     res :=  (1.027e-2*exp(-n*c/(0.96*t)) + 3.031e-3*exp(-n*c/(3.13*t))
-                   + 6.141e-4*exp(-n*c/(14.3*t)) + 2.090e-5*exp(-n*c/(81.7*t))) / fac:
+             + 6.141e-4*exp(-n*c/(14.3*t)) + 2.090e-5*exp(-n*c/(81.7*t))) / fac:
 end:
 
-randGapLength := proc(maxLen:nonnegative, indelType:{'ZIPF', 'QG', 'NEGBIN', 'EXP', 'CUSTOM'} ; params:list)
+randGapLength := proc(maxLen:nonnegative, 
+                      indelType:{'ZIPF', 'QG', 'NEGBIN', 'EXP', 'CUSTOM'} ; 
+                      params:list)
     L := 0; s := 0;
     rp := Rand();
     if indelType = 'ZIPF' then
@@ -435,37 +342,30 @@ randGapLength := proc(maxLen:nonnegative, indelType:{'ZIPF', 'QG', 'NEGBIN', 'EX
         while s < rp and L < maxLen do
             L := L + 1:
             s := s + (1.027e-2*exp(-L*c/(0.96*t)) + 3.031e-3*exp(-L*c/(3.13*t))
-                   + 6.141e-4*exp(-L*c/(14.3*t)) + 2.090e-5*exp(-L*c/(81.7*t))) / normFactor:
+                   + 6.141e-4*exp(-L*c/(14.3*t)) + 2.090e-5*exp(-L*c/(81.7*t)))
+                   / normFactor:
         od:
     elif indelType = 'NEGBIN' then
         # params should have the form [NB_r, NB_q]
-        if not type(params[4], posint) or not (type(params[5], nonnegative) and params[5] <= 1) then
-            printf('parameters for negative binomial distribution do not match!'):
+        if not type(params[4], posint) or 
+           not (type(params[5], nonnegative) and params[5] <= 1) then
+            print('parameters for negative binomial distribution do '.
+                   'not match!'):
         fi:
         r := params[4]: q := params[5]:
-#        normFactor := NBNormalizationFactor(maxLen, r, q):
-#        while s < rp and L < maxLen do
-#            L := L + 1:
-#            s := s + ((r+L-2)!/((L-1)!*(r+1)!)*(1-q)^r*q^(L-1))/normFactor:
-#        od:
         while r > 0 do
             L := L + floor(log(1-Rand())/log(q)):
             r := r - 1:
         od:
         L := L + 1:
     elif indelType = 'EXP' then
-#        normFactor := ExpNormalizationFactor(maxLen, params[6]):
-#        while s < rp and L < maxLen do
-#            L := L + 1:
-#            s := 1 - ( 1 - params[6])^L / normFactor:
-#       od:
-#        L := 1 + floor(log(1-Rand())/log(params[6])):
-        #L := 1 + floor(log(Rand())/log(1-params[6])):
         L := 1 + Rand(Geometric(params[6])):
     else
-        # param[i] should contain the probability of a gap of length i from the custom distribution
+        # param[i] should contain the probability of a gap of length i from 
+        # the custom distribution
         if length(params[7]) <> maxLen then
-            error('length of array of gap length probabilities must match the maximum gap length!'):
+            error('length of array of gap length probabilities must match the '.
+                  'maximum gap length!'):
         fi:
         while s < rp and L < maxLen do
             L := L + 1:
@@ -478,11 +378,8 @@ end:
 
 # tranlates DNA to Protein (by Alexander Roth, CBRG)
 ProteinSeq := proc(dna:string)
-#    prot := '';
     lenAA := length(dna)/3:
     prot := CreateString(lenAA, 'X'):
-#    for i to length(dna) by 3 do
-#        prot := prot.CodonToA(dna[i..i + 2]);
     for i to lenAA do
         prot[i] := CodonToA(dna[(i-1)*3+1..(i-1)*3+3]);
     od;
@@ -570,7 +467,8 @@ end:
 
 
 # searches the tree for children of the LGT parents
-searchSpec := proc(i: posint, j: posint, org: string, pos: posint, spec:array, LGTpairs:array)
+searchSpec := proc(i: posint, j: posint, org: string, pos: posint, spec:array, 
+                   LGTpairs:array)
     for k from j to length(spec) do
 	if org = spec[k,1] then
 		LGTpairs[i,pos] := [op(LGTpairs[i,pos]),spec[k,2]];
@@ -597,45 +495,8 @@ calGCcont := proc(org)
 end:
 
 
-# generates a CodonMatrix for GC amelioration (by adrian schneider)
-# adapted by daniel dalquen to compute a CodonMatrix based on a target
-# GC content (the bias for the matrix is computed from the target content
-# using a polynomial fit over the empirical convergence values)
-#GCBiasMatrix := proc(gccont:numeric;(lnM1=CodonLogPAM1):matrix, simType:string)
-#    M1 := exp(lnM1);
-#    if simType = 'codon' then
-#        # compute the actual bias
-#        bias := 5.46135*gccont^3 - 4.53971*gccont^2 + 2.7788*gccont - .92313:
-#        GC := CreateArray(1..64):
-#        for i to 64 do
-#            t := BaseCount(CIntToCodon(i));
-#            GC[i] := t[2]+t[3];
-#        od;
-#        matlen := 64:
-#    elif simType = 'nuc' then
-#        bias := 5.11693*gccont^3 - 4.74833*gccont^2 + 2.97291*gccont - .91322:
-#        GC := [seq(If(NIntToNuc(i) = 'C' or NIntToNuc(i) = 'G', 1, 0), i=1..4)]:
-#        matlen := 4:
-#    else
-#        error('gc amelioration only works for dna and codon simulations'):
-#    fi:
-#    f := 1+bias;
-#    for i to matlen do for j to matlen do M1[i,j] := max(0,M1[i,j]) od od:
-#    for i to matlen do  # mutation from i to j
-#        for j to matlen do
-#            if j=i then next fi;
-#            d := GC[j]-GC[i];
-#            M1[j,i] := M1[j,i]*f^d;
-#        od;
-#        s := sum(M1[j,i],j=1..matlen)-M1[i,i];
-#        if s<0 or s>1 then error('invalid sum') fi;
-#        M1[i,i] := 1-s;
-#    od:
-#    return(ln(M1));
-#end:
-
-
-makeAreasOmega := proc(substModel:string, aaStart:posint; classFreq:{nonnegative, list(nonnegative)})
+makeAreasOmega := proc(substModel:string, aaStart:posint; 
+                       classFreq:{nonnegative, list(nonnegative)})
         domains := copy([[1, aaStart, 0]]):
         domains[1,3] := CreateArray(1..aaStart, 1):
     if substModel = 'M0' then
@@ -665,88 +526,10 @@ end:
         
         
 
-# makes the areas for rate heterogenity in a gene
-######## moved to SE_Evolutionary_Events.drw ########
-#makeAreas := proc(aaStart, areas, mutRate, maxSteps, distr:{'Poisson', 'Gamma'}; motFreq:nonnegative)
-#    if distr = 'Poisson' then
-#        if not assigned(motFreq) then
-#            motFreq := 0:
-#        fi:
-#        domains := CreateArray(1..Rand(1..areas));
-#        numEnt := {};
-#        for i to (length(domains) - 1) do
-#            num1 := round(aaStart / (length(domains) - 1));
-#            limitlow := max(1, ((i - 1) * num1 + 1));
-#            limithigh := min(aaStart - 1, (i * num1 - 1));
-#            numEnt := append(numEnt, Rand(limitlow..limithigh));
-#        od;    
-#        numEnt := append(numEnt, 0);
-#        numEnt := append(numEnt, aaStart);
-#        for i to length(domains) do        
-#            domains[i] := [(numEnt[i]+1), numEnt[i+1], 
-#                If(Rand() < motFreq, 1/DBL_MAX, Rand(Poisson(mutRate)) / maxSteps)];
-#        od;
-#    else
-#        if not assigned(motFreq) then
-#            error ('gamma distribution requires alpha parameter')
-#        fi:
-#        motifs := {}:
-#        for i to aaStart do
-#            if Rand() <= motFreq then
-#                motifs := append(motifs,i):
-#            fi:
-#        od:
-#        #printf('%a\n', motifs):
-#        if length(motifs) = 0 then
-#            domains := []:
-#            domains := append(domains, [1, aaStart, [seq(Rand(1..areas), aaStart)]]):
-#        else
-#            domains := CreateArray(1..2*length(motifs)-1):
-#            d := {}:
-#            for i to length(domains) do
-#                if floor(i/2) <> i/2 then # handle motif
-#                    domains[i] := [motifs[ceil(i/2)], motifs[ceil(i/2)], 1/DBL_MAX]:
-#                else # handle gamma domain
-#                    domains[i] := [motifs[i/2]+1, motifs[i/2+1]-1, []]:
-#                    if domains[i,1] > domains[i,2] then # domain is empty (2 motifs next to each other)
-#                        d := append(d,i):
-#                        next:
-#                    fi:
-#                    #for j to domains[i,2]-domains[i,1]+1 do
-#                    #    rnd := Rand(1..areas):
-#                    #domains[i,3] := append(domains[i,3], gr[rnd]):
-#                    #od:
-#                    # for gamma rates we only store the class not the actual rate
-#                    domains[i,3] := [seq(Rand(1..areas), domains[i,2]-domains[i,1]+1)]:
-#                fi:
-#            od:
-#            if d <> {} then
-#                for i from length(d) to 1 by -1 do
-#                    domains := [op(domains[1..d[i]-1]), op(domains[d[i]+1..-1])]:
-#                od:
-#            fi:
-#            if motifs[1] <> 1 then
-#                domains := append([[1, motifs[1]-1, [seq(Rand(1..areas), domains[1,1]-1)]]], op(domains)):
-#                #for j to domains[1,2]-domains[1,1]+1 do
-#                #    rnd := Rand(1..areas):
-#                #    domains[1,3] := append(domains[1,3], gr[rnd]):
-#                #od:
-#            fi:
-#            if motifs[-1] <> aaStart then
-#                domains := append(domains, [motifs[-1]+1, aaStart, [seq(Rand(1..areas), aaStart-domains[-1,2])]]):
-#                #for j to domains[-1,2]-domains[-1,1]+1 do
-#                #    rnd := Rand(1..areas):
-#                #    domains[-1,3] := append(domains[-1,3], gr[rnd]):
-#                #od:
-#            fi:
-#        fi:
-#    fi:
-#    return(domains);
-#end:
 
-updateBorderOmega := proc(substModel:string, domain:array, value, len, event, classFreq:{nonnegative, list(nonnegative)})
+updateBorderOmega := proc(substModel:string, domain:array, value, len, event, 
+                          classFreq:{nonnegative, list(nonnegative)})
     oldmax := max(domain[3]):
-    #printf('classes of domain(max %d): %a\n', oldmax, domain[3]):
     dom := domain:
     if event = 'insert' then
         dom[2] := dom[2] + len:
@@ -763,14 +546,12 @@ updateBorderOmega := proc(substModel:string, domain:array, value, len, event, cl
             cdf := [seq(i*(1-classFreq)/10, i=1..10)]:
             cdf := append(cdf, 1):
         fi:
-        #printf('cdf: %a\n', cdf):
         ins := []:
         for i to len do
             r := Rand():
             for j to length(cdf) do
                 if r < cdf[j] then ins := append(ins, j): break: fi:
             od:
-            #if i <> length(ins) then printf('error in for loop\n') fi:
         od:
         dom[3] := [op(dom[3,1..value]), op(ins), op(dom[3, value+1..-1])]:
     else
@@ -779,13 +560,13 @@ updateBorderOmega := proc(substModel:string, domain:array, value, len, event, cl
         fi:
         dom[2] := dom[2] - len:
     fi:
-    #if max(dom[2]) <> length(dom[3]) then printf('length does not match: %d vs %d classes\n', dom[2], length(dom[3])): fi:
     dom
 end:
 
 
 # updates the area borders after a AA gain or loss
-updateBorder := proc(domains: array, dom, value, len, event: string; (gamma=false):boolean, areas: nonnegative)
+updateBorder := proc(domains: array, dom, value, len, event: string; 
+                     (gamma=false):boolean, areas: nonnegative)
     global motifFreq;
     doms := domains:
     d := {};
@@ -800,7 +581,8 @@ updateBorder := proc(domains: array, dom, value, len, event: string; (gamma=fals
                     newClasses[i] := Rand(1..areas):
                 fi:
             od:
-            doms[dom,3] := [op(doms[dom,3,1..relVal]), op(newClasses), op(doms[dom,3,relVal+1..-1])]:
+            doms[dom,3] := [op(doms[dom,3,1..relVal]), op(newClasses), 
+                            op(doms[dom,3,relVal+1..-1])]:
         fi:
         if doms[dom,1] = 0 then doms[dom,1] := 1: fi:
         for i from dom to length(doms) do
@@ -819,7 +601,8 @@ updateBorder := proc(domains: array, dom, value, len, event: string; (gamma=fals
             if curDomainLen >= leng then
                 if gamma then
                     relVal := val - doms[dom,1] + 1:
-                    doms[i,3] := [op(doms[i,3,1..relVal-1]), op(doms[i,3,relVal+leng..-1])];
+                    doms[i,3] := [op(doms[i,3,1..relVal-1]), 
+                                  op(doms[i,3,relVal+leng..-1])];
                 fi:
                 doms[i,2] := doms[i,2] - leng:
                 curGapLen := leng:
@@ -875,7 +658,8 @@ ComputeIndelPos := proc(e, sms, gr)
             od:
         else
             for m to length(e[k, 1]) do
-                indelSum := indelSum + e[k, 1, m, 3] * (1 + e[k, 1, m, 2] - e[k, 1, m, 1]);
+                indelSum := indelSum + e[k, 1, m, 3]
+                                * (1 + e[k, 1, m, 2] - e[k, 1, m, 1]);
             od;
         fi:
     od;
@@ -896,9 +680,12 @@ ListTimePoints := proc(tree:Tree, prefix:string)
     	rt := ListTimePoints(tree[Right], prefix.'.2'):
     	if length(tree) > 3 then
     		if tree[xtra][1] = 'S' then
-	    		res := [[[prefix, tree[Height], tree[xtra][2]], op(lt[1]), op(rt[1])], [op(lt[2]), op(rt[2])]]:
+	    		res := [[[prefix, tree[Height], tree[xtra][2]], op(lt[1]), 
+	    		         op(rt[1])], [op(lt[2]), op(rt[2])]]:
 	    	elif tree[xtra][1] = 'D' then
-	    		res := [[op(lt[1]), op(rt[1])], [[prefix, tree[Height], tree[xtra][2]], op(lt[2]), op(rt[2])]]:
+	    		res := [[op(lt[1]), op(rt[1])], [[prefix, tree[Height], 
+	    		                                  tree[xtra][2]], op(lt[2]), 
+	    		                                 op(rt[2])]]:
 	        else
                 res := [[[prefix, tree[Height]], op(lt[1]), op(rt[1])],[]]:
 	    	fi:
@@ -910,7 +697,8 @@ ListTimePoints := proc(tree:Tree, prefix:string)
 end:
     
 EnumerateBranches := proc(tree:Tree, specPts, gc:boolean)
-	branches := append(EnumerateBranches_R(tree[Left], tree[Height], gc), op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
+	branches := append(EnumerateBranches_R(tree[Left], tree[Height], gc), 
+	                   op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
 	branches := sort(branches, x->x[1]):
 	if gc then
         res := copy([[1, 0, specPts[1, 2], tree[-1]]]):
@@ -919,7 +707,8 @@ EnumerateBranches := proc(tree:Tree, specPts, gc:boolean)
     fi:
 	n := 2:
 	for i to length(specPts) do
-		res := append(res, [specPts[i, 1], op(branches[2*i-1])], [n, op(branches[2*i])]):
+		res := append(res, 
+		              [specPts[i,1],op(branches[2*i-1])],[n,op(branches[2*i])]):
 		n := n + 1:
 	od:
 	res
@@ -935,9 +724,11 @@ EnumerateBranches_R := proc(tree:Tree, start:nonnegative, gc:boolean)
 	fi:
 	res := EnumerateBranches_R(tree[Left], tree[Height], gc):
 	if gc then
-	    res := append(res, [start, tree[Height], tree[-1]], op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
+	    res := append(res, [start, tree[Height], tree[-1]], 
+	                  op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
 	else
-	    res := append(res, [start, tree[Height]], op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
+	    res := append(res, [start, tree[Height]], 
+	                  op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
 	fi:
 end:
 
@@ -991,7 +782,8 @@ NucToCodonFreqs := proc(bf:list(nonnegative))
             od:
         od:
     od:
-    tf[CodonToCInt('TAG')] := tf[CodonToCInt('TAA')] := tf[CodonToCInt('TGA')] := 0:
+    tf[CodonToCInt('TAG')] := tf[CodonToCInt('TAA')] := 
+        tf[CodonToCInt('TGA')] := 0:
     tf := tf/sum(tf):
     tf
 end:

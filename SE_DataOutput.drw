@@ -10,25 +10,31 @@ DBout := proc()
         OpenWriting(wdir.dbdir.orgname.'.db');
         printf('<DBNAME>Synthetic organism %s</DBNAME>\n', orgname);
         printf('<DBRELEASE>SE %s</DBRELEASE>\n', mname);
-        printf('<SOURCE>sequence simulation</SOURCE>\n');
+        print('<SOURCE>sequence simulation</SOURCE>\n');
         printf('<DATE>%s</DATE>\n', date());
-        printf('<URL>http://www.cbrg.ethz.ch</URL>\n');
+        print('<URL>http://www.cbrg.ethz.ch</URL>\n');
         printf('<5LETTERNAME>%s</5LETTERNAME>\n', orgname);
         printf('<SCINAME>Organismus syntheticus_%s</SCINAME>\n', orgname);
         printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
             'Organismus syntheticus_%s</OS>\n', orgname);
-        printf('<KINGDOM>Bacteria</KINGDOM>\n');
-        printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA; HGP; RATES</FIELDS>\n');
+        print('<KINGDOM>Bacteria</KINGDOM>\n');
+        print('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA; HGP; '.
+              'RATES</FIELDS>\n');
         # entry output
         for j to length(evolution[i]) do
             loc := SearchArray(evolution[i, j, 4], abs(geneR[i]));
             if (geneR[i, loc] < 0) then
                 loc := -loc;
             fi;
-            printf('<E><ID>G%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
+            printf('<E><ID>G%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>'.
+                   '%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
                 evolution[i, j, 4], loc, evolution[i, j, 3], 
-                evolution[i, j, 5], evolution[i, j, 7], evolution[i,j,1], evolution[i, j, 2]);
-            if (length(substModels) = 0 and (blocksize = 3 or evolution[i,j,2] = 'AAA')) or (length(substModels) > 0 and substModels[evolution[i,j,9]][Type] <> 'aa') then
+                evolution[i, j, 5], evolution[i, j, 7], evolution[i,j,1], 
+                evolution[i, j, 2]);
+            if (length(substModels) = 0 and 
+                (blocksize = 3 or evolution[i,j,2] = 'AAA')) or 
+               (length(substModels) > 0 and 
+                substModels[evolution[i,j,9]][Type] <> 'aa') then
                 printf('<DNA>%s</DNA>', evolution[i, j, 6]);
             fi:
             printf('</E>\n'):
@@ -46,13 +52,20 @@ DBoutFASTA := proc()
     fi;
     for i to livingOrgs do
         for j to length(evolution[i]) do
-            if (length(substModels) = 0 and (blocksize = 3 or evolution[i,j,2] <> 'AAA')) or (length(substModels) > 0 and (substModels[evolution[i,j,9]][Type] <> 'nuc' or not substModels[evolution[i,j,9]][NeutralDNA])) then
+            if (length(substModels) = 0 and 
+                (blocksize = 3 or evolution[i,j,2] <> 'AAA')) or 
+               (length(substModels) > 0 and 
+                (substModels[evolution[i,j,9]][Type] <> 'nuc' or 
+                 not substModels[evolution[i,j,9]][NeutralDNA])) then
                 OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'_aa.fa');
                 printf('>G%a_SE%03d\n%s\n\n', evolution[i, j, 4], i,
                     evolution[i, j, 2]);
                 OpenWriting(previous);
             fi:
-            if (length(substModels) = 0 and (blocksize = 3 or evolution[i,j,2] = 'AAA')) or (length(substModels) > 0 and substModels[evolution[i,j,9]][Type] <> 'aa') then
+            if (length(substModels) = 0 and 
+                (blocksize = 3 or evolution[i,j,2] = 'AAA')) or 
+               (length(substModels) > 0 and 
+                substModels[evolution[i,j,9]][Type] <> 'aa') then
                 OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'_dna.fa');
                 printf('>G%a_SE%03d\n%s\n\n', evolution[i, j, 4], i,
                     evolution[i, j, 6]);
@@ -90,9 +103,14 @@ DBoutAnc := proc(organism, parent, child, birth)
         if (geneR[child, loc] < 0) then
             loc := -loc;
         fi;
-        printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
-            organism[j, 4], loc, organism[j, 3], organism[j, 5], organism[j, 7], organism[j,1], organism[j, 2]): 
-        if (length(substModels) = 0 and (blocksize = 3 or organism[j,2] = 'AAA')) or (length(substModels) > 0 and substModels[organism[j,9]][Type] <> 'aa') then
+        printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS>'.
+               '<HGP>%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
+            organism[j, 4], loc, organism[j, 3], organism[j, 5], organism[j, 7],
+            organism[j,1], organism[j, 2]): 
+        if (length(substModels) = 0 and 
+            (blocksize = 3 or organism[j,2] = 'AAA')) or 
+           (length(substModels) > 0 and 
+            substModels[organism[j,9]][Type] <> 'aa') then
             printf('<DNA>%s</DNA>', organism[j, 6]);
         fi:
         printf('</E>\n'):
@@ -106,7 +124,9 @@ CreateRealMSA := proc(cls, evol, tree)
     # get cluster id
     id := evol[cls[1,1], cls[1,2], 7]:
     
-    if length(FileStat(wdir.'MSA')) = 0 then CallSystem('mkdir -p '.wdir.'/MSA') fi:
+    if length(FileStat(wdir.'MSA')) = 0 then 
+        CallSystem('mkdir -p '.wdir.'/MSA') 
+    fi:
     
     # get type of sequence
     if length(substModels) > 0 then
@@ -121,146 +141,105 @@ CreateRealMSA := proc(cls, evol, tree)
         fi
     fi:
 
-#    OpenAppending(wdir.'toprofile.txt'):
-#    EnterProfile(TableSetup):
     # get sequences
     seqTable := table():
     seqInd := If(simType = 'aa', 2, 6):
-#    refseqs := table():
     for c in cls do
         curg := evol[c[1], c[2]]:
         seqTable[[c[1], curg[4]]] := CreateArray(1..3):
         seqTable[[c[1], curg[4]], 1] := curg[seqInd]: # sequence
         seqTable[[c[1], curg[4]], 2] := curg[8]:      # events
-#        refseqs[[c[1], curg[4]]] := [copy(curg[seqInd])]: # for debugging
     od:
-#    ExitProfile(TableSetup):
 
     
     insertions := []:
     
     # get branches of gene tree with sequences depending on them
     branches := GetBranches(tree):
-#    allEvs := []:
+    
     # stage 1: add deletions and remove insertions
-#    EnterProfile(StageOne):
     for i to length(branches) do
         spList := branches[i,1]:
         spSet := {op(spList)}:
         spListLen := length(spList):
         evlist := seqTable[spList[1], 2]:
-        curev := sort([seq(If(e[1] > branches[i,2] and e[1] <= branches[i,3], e, NULL), e=evlist)], EventOrder):
-#        allEvs := append(allEvs, op(curev)):
+        curev := []:
+        for e in evlist do
+            if e[1] > branches[i,2] and e[1] <= branches[i,3] then
+                curev := append(curev, e):
+            fi:
+        od:
+        curev := sort(curev, EventOrder):
         # work through events for branch
         for j to length(curev) do
             if curev[j,2] = 'D' then # deletion
                 for s in spList do # add deletion as '-' in affected sequences
-                    seqTable[s,1] := seqTable[s, 1, 1..curev[j,3]-1].CreateString(curev[j,4], '-').seqTable[s, 1, curev[j,3]..-1]:
+                    seqTable[s,1] := seqTable[s, 1, 1..curev[j,3]-1].
+                                     CreateString(curev[j,4], '-').
+                                     seqTable[s, 1, curev[j,3]..-1]:
                 od:
-#                EnterProfile(LoopOne):
                 for k to length(insertions) do # update insertion list
-#                    if insertions[k,3] >= curev[j,3] and {op(insertions[k,2])} intersect spSet <> {} then
-                    if insertions[k,3] >= curev[j,3] and insertions[k,6] intersect spSet <> {} then
-#                        EnterProfile(InsideIfOne):
+                    if insertions[k,3] >= curev[j,3] and 
+                       insertions[k,6] intersect spSet <> {} then
                         insertions[k,3] := insertions[k,3] + curev[j,4]:
-#                        ExitProfile(InsideIfOne):
                     fi:
                 od:
-#                ExitProfile(LoopOne):
             else # insertion
                 insertion := CreateArray(1..spListLen):
                 for k to spListLen do # remove insertion from affected sequences
                     curs := spList[k]:
-                    insertion[k] := seqTable[curs, 1, curev[j,3]+1..curev[j,3]+curev[j,4]]:
-                    seqTable[curs, 1] := seqTable[curs, 1, 1..curev[j,3]].seqTable[curs, 1, curev[j,3]+curev[j,4]+1..-1]:
-#                    refseqs[curs] := append(refseqs[curs],copy(seqTable[curs,1])):
+                    insertion[k] := seqTable[curs, 1, 
+                                           curev[j,3]+1..curev[j,3]+curev[j,4]]:
+                    seqTable[curs, 1] := seqTable[curs, 1, 1..curev[j,3]].
+                                 seqTable[curs, 1, curev[j,3]+curev[j,4]+1..-1]:
                 od:
-#                EnterProfile(LoopTwo):
                 for k to length(insertions) do
-#                    if {op(insertions[k,2])} intersect spSet <> {} then
                     if insertions[k,6] intersect spSet <> {} then
-#                        EnterProfile(InsideIfTwo):
                         if insertions[k,3] > curev[j,3] + curev[j,4] then
                             insertions[k,3] := insertions[k,3] - curev[j,4]:
                         elif insertions[k,3] > curev[j,3] then
-                            insertions[k,5] := append(insertions[k,5], [curev[j,1], insertions[k,3]-curev[j,3]]):
+                            insertions[k,5] := append(insertions[k,5], 
+                                      [curev[j,1], insertions[k,3]-curev[j,3]]):
                             insertions[k,3] := curev[j,3]:
                         fi:
-#                        ExitProfile(InsideIfTwo):
                     fi:
                 od:
-#                ExitProfile(LoopTwo):
-                insertions := append(insertions, [curev[j,1], spList, curev[j,3], insertion, [], spSet]):
+                insertions := append(insertions, 
+                        [curev[j,1], spList, curev[j,3], insertion, [], spSet]):
             fi:
         od:
     od:
-#    ExitProfile(StageOne):
         
     # stage 2: re-insert insertions
-#    EnterProfile(StageTwo):
     insertions := sort(insertions, x->x[1]):
     allSeqs := {seq(i,i=Indices(seqTable))}:
-#    OpenWriting(wdir.'/msatest.txt'):
-#    refi := table(2):
     for i to length(insertions) do
         curi := insertions[i]:
-#        dprint(curi):
-#        noinsert := allSeqs minus {op(curi[2])}:
         noinsert := remember(minus(allSeqs, curi[6])):
-#        noinsert := remember(GetNoInsertSeqs(allSeqs, curi[2])): #allSeqs minus {op(curi[2])}:
         for j to length(curi[2]) do
             s := curi[2,j]:
-#            print('rs1'):
-            seqTable[s,1] := seqTable[s,1,1..curi[3]].curi[4,j].seqTable[s,1,curi[3]+1..-1]:
-#            if refseqs[s,-refi[s]] <> ReplaceString('-','',seqTable[s,1]) then
-#                dprint(curi):
-#                print('ERROR HAPPENED HERE!!!!'):
-#                printf('ref: %s\n', refseqs[s,-refi[s]]):
-#                printf('cur: %s\n', ReplaceString('-','',seqTable[s,1])):
-#            fi:
-#            refi[s] := refi[s] + 1:
+            seqTable[s,1] := seqTable[s,1,1..curi[3]].curi[4,j].
+                             seqTable[s,1,curi[3]+1..-1]:
         od:
         gaplen := length(curi[4,1]):
         gap := CreateString(gaplen, '-'):
         for s in noinsert do
-#            print('rs2'):
-            seqTable[s,1] := seqTable[s,1,1..curi[3]].gap.seqTable[s,1,curi[3]+1..-1]:
+            seqTable[s,1] := seqTable[s,1,1..curi[3]].gap.
+                             seqTable[s,1,curi[3]+1..-1]:
         od:
         for j from i+1 to length(insertions) do
-#            if noinsert intersect {op(insertions[j,2])} <> {} and insertions[j,3] >= curi[3] then
-#            if insertions[j,2] = [[11, 8]] and (insertions[j,4] = ['ACC']) then dprint(insertions[j]): print(gaplen) fi:
-            if insertions[j,3] = curi[3] and insertions[j,5] <> [] and insertions[j,5,-1,1] = curi[1] then
+            if insertions[j,3] = curi[3] and insertions[j,5] <> [] and 
+               insertions[j,5,-1,1] = curi[1] then
                 insertions[j,3] := insertions[j,3] + insertions[j,5,-1,2]:
-#                print('rs3'):
                 insertions[j,5] := insertions[j,5,1..-2]:
             elif insertions[j,3] > curi[3] then
                 insertions[j,3] := insertions[j,3] + gaplen:
             fi:
         od:
 
-#        for ind in Indices(seqTable) do
-#            dprint(seqTable[ind,1]):
-#        od:
-#        lprint():
-#        lprint():
     od:
-#    OpenWriting(previous):
-#    for i in Indices(seqTable) do
-#        dprint(seqTable[i,1]):
-#    od:
-    
-#    for ind in Indices(seqTable) do
-#        if refseqs[ind] <> ReplaceString('-','',seqTable[ind,1]) then
-#            print('ERROR HAPPENED HERE!!!!'):
-#            printf('ref: %s\n', refseqs[ind]):
-#            printf('cur: %s\n', ReplaceString('-','',seqTable[ind,1])):
-#        fi:
-#    od:
-#    ExitProfile(StageTwo):
-            
-#    OpenWriting(previous):
+
     # stage 3: print alignment
-#    if false then
     if simType <> 'aa' then
         outfile1 := noeval(OpenAppending(wdir.'MSA/MSA_'.id.'_dna.fa')):
         outfile2 := noeval(OpenAppending(wdir.'MSA/MSA_all_dna.phy')):
@@ -287,15 +266,8 @@ CreateRealMSA := proc(cls, evol, tree)
         eval(outfile2):
         printf('%d %d\n', length(allSeqs), length(seqTable[allSeqs[1],1])/3):
         for s in allSeqs do
-#            curseq := '':
             lenAA := length(seqTable[s,1])/3:
             curseq := CreateString(lenAA, 'X'):
-#            for j to length(seqTable[s,1]) by 3 do
-#                if seqTable[s, 1, j..j+2] = '---' then
-#                    curseq := curseq.'-':
-#                else
-#                    curseq := curseq.CodonToA(seqTable[s, 1, j..j+2]):
-#                fi:
             for j to lenAA do
                 if seqTable[s,1,j*3-2..j*3] = '---' then
                     curseq[j] := '-':
@@ -312,7 +284,6 @@ CreateRealMSA := proc(cls, evol, tree)
         od:
         printf('\n\n'):
         OpenWriting(previous):
-#    fi:
     fi:
 end:
 
@@ -336,7 +307,8 @@ GetBranches := proc(t:Tree)
             bNew := append(bNew, [[tokens], t[Height], t[Right,Height]]):
         else
             bR := GetBranches(t[Right]):
-            bNew := append(bNew, [[op(bR[-1,1]), op(bR[-2,1])], t[Height], t[Right,Height]]):
+            bNew := append(bNew, 
+                    [[op(bR[-1,1]), op(bR[-2,1])], t[Height], t[Right,Height]]):
         fi:
     fi:
     [op(bL), op(bR), op(bNew)]:
@@ -346,136 +318,6 @@ GetNoInsertSeqs := proc(all:set, ins:list)
     all minus {op(ins)}:
 end:
 
-
-# create the real MSA for gene cluster cls.
-#CreateRealMSAOld := proc(cls, evol)
-#    global substModels:
-#    if length(cls) = 0 then
-#        return():
-#    fi:
-#    id := evol[cls[1,1], cls[1,2], 7]:
-#    if length(FileStat(wdir.'MSA')) = 0 then CallSystem('mkdir -p '.wdir.'/MSA') fi:
-#    if length(substModels) > 0 then
-#        simType := substModels[evol[cls[1,1],cls[1,2], 9]][Type]:
-#        blockSize := substModels[evol[cls[1,1],cls[1,2], 9]][Blocksize]:
-#    else
-#        blockSize := blocksize:
-#        if blocksize = 3 or evol[cls[1,1],cls[1,2],2] = 'AAA' then
-#            simType := 'nuc'
-#        else
-#            simType := 'aa'
-#        fi
-#    fi:
-#    # gather sequences and events
-#    insertions := [seq([], length(cls))]:
-#    seqs := [seq([seq(0,3)], length(cls))]:
-#    seqInd := If(simType = 'aa', 2, 6):
-#    for i to length(seqs) do
-#        #printf('sequence %d\n', i):
-#        seqs[i,1] := cls[i,1]:
-#        seqs[i,2] := evol[cls[i,1], cls[i,2], 4]:
-#        seqs[i,3] := copy(evol[cls[i,1], cls[i,2], seqInd]):
-#        events := sort(evol[cls[i,1], cls[i,2], 8], EventOrder):
-#        for j to length(events) do
-#            if events[j,2] = 'D' then # deletion
-#                #printf('i: %d, j: %d, length(seqs): %d, length(events): %d\n', i, j, length(seqs), length(events)):
-#                #dprint(seqs[i,3]):
-#                #printf('events[j]: %A\n', events[j]):
-#                seqs[i, 3] := seqs[i, 3, 1..events[j,3]-1].CreateString(events[j,4], '-').seqs[i, 3, events[j,3]..-1]:
-#                for k to length(insertions[i]) do
-#                    if events[j,3] <= insertions[i,k,3] then
-#                        insertions[i,k,3] := insertions[i,k,3] + events[j, 4]:
-#                    fi:
-#                od:
-#            else # insertion
-#                #print(length(seqs[i,3])):
-#                #print(events[j,3]):
-#                #print(events[j,4]):
-#                insertion := seqs[i,3, events[j,3]+1..events[j,3]+events[j,4]]:
-#                insertions[i] := append(insertions[i], [events[j,1], i, events[j,3], insertion]):
-#                seqs[i,3] := seqs[i,3,1..events[j,3]].seqs[i,3,events[j,3]+events[j,4]+1..-1]:
-#            fi:
-#        od:
-#    od:
-#    
-#    # combine insertion events
-#    insertions := sort([seq(op(insertions[i]),i=1..length(insertions))], x->x[1]):
-#    if length(insertions) > 0 then
-#        insertionSets := []:
-#        insertionSets := append(insertionSets, [insertions[1,1], [insertions[1,2]], insertions[1,3], [insertions[1,4]]]):
-#        i := 2:
-#        j := 1:
-#        while i <= length(insertions) do
-#            if (insertions[i,1] = insertionSets[j,1]) and (insertions[i,3] = insertionSets[j,3])
-#                    and (length(insertions[i,4]) = length(insertionSets[j,4,1])) then
-#                insertionSets[j,2] := append(insertionSets[j,2], insertions[i,2]):
-#                insertionSets[j,4] := append(insertionSets[j,4], insertions[i,4]):
-#            else
-#                insertionSets := append(insertionSets, [insertions[i,1], [insertions[i,2]], insertions[i,3], [insertions[i,4]]]):
-#                j := j + 1:
-#            fi:
-#            i := i + 1:
-#        od:
-#        insertions := insertionSets:
-#    fi:
-#    # re-insert insertions into alignment
-#    for i to length(insertions) do
-#        for j to length(seqs) do
-#            k := SearchArray(j, insertions[i,2]):
-#            if k > 0 then
-#                seqs[j,3] := seqs[j,3,1..insertions[i,3]].insertions[i,4,k].seqs[j,3,insertions[i,3]+1..-1]:
-#            else
-#                seqs[j,3] := seqs[j,3,1..insertions[i,3]].CreateString(length(insertions[i,4,1]),'-').seqs[j,3,insertions[i,3]+1..-1]:
-#            fi:
-#        od:
-#    od:
-#    
-#    # print alignment
-#    if simType <> 'aa' then
-#        outfile1 := noeval(OpenAppending(wdir.'MSA/MSA_'.id.'_dna.fa')):
-#        outfile2 := noeval(OpenAppending(wdir.'MSA/MSA_all_dna.phy')):
-#    else
-#        outfile1 := noeval(OpenAppending(wdir.'MSA/MSA_'.id.'_aa.fa')):
-#        outfile2 := noeval(OpenAppending(wdir.'MSA/MSA_all_aa.phy')):
-#    fi:
-#    eval(outfile2):
-#    printf('%d %d\n', length(seqs), length(seqs[1,3])):
-#    for i to length(seqs) do
-#        printf('SE%03d/%05d      %s\n', seqs[i,1], seqs[i,2], seqs[i,3]):
-#        OpenWriting(previous):
-#        eval(outfile1):
-#        printf('>SE%03d/%05d\n%s\n', seqs[i,1],seqs[i,2],seqs[i,3]):
-#        OpenWriting(previous):
-#        eval(outfile2):
-#    od:
-#    printf('\n\n'):
-#    OpenWriting(previous):
-#    
-#    if simType <> 'aa' and blockSize = 3 then
-#        outfile1 := noeval(OpenAppending(wdir.'MSA/MSA_'.id.'_aa.fa')):
-#        outfile2 := noeval(OpenAppending(wdir.'MSA/MSA_all_aa.phy')):
-#        eval(outfile2):
-#        printf('%d %d\n', length(seqs), length(seqs[1,3])/3):
-#        for i to length(seqs) do
-#            curseq := '':
-#            for j to length(seqs[i,3]) by 3 do
-#                if seqs[i, 3, j..j+2] = '---' then
-#                    curseq := curseq.'-':
-#                else
-#                    curseq := curseq.CodonToA(seqs[i, 3, j..j+2]):
-#                fi:
-#            od:
-#            printf('SE%03d/%05d      %s\n', seqs[i,1], seqs[i,2], curseq):
-#            OpenWriting(previous):
-#            eval(outfile1):
-#            printf('>SE%03d/%05d\n%s\n', seqs[i,1],seqs[i,2],curseq):
-#            OpenWriting(previous):
-#            eval(outfile2):
-#        od:
-#        printf('\n\n'):
-#        OpenWriting(previous):
-#    fi:
-#end:
 
 EventOrder := proc(a, b)
     if a[1] > b[1] then return(true):
@@ -488,10 +330,11 @@ end:
 
 # creates gene trees for an array of gene clusters
 # parameters:
-#   clsts: array of gene clusters, where each cluster consists of a list of organism/gene tupels
+#   clsts: array of gene clusters, where each cluster consists of a list of 
+#          organism/gene tupels
 #   evol:  the evolution data structure.
-#   msteps: the maximum number of simulation steps (for defining the depth of the leaves
-#CreateGeneTrees := proc(clsts, evol, msteps, lheights)
+#   msteps: the maximum number of simulation steps (for defining the depth of
+#           the leaves
 CreateGeneTrees := proc(clsts, evol, lheights)
     # create output directory for gene trees
     CallSystem('mkdir '.wdir.'/GeneTrees/'):
@@ -500,75 +343,97 @@ CreateGeneTrees := proc(clsts, evol, lheights)
     
     # loop over all clusters
     for c to length(clsts) do
-        #printf('cluster %d\n', c):
         cls := sort(clsts[c],x->x[1]):
         
         if length(cls) = 0 then trees := append(trees, 0): next fi:
         
-        # create a list of leaf nodes containing for each node the org/gene id of the current gene as well
+        # create a list of leaf nodes containing for each node the org/gene id 
+        # of the current gene as well
         # as its parent and the time of the event.
         # the list will contain nodes that have been deleted during evolution
         nodes := {}:
         for i to length(cls) do
             if evolution[cls[i,1], cls[i,2], 3] = '1' then
-                nodes := append(nodes, [cls[i,1], evolution[cls[i,1], cls[i,2], 4], 0, evolution[cls[i,1], cls[i,2], 4], 0]):
+                nodes := append(nodes, [cls[i,1], 
+                                        evolution[cls[i,1], cls[i,2], 4], 0, 
+                                        evolution[cls[i,1], cls[i,2], 4], 0]):
             else
                 gid := evolution[cls[i,1], cls[i,2], 4]:
                 k := length(evolution[cls[i,1], cls[i,2], 3]):
                 j := k:
-                while j <> 1 and evolution[cls[i,1], cls[i,2], 3, j] <> ')' do j := j - 1: od:
+                while j <> 1 and evolution[cls[i,1], cls[i,2], 3, j] <> ')' do 
+                    j := j - 1:
+                od:
                 do
-                    while j <> 1 and evolution[cls[i,1], cls[i,2], 3, j - 1] <> ')' do j := j - 1: od:
+                    while j <> 1 and 
+                          evolution[cls[i,1], cls[i,2], 3, j - 1] <> ')' do
+                        j := j - 1: 
+                    od:
                     do
-                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-%d(%dL%g)%d'):
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], 
+                                       '%d-%d(%dL%g)%d'):
                         if length(curg) = 5 then
                             # LGT
-                            nodes := append(nodes, [curg[5], gid, curg[2], curg[3], curg[4], 'L']):
+                            nodes := append(nodes, 
+                                [curg[5], gid, curg[2], curg[3], curg[4], 'L']):
                             gid := curg[3]:
                             break:
                         fi:
-                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-%d(%dLo%g)%d'):
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], 
+                                       '%d-%d(%dLo%g)%d'):
                         if length(curg) = 5 then
                             # LGT orthologous replacement
-                            nodes := append(nodes, [curg[5], gid, curg[2], curg[3], curg[4], 'L']):
+                            nodes := append(nodes, 
+                                [curg[5], gid, curg[2], curg[3], curg[4], 'L']):
                             gid := curg[3]:
                             break:
                         fi:
-                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-(%dD%g)%d'):
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], 
+                                       '%d-(%dD%g)%d'):
                         if length(curg) = 4 then
                             # duplication
-                            nodes := append(nodes, [curg[4], gid, curg[4], curg[2], curg[3], 'D']):
+                            nodes := append(nodes, 
+                                [curg[4], gid, curg[4], curg[2], curg[3], 'D']):
                             gid := curg[2]:
                             break:
                         fi:
-                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-(%g)%d'):
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], 
+                                       '%d-(%g)%d'):
                         if length(curg) = 3 then
                             # speciation
-                            nodes := append(nodes, [curg[3], gid, curg[1], gid, curg[2], 'S']):
+                            nodes := append(nodes, 
+                                    [curg[3], gid, curg[1], gid, curg[2], 'S']):
                             break:
                         fi:
-                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-(%dFi%g)%d'):
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], 
+                                       '%d-(%dFi%g)%d'):
                         if length(curg) = 4 then
                             # fission
                             if gid = curg[2] then break fi:
-                            nodes := append(nodes, [curg[4], gid, curg[4], curg[2], curg[3], 'Fi']):
+                            nodes := append(nodes, 
+                               [curg[4], gid, curg[4], curg[2], curg[3], 'Fi']):
                             gid := curg[2]:
                             break:
                         fi:
-                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], '%d-(%dFu%g)%d'):
+                        curg := sscanf(evolution[cls[i,1], cls[i,2], 3, j..k], 
+                                       '%d-(%dFu%g)%d'):
                         if length(curg) = 4 then
                             # fusion
-                            nodes := append(nodes, [curg[4], gid, curg[4], curg[2], curg[3], 'Fu']):
+                            nodes := append(nodes, 
+                               [curg[4], gid, curg[4], curg[2], curg[3], 'Fu']):
                             break:
                         fi:
-                        error('unknown format: %s', evolution[cls[i,1], cls[i,2], 3, j..-1]):
+                        error('unknown format: %s', 
+                              evolution[cls[i,1], cls[i,2], 3, j..-1]):
                     od:
                     if j = 1 then
                         nodes := append(nodes, [1, gid, 0, gid, 0]):
                         break:
                     fi:
                     k := j:
-                    while evolution[cls[i,1], cls[i,2], 3, k+1] <> '-' do k := k + 1: od:
+                    while evolution[cls[i,1], cls[i,2], 3, k+1] <> '-' do 
+                        k := k + 1: 
+                    od:
                     j := j - 1:
                 od:
             fi:
@@ -576,22 +441,23 @@ CreateGeneTrees := proc(clsts, evol, lheights)
     
         # sort nodes by time and insert them into a tree
         nodes := sort([op(nodes)], x->x[5]):
-#        tree := Leaf(sprintf('SE%03d/%05d', nodes[1,1], nodes[1,2]), msteps):
         gind := SearchArray(nodes[1,2], geneIDs[nodes[1,1]]):
-        tree := Leaf(sprintf('SE%03d/%05d', nodes[1,1], nodes[1,2]), If(gind=0,1000,evolution[nodes[1,1], gind, 11])):
+        tree := Leaf(sprintf('SE%03d/%05d', nodes[1,1], nodes[1,2]), 
+                     If(gind=0,1000,evolution[nodes[1,1], gind, 11])):
         nodes[1] := [nodes[1,1], If(gind = 0, nodes[1,2], gind)]:
         for i from 2 to length(nodes) do
-#            tree := InsertNode(tree, nodes[i], msteps);
             gind := SearchArray(nodes[i,2], geneIDs[nodes[i,1]]):
-            tree := InsertNode(tree, nodes[i], If(gind=0,1000,evolution[nodes[i,1], gind, 11]));
+            tree := InsertNode(tree, nodes[i], 
+                               If(gind=0,1000,evolution[nodes[i,1], gind, 11]));
             nodes[i] := [nodes[i,1], If(gind = 0, nodes[i,2], gind)];
         od:
         
         # remove genes that were lost during evolution
-#        remnodes := {op(nodes)} minus {op(cls)}:
-        remnodes := {op(nodes)} minus {seq([cls[i,1], evolution[cls[i,1], cls[i,2], 4]],i=1..length(cls))}:
+        remnodes := {op(nodes)} minus 
+           {seq([cls[i,1], evolution[cls[i,1], cls[i,2], 4]],i=1..length(cls))}:
         for i to length(remnodes) do
-            nt := RemoveNode(tree, sprintf('SE%03d/%05d', remnodes[i,1], remnodes[i,2])):
+            nt := RemoveNode(tree, sprintf('SE%03d/%05d', remnodes[i,1], 
+                                                          remnodes[i,2])):
             tree := If(nt=NULL,NULL,nt[1]):
         od:
         
@@ -600,21 +466,24 @@ CreateGeneTrees := proc(clsts, evol, lheights)
         
         # store tree
         OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.drw'):
-#        printf('tree_%d := %A\n\n', c, tree):
         printf('%A\n\n', tree):
         OpenWriting(previous):
-        if not type(tree, Leaf) then
-            DrawTree(tree, InternalNodes=ShowNodeType, CrossReference):
-            CallSystem('mv '.wdir.'/temp.ps '.wdir.'/GeneTrees/GeneTree'.c.'.ps'):
-        fi:
+        OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.nwk'):
+        printf('%A;\n\n', Tree_Newick(tree)):
+        OpenWriting(previous):
+#        if not type(tree, Leaf) then
+#            DrawTree(tree, InternalNodes=ShowNodeType, CrossReference):
+#            CallSystem('mv '.wdir.'/temp.ps '.wdir.'/GeneTrees/GeneTree'.c.
+#                                                                         '.ps'):
+#        fi:
         trees := append(trees, tree):
     od:
     return(trees):
 end:
 
-# insert a new leaf node n into tree t. The method assumes that n is younger than all current
-# leaves of the tree. Hence, the insertion is reduced to combining an existing leaf with the one
-# being inserted into an inner node.
+# insert a new leaf node n into tree t. The method assumes that n is younger
+# than all current leaves of the tree. Hence, the insertion is reduced to 
+# combining an existing leaf with the one being inserted into an inner node.
 InsertNode := proc(t:Tree, n:list, msteps) option internal;
     label1 := sprintf('SE%03d/%05d', n[3], n[4]):
     label2 := sprintf('SE%03d/%05d', n[1], n[2]):
@@ -663,7 +532,8 @@ RemoveNode := proc(t:Tree, l:string) option internal:
         # if right subtree is not a leaf, try to remove leaf in there
         st := RemoveNode(t[Right], l):
         t[Right] := st[1]:
-        # if the next level down, the left leaf of an LGT node was deleted, mark current node as LGT
+        # if the next level down, the left leaf of an LGT node was deleted,
+        # mark current node as LGT
         if st[2] = 'L' then
             t[xtra] := 'L':
         fi:
@@ -694,10 +564,6 @@ RemoveNode := proc(t:Tree, l:string) option internal:
         elif st[2] = 'L' and t[xtra] = 'L' then
             t[Left] := st[1]:
             t[xtra] := 'LL':
-#        elif st[2] = 'Fi' then
-#            t[Left] := t[Right]:
-#            t[Right] := st[1]:
-#            t[xtra] := t[xtra].'Fi':            
         else
             t[Left] := st[1]:
         fi:    
@@ -705,48 +571,6 @@ RemoveNode := proc(t:Tree, l:string) option internal:
                     
     return([t,0]):
 end:
-
-#RemoveNode := proc(t:Tree, l:string) option internal:
-#    if type(t, Leaf) then
-#        if t[Label,1..11] = l then
-#            return(NULL):
-#        fi:
-#    else
-#        if type(t[Right], Leaf) then
-#            if t[Right, Label,1..11] = l then
-#                return([t[Left], t[xtra]]):
-#            fi:
-#        fi:
-#        if type(t[Left], Leaf) then
-#            if t[Left, Label,1..11] = l then
-#                return([t[Right],t[xtra]]):
-#            fi:
-#        fi:
-#        if not type(t[Right], Leaf) then
-#            st := RemoveNode(t[Right], l):
-#            t[Right] := st[1]:
-#            if st[2] <> 0 and st[2,1] = 'L' then
-#                if t[xtra] = 'L' then
-#                    t[xtra] := 'LL':
-#                else
-#                    t[xtra] := st[2]:
-#                fi
-#            fi:
-#        fi:
-#        if not type(t[Left], Leaf) then
-#            st := RemoveNode(t[Left], l):
-#            t[Left] := st[1]:
-#            if st[2] <> 0 and st[2,1] = 'L' then
-#                if t[xtra] = 'L' then
-#                    t[xtra] := 'LL':
-#                else
-#                    t[xtra] := st[2]:
-#                fi
-#            fi:
-#        fi:
-#    fi:
-#    return([t, 0]):
-#end:
 
 
 CorrectLeafHeights := proc(tree:Tree, lheights:list)
@@ -777,78 +601,25 @@ fi;
 end:
 
 
-#WriteOrthologs := proc(trees, norgs)
-#    VPs := CreateArray(1..norgs, 1..norgs, []):
-#    
-#    for i to length(trees) do
-#        curt := trees[i]:
-#        GetOrthologs(curt, VPs):
-#    od:
-#    
-#    OPs := CreateArray(1..norgs, 1..norgs, []):
-#    PPs := CreateArray(1..norgs, 1..norgs, []):
-#    XPs := CreateArray(1..norgs, 1..norgs, []):
-#    for i to norgs do
-#        for j to norgs do
-#            for n to length(VPs[i,j]) do
-#                if VPs[i,j,n, 3] = 'S' then
-#                    OPs[i,j] := append(OPs[i,j], VPs[i,j,n,1..2]):
-#                elif VPs[i,j,n, 3] = 'D' then
-#                    PPs[i,j] := append(PPs[i,j], VPs[i,j,n,1..2]):
-#                else
-#                    XPs[i,j] := append(XPs[i,j], VPs[i,j,n,1..2]):
-#                fi:
-#            od:
-#        od:
-#    od:
-#    
-#    # store orthologs, paralogs and xenologs in separate files
-#    CallSystem('mkdir '.wdir.'/VP'):
-#    for i to norgs do
-#        CallSystem('mkdir '.wdir.sprintf('/VP/SE%03d', i)):
-#        for j to norgs do
-#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.op', i, j)):
-#            printf('OP := %A\n', OPs[i,j]):
-#            OpenWriting(previous):
-#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.pp', i, j)):
-#            printf('PP := %A\n', PPs[i,j]):
-#            OpenWriting(previous):
-#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.xp', i, j)):
-#            printf('XP := %A\n', XPs[i,j]):
-#            OpenWriting(previous):
-#        od:
-#    od:
-#end:
-
 WriteOrthologs := proc(trees, norgs)
     global evolution:
     VPs := CreateArray(1..norgs, 1..norgs, 0):
-#    idArr := CreateArray(1..norgs,0):
     idTab := CreateArray(1..norgs,0):
 
-    #bla1 := time():
     for i to norgs do
-#        idArr[i] := transpose(evolution[i])[4]:
         idTab[i] := table():
         for j to length(evolution[i]) do idTab[i,evolution[i,j,4]] := j od:
         for j to norgs do
             VPs[i,j] := CreateArray(1..length(evolution[i]), []):
         od:
     od:
-    #print(time()-bla1):
-#    print('initialization complete'):
 
-    #bla1 := time():
     for i to length(trees) do
-        #printf('cluster %d\n', i):
         curt := trees[i]:
         if curt = 0 then next fi:
-#        GetOrthologs(curt, VPs, idArr):
         GetOrthologs(curt, VPs, idTab):
     od:
-    #print(time()-bla1):
     
-    #bla1 := time():
     HPs := CreateArray(1..norgs, 1..norgs, 0):
     OPs := CreateArray(1..norgs, 1..norgs, 0):
     PPs := CreateArray(1..norgs, 1..norgs, 0):
@@ -861,9 +632,7 @@ WriteOrthologs := proc(trees, norgs)
             XPs[i,j] := CreateArray(1..length(evolution[i]), []):
         od:
     od:
-    #print(time()-bla1):
     
-    #bla1 := time():
     for i to norgs do
         for j to norgs do
             for g to length(VPs[i,j]) do
@@ -880,9 +649,7 @@ WriteOrthologs := proc(trees, norgs)
             od:
         od:
     od:
-    #print(time()-bla1):
-    
-    #bla1 := time():
+
     # store orthologs, paralogs and xenologs in separate files
     CallSystem('mkdir '.wdir.'/VP'):
     for i to norgs do
@@ -903,32 +670,27 @@ WriteOrthologs := proc(trees, norgs)
         od:
     od:
     CallSystem('tar -czf '.wdir.'/VP.tgz --remove-files '.wdir.'/VP'):
-    #print(time()-bla1):
 end:
 
 
-#GetOrthologs := proc(t:Tree, VPs:list(list(list(list))), idArr:list(list)) #option internal:
-GetOrthologs := proc(t:Tree, VPs:list(list(list(list))), idArr:list(table)) #option internal:
+GetOrthologs := proc(t:Tree, VPs:list(list(list(list))), idArr:list(table)) 
+    #option internal:
     global evolution;
     if type(t, Leaf) then return(NULL) fi:
     
     norgs := length(VPs):
 
-#    lleaves := [GetTreeLabels(t[Left])]:
-#    rleaves := [GetTreeLabels(t[Right])]:
     lleaves := GetLeafLabels(t[Left], t[xtra]):
     rleaves := GetLeafLabels(t[Right], t[xtra]):
     
     for i to length(lleaves) do
         for j to length(rleaves) do
-            lo := lleaves[i,1]: #atoi(lleaves[i,1,3..5]):
-            lg := lleaves[i,2]: #atoi(lleaves[i,1,7..-1]):
-#            lg := SearchArray(lg, idArr[lo]):
+            lo := lleaves[i,1]:
+            lg := lleaves[i,2]:
             lg := idArr[lo,lg]:
             le := lleaves[i,3]:
-            ro := rleaves[j,1]: #atoi(rleaves[j,1,3..5]):
-            rg := rleaves[j,2]: #atoi(rleaves[j,1,7..-1]):
-#            rg := SearchArray(rg, idArr[ro]):
+            ro := rleaves[j,1]:
+            rg := rleaves[j,2]:
             rg := idArr[ro,rg]:
             re := rleaves[j,3]:
             
@@ -950,10 +712,13 @@ GetLeafLabels := proc(t:Tree, ev:string)
     if type(t,Leaf) then
         o := atoi(t[Label, 3..5]):
         g := atoi(t[Label,7..-1]):
-        #printf('Label: %s -> o: %d / g: %d\n', t[Label],o,g):
         return([[o, g, ev]]):
     else
-        return(append(GetLeafLabels(t[Left], If(t[xtra] = 'LL' or t[xtra] = 'LD', 'L', ev)), op(GetLeafLabels(t[Right], If(t[xtra] = 'LD', 'D', If(t[xtra,1] = 'L', t[xtra], ev)))))):
+        return(append(GetLeafLabels(t[Left], If(t[xtra] = 'LL' or 
+                                                t[xtra] = 'LD', 'L', ev)), 
+                      op(GetLeafLabels(t[Right], If(t[xtra] = 'LD', 'D', 
+                                                    If(t[xtra,1] = 'L', t[xtra],
+                                                       ev)))))):
     fi:
 end:
     
@@ -964,15 +729,19 @@ ReadTreeFile := proc(fileName:string)
         # assume darwin format
         t := traperror(parse(tree)):
         if t = lasterror then
-            error('could not parse tree. assumed tree in darwin format, but encountered an error: '.lasterror):
+            error('could not parse tree. assumed tree in darwin format, but '.
+                  'encountered an error: '.lasterror):
         fi:
     elif tree[1..4] = 'Leaf' then
         error('tree must consist of more than just a leaf'):
     else
         #assume newick format
-        t := traperror(ParseNewickTree(tree, 'InternalLabels'=ReadNewickAnnotation)):
+        t := traperror(ParseNewickTree(tree, 
+                                       'InternalLabels'=ReadNewickAnnotation)):
         if t = lasterror then
-            error('could not parse tree. assumed tree in newick format but encountered an error: '.lasterror.'. make sure to include branch lengths in the tree description.'):
+            error('could not parse tree. assumed tree in newick format but '.
+                  'encountered an error: '.lasterror.'. make sure to include '.
+                  'branch lengths in the tree description.'):
         fi:
     fi:
     t
@@ -988,7 +757,8 @@ ReadNewickAnnotation := proc(label:string)
         models := []:
         for i to length(tokens) do
             curmodel := SearchDelim('-', tokens[i]):
-            if length(curmodel) <> 2 or atoi(curmodel[1]) = 0 or atoi(curmodel[2]) = 0 then
+            if length(curmodel) <> 2 or atoi(curmodel[1]) = 0 or 
+               atoi(curmodel[2]) = 0 then
                 error('could not parse model');
             fi:
             models := append(models,[atoi(curmodel[1]), atoi(curmodel[2])]):
@@ -996,13 +766,15 @@ ReadNewickAnnotation := proc(label:string)
         models := sort(models, x->x[1]):
         return([label[1], models]);
     else
-        error('internal node names should have the format <event>_<model> (e.g. S1 or D2)'):
+        error('internal node names should have the format <event>_<model> '.
+              '(e.g. S1 or D2)'):
     fi:
 end:
 
 CheckTree := proc(tree:{Tree, string})
     if type(tree, string) then
-        t := traperror(ParseNewickTree(tree, 'InternalLabels'=ReadNewickAnnotation)):
+        t := traperror(ParseNewickTree(tree, 
+                                       'InternalLabels'=ReadNewickAnnotation)):
         if t = lasterror then
             t := ReadTreeFile(tree):
         fi:

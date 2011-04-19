@@ -1,41 +1,45 @@
+module external CreateNucleotideMatrix, NucToNInt, NIntToNuc, NucleotideMutate;
+
 # create rate matrix for mechanistic models
-CreateNucleotideMatrix := proc(model: string, baseFreqs:list(nonnegative), params:list(numeric))
+CreateNucleotideMatrix := proc(model: string, baseFreqs:list(nonnegative), 
+                               params:list(numeric))
     global NM, NMS, NF, DNALogPAM1:
     fR := baseFreqs[1] + baseFreqs[3]:
     fY := baseFreqs[2] + baseFreqs[4]:
     if model = 'GTR' then
-        if length(params) <> 6 then error('number of parameters does not match (should be 6).'): fi:
-        a := params[1]: b := params[2]: c := params[3]: d := params[4]: e := params[5]: f := params[6]:
-#        Q := [[0, a*baseFreqs[2], b*baseFreqs[3], c*baseFreqs[4]],
-#              [a*baseFreqs[1], 0, d*baseFreqs[3], e*baseFreqs[4]],
-#              [b*baseFreqs[1], d*baseFreqs[2], 0, f*baseFreqs[4]],
-#              [c*baseFreqs[1], e*baseFreqs[2], f*baseFreqs[3], 0]]:
+        if length(params) <> 6 then 
+            error('number of parameters does not match (should be 6).'):
+        fi:
+        a := params[1]: b := params[2]: c := params[3]: 
+        d := params[4]: e := params[5]: f := params[6]:
         Q := [[0, d*baseFreqs[2], f*baseFreqs[3], b*baseFreqs[4]],
               [d*baseFreqs[1], 0, e*baseFreqs[3], a*baseFreqs[4]],
               [f*baseFreqs[1], e*baseFreqs[2], 0, c*baseFreqs[4]],
               [b*baseFreqs[1], a*baseFreqs[2], c*baseFreqs[3], 0]]:
     else
         if model = 'HKY' then
-            if length(params) <> 2 then error('number of parameters does not match (should be 2).'): fi:
+            if length(params) <> 2 then 
+                error('number of parameters does not match (should be 2).'): 
+            fi:
             alpha1 := alpha2 := params[1]:
             beta := params[2]:
         elif model = 'F84' then
-            if length(params) <> 2 then error('number of parameters does not match (should be 2).'): fi:
+            if length(params) <> 2 then 
+                error('number of parameters does not match (should be 2).'): 
+            fi:
             alpha1 := (1+params[1]/fY)*params[2]:
             alpha2 := (1+params[1]/fR)*params[2]:
             beta := params[2]:
         elif model = 'TN93' then
-            if length(params) <> 3 then error('number of parameters does not match (should be 3).'): fi:
+            if length(params) <> 3 then 
+                error('number of parameters does not match (should be 3).'): 
+            fi:
             alpha1 := params[1]:
             alpha2 := params[2]:
             beta := params[3]:
         else
             error('Unknown Model!'):
         fi:
-#        Q := [[0, alpha1*baseFreqs[2], beta*baseFreqs[3], beta*baseFreqs[4]],
-#              [alpha1*baseFreqs[1], 0, beta*baseFreqs[3], beta*baseFreqs[4]],
-#              [beta*baseFreqs[1], beta*baseFreqs[2], 0, alpha2*baseFreqs[4]],
-#              [beta*baseFreqs[1], beta*baseFreqs[2], alpha2*baseFreqs[3], 0]]:
         Q := [[0, beta*baseFreqs[2], alpha2*baseFreqs[3], beta*baseFreqs[4]],
               [beta*baseFreqs[1], 0, beta*baseFreqs[3], alpha1*baseFreqs[4]],
               [alpha2*baseFreqs[1], beta*baseFreqs[2], 0, beta*baseFreqs[4]],
@@ -96,14 +100,17 @@ NIntToNuc := proc(n:posint)
 end:
 
 # mutate
-NucleotideMutate:=proc(seq1:string,time:{positive, list(positive)}; (lnM1=Q):matrix, classes:array(posint), (neutral=true):boolean)
+NucleotideMutate:=proc(seq1:string,time:{positive, list(positive)}; 
+                       (lnM1=Q):matrix, classes:array(posint), 
+                       (neutral=true):boolean)
     if not assigned(lnM1) then
         error('Q is not assigned.')
     fi;
     if type(time, list) and assigned(classes) then
         return(NucleotideMutateGamma(seq1, time, lnM1, classes, neutral)):
     elif type(time, list) or assigned(classes) then
-        error('for gamma model NucleotideMutate requires a list of distances and an array with the class assignment for each site'):
+        error('for gamma model NucleotideMutate requires a list of distances '.
+              'and an array with the class assignment for each site'):
     fi:
     MP:=exp(time*lnM1);
     for i from 2 to length(MP) do
@@ -139,7 +146,9 @@ NucleotideMutate:=proc(seq1:string,time:{positive, list(positive)}; (lnM1=Q):mat
     seq2;
 end:
 
-NucleotideMutateGamma:=proc(seq1:string,time:list(positive), lnM1:matrix, classes:array(posint); (neutral=true):boolean) option internal;
+NucleotideMutateGamma:=proc(seq1:string,time:list(positive), lnM1:matrix, 
+                            classes:array(posint); (neutral=true):boolean)
+    option internal;
     # prepare matrices for the different gamma classes
     MP := CreateArray(1..length(time),0):
     for i to length(MP) do
@@ -200,3 +209,4 @@ RandomNucleotide:=proc(CumFreq:array(numeric)) option internal;
     c;
 end:
 
+end: # module

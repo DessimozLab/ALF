@@ -4,7 +4,8 @@ GetAllDistMatrix := proc()
 end:
 
 
-GenRandomTree := proc(D_all, nSpecies;(minDist=5):nonnegative, (maxDist=300):nonnegative)
+GenRandomTree := proc(D_all, nSpecies;(minDist=5):nonnegative, 
+                      (maxDist=300):nonnegative)
     n := length(D_all);
     do
         iL := {};
@@ -19,17 +20,17 @@ GenRandomTree := proc(D_all, nSpecies;(minDist=5):nonnegative, (maxDist=300):non
     
         LenOk := true;
         for i to nSpecies do for j from i+1 to nSpecies do
-            if D[i,j] > maxDist or D[i,j] < minDist then LenOk := false; break fi;
+            if D[i,j] > maxDist or D[i,j] < minDist then 
+                LenOk := false; break
+            fi;
         od od;
     
-    #    if not LenOk then return(procname(args))
-    #    else
         if LenOk then break fi:
     od:
-    V := CreateArray(1..nSpecies, 1..nSpecies, 1); for i to nSpecies do V[i,i] := 0 od;
+    V := CreateArray(1..nSpecies, 1..nSpecies, 1); 
+    for i to nSpecies do V[i,i] := 0 od;
     T := LeastSquaresTree(D, V, [seq('S'.i, i=1..nSpecies)]);
     T := RemoveXtra(T):
-#    fi;
 end:
 
 RemoveXtra := proc(tree:Tree):

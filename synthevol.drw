@@ -1,11 +1,23 @@
 # synthetic evolution - main program
 #
-# Daniel Margadant, Sereina Riniker, CBRG, 2005
+# Daniel Dalquen, Daniel Margadant, Sereina Riniker, CBRG, 2005
 
 # main data structure:
-# evolution[organism#, gene#][mutRate, aa sequence, desc, id, organism, dna, cluster, indels, mutModel, rateChange, lastMutation]
-#                             1        2            3     4   5         6    7        8       9         10          11
-#                  mutRate = [domain start, domain end, mutrate], ...]
+# evolution[organism#, gene#][1]: mutRate
+#                            [2]: aa sequence
+#                            [3]: desc
+#                            [4]: id
+#                            [5]: organism
+#                            [6]: dna
+#                            [7]: cluster
+#                            [8]: indels
+#                            [9]: mutModel
+#                           [10]: rateChange
+#                           [11]: lastMutation
+# mutRate = [[domain start, domain end, mutrate], ...] (domains with poisson 
+#                                                       distr. rates)
+#           [[gene start, gene end, [gamma(i), i=1..len(gene)]]] (gamma rates)
+#           [[gene start, gene end, [m(i), i=1..len(gene)]]] (m-series classes)
 
 # initialisation (do not change, parameters are in separate file)
 
@@ -164,7 +176,6 @@ if treeType = 'Custom' then
         tree := treeFile:
     fi:
     tree := CheckTree(tree):
-#    tree := ReadTreeFile(treeFile):
     if not unitIsPam then
         ConvertToPam(tree):
     fi:
@@ -172,56 +183,50 @@ if treeType = 'Custom' then
     NSpecies := 0:
     for l in Leaves(tree) do NSpecies := NSpecies + 1 od:
 elif treeType = 'BDTree' then
-# old code. replace with Tanja Stadler's BD-Tree sampling method
-#    tree := BirthDeathTree(birthRate, deathRate, maxTime, maxSpecies, not pruneDeadLineages):
-#    if pruneDeadLineages then
-#        labels := ListLivingLineages(tree):
-#        tree := PruneTree(tree, labels):
-#    fi:
     tree := BirthDeathTree(birthRate, deathRate, NSpecies, mutRate):
     if not ultrametric then
         # create deviation using method defined in Guindon and Gascuel, 2003
         tree := AddDeviation(tree):
     fi:
 elif treeType = 'ToLSample' then
-    #printf('sample from tree of life\n'):
     D := GetAllDistMatrix():
     printf('generating tree with %d species\n', NSpecies):
     tree := GenRandomTree(D, NSpecies):
 else
     error('no tree selected')
 fi:
-#maxSteps := max(rate * max(Naa, Nprot), 1000);
 
 # scale tree to branch lengths matching the number of iterations
-#err := traperror(ScaleTree(tree, maxSteps)):
 if scaleTree then
-    #print('attempting to scale tree'):
-    tree := traperror(ScaleTree(tree, mutRate)); ##### NEW: scale tree to height defined in parameters #####
+    # scale tree to height defined in parameters
+    tree := traperror(ScaleTree(tree, mutRate));
     if tree = lasterror then
-        error('could not scale tree. make sure your tree is strictly bifurcating and all branches have a non-zero height.'):
+        error('could not scale tree. make sure your tree is strictly '.
+              'bifurcating and all branches have a non-zero height.'):
     fi:
 fi:
 
-#print('before gc-if'):
 if enableGCAmelioration then
     if length(substModels) = length(targetFreqs) then
         for i to length(targetFreqs) do
             if targetFreqs[i] = 'Random' then
-                targetFreqs[i] := CreateRandomTargetFrequencies(tree, NSpecies, substModels[i][Type]):
+                targetFreqs[i] := CreateRandomTargetFrequencies(tree, NSpecies, 
+                                                          substModels[i][Type]):
             else
-                CheckTargetFrequencies(targetFreqs[i], NSpecies, substModels[i][Type]):
+                CheckTargetFrequencies(targetFreqs[i], NSpecies, 
+                                       substModels[i][Type]):
             fi:
         od:    
     elif length(targetFreqs) = 1 then
         if targetFreqs[1] = 'Random' then
-            targetFreqs := CreateRandomTargetFrequencies(tree, NSpecies, [seq(substModels[i][Type], i=1..length(substModels))]):
+            targetFreqs := CreateRandomTargetFrequencies(tree, NSpecies, 
+                         [seq(substModels[i][Type], i=1..length(substModels))]):
         else
-            #CheckTargetFrequencies(targetFreqs[1], NSpecies, substModels[1][Type]):
             error('Please supply target frequencies for all models.'):
         fi:
     else
-        error('Please supply either one set of target frequencies for all models together or for each model separately.'):
+        error('Please supply either one set of target frequencies for all '.
+              'models together or for each model separately.'):
     fi:
     tree := GenInternalTargetFreqs(targetFreqs, tree):
     curTargetFreqs := CreateArray(1..NSpecies, tree[-1]):
@@ -240,9 +245,11 @@ for i to length(timePts) do
     curprefix2 := timePts[i,1].'.2';
     curplen := length(curprefix1);
     for j from i+1 to length(timePts) do
-        if length(timePts[j,1]) >= curplen and timePts[j, 1, 1..curplen] = curprefix1 then
+        if length(timePts[j,1]) >= curplen and 
+           timePts[j, 1, 1..curplen] = curprefix1 then
             timePts[j,1] := timePts[i,1].timePts[j,1,curplen+1..-1]:
-        elif length(timePts[j,1]) >= curplen and timePts[j, 1, 1..curplen] = curprefix2 then
+        elif length(timePts[j,1]) >= curplen and 
+             timePts[j, 1, 1..curplen] = curprefix2 then
             timePts[j,1] := string(i+1).timePts[j,1,curplen+1..-1]:
         fi:
     od:
@@ -267,9 +274,12 @@ if res[2] <> [] then
         curprefix2 := dupTimePts[i,1].'.2';
         curplen := length(curprefix1);
         for j from i+1 to length(dupTimePts) do
-            if length(dupTimePts[j,1]) >= curplen and dupTimePts[j, 1, 1..curplen] = curprefix1 then
-                dupTimePts[j,1] := dupTimePts[j,1,1].dupTimePts[j,1,curplen+1..-1]:
-            elif length(dupTimePts[j,1]) >= curplen and dupTimePts[j, 1, 1..curplen] = curprefix2 then
+            if length(dupTimePts[j,1]) >= curplen and 
+               dupTimePts[j, 1, 1..curplen] = curprefix1 then
+                dupTimePts[j,1] := dupTimePts[j,1,1].
+                                                  dupTimePts[j,1,curplen+1..-1]:
+            elif length(dupTimePts[j,1]) >= curplen and 
+                 dupTimePts[j, 1, 1..curplen] = curprefix2 then
                 dupTimePts[j,1] := string(i+1).dupTimePts[j,1,curplen+1..-1]:
             fi:
         od:
@@ -328,14 +338,8 @@ elif length(substModels) > 1 and length(modelAssignments) <> malen then
     od:
     modelAssignments := CreateArray(1..malen):
     for i to malen do
-#        r := Rand():
-#        for j to length(modelProbs) do
-#            if r <= modelProbs[j] then
-#                modelAssignments[i] := j:
-#                break:
-#            fi:
-#        od:
-        modelAssignments[i] := SearchOrderedArray(Rand()*modelProbs[-1], modelProbs) + 1:
+        modelAssignments[i] := SearchOrderedArray(Rand()*modelProbs[-1], 
+                                                  modelProbs) + 1:
     od:
 fi:
 
@@ -357,14 +361,16 @@ if realseed = true then # generates the first organism with real data
     geneR := append(geneR, CreateArray(1..DB[TotEntries]));
     remArr := []:
     for i to DB[TotEntries] do
-#        protseq := SearchTag('SEQ', Entry(i));
         protseq := SearchTag('SEQ', Entry(i));
         if length(SearchAllString('O',protseq)) > 0 or
            length(SearchAllString('U',protseq)) > 0 or
            length(SearchAllString('B',protseq)) > 0 or
            length(SearchAllString('Z',protseq)) > 0 or
            length(SearchAllString('J',protseq)) > 0 or
-           length(SearchAllString('X',protseq)) > 0 then remArr := append(remArr, i): next fi:
+           length(SearchAllString('X',protseq)) > 0 then 
+            remArr := append(remArr, i):
+            next
+        fi:
         dnaseq := ReplaceString('U','T',SearchTag('DNA', Entry(i)));
         if length(SearchAllString('R',dnaseq)) > 0 or
            length(SearchAllString('Y',dnaseq)) > 0 or
@@ -377,12 +383,16 @@ if realseed = true then # generates the first organism with real data
            length(SearchAllString('H',dnaseq)) > 0 or
            length(SearchAllString('V',dnaseq)) > 0 or
            length(SearchAllString('N',dnaseq)) > 0 or
-           length(SearchAllString('X',dnaseq)) > 0 then remArr := append(remArr, i): next fi:
+           length(SearchAllString('X',dnaseq)) > 0 then 
+            remArr := append(remArr, i): 
+            next
+        fi:
         if protseq = 'AAA' then
             if length(substModels) = 0 then
                 seqLen := length(dnaseq)/blocksize:
             else
-                seqLen := length(dnaseq)/susbstModels[modelAssignments[i]][Blocksize]:
+                seqLen := length(dnaseq)
+                                  /susbstModels[modelAssignments[i]][Blocksize]:
             fi
         else
             seqLen := length(protseq)
@@ -399,9 +409,11 @@ if realseed = true then # generates the first organism with real data
             if substModel[Name] = 'M0' then
                 evolution[1, i, 1] := makeAreasOmega(substModel[Name], seqLen):
             elif substModel[Name][1] = 'M' then
-                evolution[1, i, 1] := makeAreasOmega(substModel[Name], seqLen, substModel[Params][3]):
+                evolution[1, i, 1] := makeAreasOmega(substModel[Name], seqLen, 
+                                                     substModel[Params][3]):
             else
-                evolution[1, i, 1] := makeAreas(seqLen, areas, mutRate, amongSiteDistr, motifFreq);
+                evolution[1, i, 1] := makeAreas(seqLen, areas, mutRate, 
+                                                amongSiteDistr, motifFreq);
             fi:
         else
             evolution[1, i, 1] := [[1, seqLen, 1]]:
@@ -410,7 +422,9 @@ if realseed = true then # generates the first organism with real data
         evolution[1, i, 4] := i;
         evolution[1, i, 5] := '1';
         evolution[1, i, 6] := dnaseq;
-        if protseq = 'AAA' and ((length(substModels) > 0 and substModels[modelAssignments[i]][Type] <> 'nuc') or blocksize = 3) then
+        if protseq = 'AAA' and ((length(substModels) > 0 and 
+           substModels[modelAssignments[i]][Type] <> 'nuc') or 
+           blocksize = 3) then
             print(evolution[1,i,6]):
             evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]):
         else
@@ -421,7 +435,7 @@ if realseed = true then # generates the first organism with real data
         evolution[1, i, 9] := modelAssignments[i]:
         evolution[1, i, 10] := []:
         if amongGeneDistr = 'Gamma' then
-            evolution[1, i, 10] := [[mutRate, Rand(GammaDist(aGAlpha))/aGAlpha]]:
+            evolution[1,i,10] := [[mutRate, Rand(GammaDist(aGAlpha))/aGAlpha]]:
         elif amongGeneDistr = 'Custom' then
             evolution[1, i, 10] := [[mutRate, customRates[i]]]:            
         fi:
@@ -443,41 +457,38 @@ else
     evolution := append(evolution, CreateArray(1..protStart, 1..11)):
     geneR := append(geneR, CreateArray(1..protStart));
     for i to protStart do
-        #print('creating gene '.i):
-        aaStart := max(minGeneLength, round(gammaLengthDist[2] * Rand(GammaDist(gammaLengthDist[1]))));
+        aaStart := max(minGeneLength, 
+                       round(gammaLengthDist[2] 
+                                    * Rand(GammaDist(gammaLengthDist[1]))));
         Naa := Naa + aaStart:
         if length(substModels) > 0 then
             substModel := substModels[modelAssignments[i]]:
             if substModel[Name] = 'M0' then
                 evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart):
             elif substModel[Name][1] = 'M' then
-                #print('creating site classes'):
-                evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart, substModel[Params][3]):
+                evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart, 
+                                                     substModel[Params][3]):
             else
-                #printf('motifs %d - ', i):
-#                evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, maxSteps, amongSiteDistr, motifFreq);
-                evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, amongSiteDistr, motifFreq);
+                evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, 
+                                                amongSiteDistr, motifFreq);
             fi:
             if substModel[Type] <> 'aa' then
                 if enableGCAmelioration then
                     nOfGCTargets := length(curTargetFreqs[1]):
-                    bf := curTargetFreqs[1][min(nOfGCTargets, modelAssignments[i])]:
+                    bf := curTargetFreqs[1][min(nOfGCTargets, 
+                                                modelAssignments[i])]:
                 else
                     bf := substModel[BaseFreqs]:
                 fi:
                 if substModel[Type] = 'nuc' and not substModel[NeutralDNA] then
                     bf := remember(NucToCodonFreqs(bf)):
-#                    evolution[1, i, 6] := CreateRandSeq(3*aaStart, bf);
                 fi:
-#                else
-                    #print('creating sequence'):
                     evolution[1, i, 6] := CreateRandSeq(aaStart, bf);
-#                fi:
             fi:
             if substModel[Type] = 'aa' then
-                evolution[1, i, 2] := CreateRandSeq(aaStart, substModel[BaseFreqs]):
+                evolution[1, i, 2] := CreateRandSeq(aaStart, 
+                                                    substModel[BaseFreqs]):
             elif substModel[Type] = 'codon' or substModel[Blocksize] = 3 then
-                #print('converting sequence to aa'):
                 evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]);
             else
                 evolution[1, i, 2] := 'AAA'
@@ -492,7 +503,8 @@ else
                 for j to aaStart do
                     do
                         curc := Rand(DNA(3)):
-                        if curc <> 'TAG' and curc <> 'TGA' and curc <> 'TAA' then break: fi:
+                        if curc <> 'TAG' and curc <> 'TGA' and 
+                           curc <> 'TAA' then break: fi:
                     od:
                     dna_value := dna_value.curc:
                 od:
@@ -502,13 +514,12 @@ else
         evolution[1, i, 3] := '1';
         evolution[1, i, 4] := i;
         evolution[1, i, 5] := '1';
-#        evolution[1, i, 7] := sprintf('%d',i);
         evolution[1, i, 7] := i;
         evolution[1, i, 8] := []:
         evolution[1, i, 9] := modelAssignments[i]:
         evolution[1, i, 10] := []:
         if amongGeneDistr = 'Gamma' then
-            evolution[1, i, 10] := [[mutRate, Rand(GammaDist(aGAlpha))/aGAlpha]]:            
+            evolution[1,i,10] := [[mutRate, Rand(GammaDist(aGAlpha))/aGAlpha]]:            
         fi:
         evolution[1, i, 11] := 0:
         geneR[1, i] := i;
@@ -519,24 +530,7 @@ fi:
 
 Naa := round(Naa/Nprot):
 
-# calculation of the needed iteration steps
-#rate := max(geneDuplRate, geneLossRate, lgtRate, lgtGRate,
-#    aaGainRate, aaLossRate, 1);
-#if realseed = true then
-#    DB := ReadDb(realorganism);
-#    Nprot := DB[TotEntries];
-#    Naa := round(avg(seq(length(SearchTag('SEQ', Entry(e))), e=1..Nprot)));
-#else
-#    Naa := round(gammaLengthDist[1]*gammaLengthDist[2]);
-#    Nprot := protStart;
-#fi:
-
 clusters := [seq([], maxID)]: # gene families
-
-# definition of the GC amelioration for the first organism
-#if enableGCAmelioration then
-#    GCratio := append(GCratio, Rand(0.3..0.7)):
-#fi:
 
 # write out DB file of first organism
 DBoutAnc(evolution[1], 1, 1, 0);
@@ -546,7 +540,6 @@ lastSpeciation := 1:
 print('\n\nEvolution!\n\n');
 OpenWriting(wdir.'/logfile.txt'); 
 lprint('Synthetic evolution\n-------------------\n');
-#printf('%i iteration steps\n', maxSteps);
 printf('first organism (%s): %i proteins with %i aa (average)\n', 
     If(realseed = true, 'biological sequences', 'artificial sequences'), 
     Nprot, Naa);
@@ -563,14 +556,16 @@ if lgtRate > 0 then
     printf('LGT rate: %.2f\n', lgtRate );
 fi:
 if lgtGRate > 0 then
-    printf('LGT rate for groups: %.2f, LGT group size: %.2f\n', lgtGRate, lgtGSize):
+    printf('LGT rate for groups: %.2f, LGT group size: %.2f\n', 
+           lgtGRate, lgtGSize):
 fi:
 if invers > 0 then
-    printf('Inversion rate: %.2f, max. Inversion group size: %.2f, inverted Translocation: %.2f\n',
-        invers, invSize, invtrans);
+    printf('Inversion rate: %.2f, max. Inversion group size: %.2f, inverted '.
+           'Translocation: %.2f\n', invers, invSize, invtrans);
 fi:
 if transloc > 0 then
-    printf('Translocation rate: %.2f, max. Translocation group size: %.2f\n', transloc, transSize);
+    printf('Translocation rate: %.2f, max. Translocation group size: %.2f\n', 
+           transloc, transSize);
 fi:
 if aaGainRate > 0 then
     printf('aa gain rate: %.5f\n', aaGainRate);
@@ -579,16 +574,9 @@ if aaLossRate > 0 then
     printf('aa loss rate= %.5f\n', aaLossRate);
 fi:
 lprint():
-#lprint('mutation rates: g <genenumber> : <domain 1>, <domain 2>, ...');
-#for i to length(evolution[1]) do
-#    printf('g %3i : ', i);
-#    for j to length(evolution[1, i, 1]) do
-#        printf('%.f ', evolution[1, i, 1, j, 3] * maxSteps);
-#    od;
-#    printf('\n');
-#od;
 lprint();
-rateSum := geneDuplRate + geneLossRate + fusionRate + fissionRate + invers + transloc:
+rateSum := geneDuplRate + geneLossRate + fusionRate + fissionRate + invers 
+            + transloc:
 
 ngenes := [length(evolution[1])]:
 curT := 0:
@@ -598,15 +586,16 @@ events := [seq([], floor(max(leafHeights)/10)+1)]:
 seind := 1:
 for i to length(branches) do
     if seind > 1 then
-        totalRate := ngenes[branches[i,1]] * rateSum + (ngenes[branches[i,1]] + 1) * (lgtRate + lgtGRate):        
+        totalRate := ngenes[branches[i,1]] * rateSum 
+                        + (ngenes[branches[i,1]] + 1) * (lgtRate + lgtGRate):        
     else
         totalRate := ngenes[branches[i,1]] * rateSum:
     fi:
-    #printf('rateSum: %.4g, totalRate: %.4g\n', rateSum, totalRate):
     curT := branches[i,2]:
     if enableGCAmelioration then
         curInd := floor(curT/10)+1:
-        events[curInd] := append(events[curInd], [curT, branches[i,1], 'GC', branches[i, 4]]):
+        events[curInd] := append(events[curInd], 
+                                 [curT, branches[i,1], 'GC', branches[i, 4]]):
     fi:    
     
     if totalRate > 0 then
@@ -616,19 +605,21 @@ for i to length(branches) do
             curT := curT + curInt:
             if seind > 1 then
                 # select type of event
-                cumProb := copy([geneDuplRate, geneLossRate, fusionRate, fissionRate, invers, transloc, lgtRate, lgtGRate]) * ngenes[branches[i,1]]:
+                cumProb := copy([geneDuplRate, geneLossRate, fusionRate, 
+                                 fissionRate, invers, transloc, lgtRate, 
+                                 lgtGRate]) * ngenes[branches[i,1]]:
                 cumProb[7] := cumProb[7] + lgtRate:
                 cumProb[8] := cumProb[8] + lgtGRate:
             else
-                cumProb := copy([geneDuplRate, geneLossRate, fusionRate, fissionRate, invers, transloc]) * ngenes[branches[i,1]]:
+                cumProb := copy([geneDuplRate, geneLossRate, fusionRate, 
+                                 fissionRate, invers, transloc]) 
+                                  * ngenes[branches[i,1]]:
             fi:
             for j from 2 to length(cumProb) do
                 cumProb[j] := cumProb[j-1] + cumProb[j]:
             od:
-            #printf('cumProb: %A\n', cumProb):
             cumProb := cumProb / cumProb[-1]:
             r := Rand():
-            #printf('cumProb[1]: %.4g, r: %.4g\n', cumProb[1], r):
             event := 1:
             while r > cumProb[event] do event := event + 1 od:
     
@@ -637,58 +628,66 @@ for i to length(branches) do
             if event = 1 then
                 # gene duplication
                 numg := min(Rand(1..numberDupl), ngenes[branches[i,1]]):
-                events[curInd] := append(events[curInd], [curT, branches[i,1], 'D', numg]):
+                events[curInd] := append(events[curInd], 
+                                         [curT, branches[i,1], 'D', numg]):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + numg:
-                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-                totalRate := totalRate + rateSum + If(seind > 1, lgtRate + lgtGRate,0):
+                totalRate := totalRate + rateSum 
+                                + If(seind > 1, lgtRate + lgtGRate,0):
                 totD := totD + 1:
             elif event = 2 then
                 # gene loss
                 numg := min(Rand(1..numberLoss), ngenes[branches[i,1]]):
-                events[curInd] := append(events[curInd], [curT, branches[i,1], 'L', numg]):
+                events[curInd] := append(events[curInd],
+                                         [curT, branches[i,1], 'L', numg]):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] - numg:
-                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-                totalRate := totalRate - rateSum - If(seind > 1, lgtRate + lgtGRate,0):
+                totalRate := totalRate - rateSum
+                                - If(seind > 1, lgtRate + lgtGRate,0):
             elif event = 7 then
                 # lgt
-                events[curInd] := append(events[curInd], [curT, branches[i,1], 'LGT']):
+                events[curInd] := append(events[curInd],
+                                         [curT, branches[i,1], 'LGT']):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
-                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-                totalRate := totalRate + rateSum + If(seind > 1, lgtRate + lgtGRate,0):
+                totalRate := totalRate + rateSum
+                                + If(seind > 1, lgtRate + lgtGRate,0):
                 totL := totL + 1:
             elif event = 8 then
                 # group lgt
                 numg := Rand(2..lgtGSize):
-                events[curInd] := append(events[curInd], [curT, branches[i,1], 'LGTG', numg]):
+                events[curInd] := append(events[curInd],
+                                         [curT, branches[i,1], 'LGTG', numg]):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + numg:
-                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-                totalRate := totalRate + numg * (rateSum + If(seind > 1, lgtRate + lgtGRate,0)):
+                totalRate := totalRate + numg * (rateSum
+                                + If(seind > 1, lgtRate + lgtGRate,0)):
                 totL := totL + numg:
             elif event = 3 then
                 # fusion
-                events[curInd] := append(events[curInd], [curT, branches[i,1], 'FU']):
+                events[curInd] := append(events[curInd],
+                                         [curT, branches[i,1], 'FU']):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] - 1:
-                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-                totalRate := totalRate - rateSum - If(seind > 1, lgtRate + lgtGRate,0):
+                totalRate := totalRate - rateSum
+                                - If(seind > 1, lgtRate + lgtGRate,0):
             elif event = 4 then
                 # fission
-                events[curInd] := append(events[curInd], [curT, branches[i,1], 'FI']):
+                events[curInd] := append(events[curInd],
+                                         [curT, branches[i,1], 'FI']):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
-                #totalRate := ngenes[branches[i,1]] * rateSum + lgtRate + lgtGRate:
-                totalRate := totalRate + rateSum + If(seind > 1, lgtRate + lgtGRate,0):
+                totalRate := totalRate + rateSum
+                                + If(seind > 1, lgtRate + lgtGRate,0):
             elif event = 5 then
                 # inversion
-                events[curInd] := append(events[curInd], [curT, branches[i,1], 'IV']):
+                events[curInd] := append(events[curInd],
+                                         [curT, branches[i,1], 'IV']):
             elif event = 6 then
                 # transloc
-                events[curInd] := append(events[curInd], [curT, branches[i,1], 'TL']):
+                events[curInd] := append(events[curInd],
+                                         [curT, branches[i,1], 'TL']):
             else
                 error('unknown event!'):
             fi:
         od:
     fi:
-#    printf('seind: %A, length(timePts): %A,  branches[i,1]: %A, timePts[seind,1]: %A, branches[i,3]: %A, timePts[seind,2]: %A,\n',seind, length(timePts), branches[i,1], timePts[seind,1], branches[i,3], timePts[seind,2]):
-    if seind <= length(timePts) and branches[i,1] = timePts[seind,1] and branches[i,3] = timePts[seind,2] then
+    if seind <= length(timePts) and branches[i,1] = timePts[seind,1] and 
+       branches[i,3] = timePts[seind,2] then
         ngenes := append(ngenes, copy(ngenes[branches[i,1]])):
         seind := seind + 1:
     fi: 
@@ -700,24 +699,8 @@ for i to length(timePts) do
 od:
 
 for i to length(events) do
-#    events[i] := sort(events[i], x->x[1]):
     events[i] := sort(events[i], EventOrderFunction):
 od:
-
-#if aaGainRate > 0 or aaLossRate > 0 then
-#    if indelModel = 'ZIPF' then
-#        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [Z_c]):
-#    elif indelModel = 'QG' then
-#        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [QG_c, QG_t]):
-#    elif indelModel = 'NEGBIN' then
-#        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [NB_r, NB_q]):
-#    elif indelModel = 'EXP' then
-#    #    meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_a, E_b]):
-#        meanGapLength := MeanGapLength(indelModel, maxIndelLength, [E_p]):
-#    else
-#        meanGapLength := MeanGapLength(indelModel, maxIndelLength, indelVector):
-#    fi:
-#fi:
 
 for i to length(events) do
     for j to length(events[i]) do
@@ -760,12 +743,13 @@ od:
 
 OpenWriting(previous);
 
-
 # saves real tree, updates all organisms
-#printf('%A\n', treeEvo):
 branchesSet := {op(branches)}:
 for i to length(branchesSet) do
-    treeEvo[op(treeData[branchesSet[i,1]])]:=Leaf('SE'.sprintf('%03d', branchesSet[i,1]), branchesSet[i,3], treeEvo[op(treeData[branchesSet[i,1]])][3]); 
+    treeEvo[op(treeData[branchesSet[i,1]])] := 
+                                    Leaf('SE'.sprintf('%03d', branchesSet[i,1]),
+                                    branchesSet[i,3],
+                                    treeEvo[op(treeData[branchesSet[i,1]])][3]); 
 od:
 UpdateTreeLGT(treeEvo):
 DrawTree(treeEvo, ArcRadial, OrderLeaves=LeftHeavy, Legend, 
@@ -779,30 +763,26 @@ printf('%s;\n', Tree_Newick(treeEvo)):
 OpenWriting(previous):
 lprint('...real genome tree saved.');
 OpenAppending(wdir.'/logfile.txt');
-#leafHeights := CreateArray(1..livingOrgs, 0):
-#for j to length(branches) do
-#    org := branches[-j,1]:
 for org to length(leafHeights) do
-#    if leafHeights[org] = 0 then
-#        leafHeights[org] := branches[-j,3]:
     g := 1:
     while g <= length(evolution[org]) do
-#            seqmutation(org, g, branches[-j,3]);
         seqmutation(org, g, leafHeights[org]);
-        if length(evolution[org,g,2]) = 0 and length(evolution[org,g,6]) = 0 then
+        if length(evolution[org,g,2]) = 0 and 
+           length(evolution[org,g,6]) = 0 then
             # remove genes with zero-length in the end
             gid := evolution[org,g,4]:
             grid := SearchArray(gid, abs(geneR[org])):
             geneR[org] := [op(geneR[org,1..grid-1]), op(geneR[org,grid+1..-1])]:
-            evolution[org] := [op(evolution[org,1..g-1]), op(evolution[org,g+1..-1])]:
+            evolution[org] := [op(evolution[org,1..g-1]), 
+                               op(evolution[org,g+1..-1])]:
         else
             g := g+1:
         fi:
     od:
-#    fi:
 od:
 OpenWriting(previous):
-lprint('...main calculation finished.');
+printf('...main calculation finished after %.2f minutes.',
+       (UTCTime() - starttime) / 60);
 
 # calculates total number of lgt and duplication and gathers gene families
 for i to livingOrgs do
@@ -820,7 +800,6 @@ for i to livingOrgs do
 od:
 
 # create gene trees
-#geneTrees := CreateGeneTrees(clusters, evolution, mutRate, leafHeights):
 geneTrees := CreateGeneTrees(clusters, evolution, leafHeights):
 lprint('...gene trees written.'):
 
