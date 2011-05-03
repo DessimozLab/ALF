@@ -5,7 +5,7 @@
 #
 # paramfile := 'parameters/XXX' : ReadProgram('evolstart.drw');
 #
-# Daniel Dalquen, Christophe Dessimoz; CBRG; 2010
+# Daniel Dalquen, Christophe Dessimoz; CBRG; 2011
 Set(printgc=false);
 starttime := UTCTime();
 Set(gc=2e8): SetRandSeed(); # Set(quiet):
@@ -20,7 +20,7 @@ if not assigned(libsLoaded) then
     libsLoaded := true:
     ReadProgram(SEbasedir.'AAMutateGamma.drw'):
     ReadProgram(SEbasedir.'KHG_Matrix.drw'):
-    ReadProgram(SEbasedir.'NucleotideMatrix'):
+    ReadProgram(SEbasedir.'NucleotideMatrix.drw'):
     ReadProgram(SEbasedir.'SubstitutionModel'):
     ReadProgram(SEbasedir.'SE_DataOutput.drw');
     ReadProgram(SEbasedir.'SE_Rearrangement.drw');

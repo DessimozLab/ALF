@@ -320,6 +320,18 @@ GQG := proc(n, c, t)
              + 6.141e-4*exp(-n*c/(14.3*t)) + 2.090e-5*exp(-n*c/(81.7*t))) / fac:
 end:
 
+# random number generator for zipfian distribution from Dawg
+rand_zipf := proc(a)
+    b := 2.0^(a-1.0);
+    do 
+        tmp := Rand():
+        x := floor(tmp^(-1.0/(a-1.0)));
+        t := (1.0+1.0/x)^(a-1.0);
+        if Rand()*x*(t-1.0)*b <= t*(b-1.0) then break fi:
+    od:
+    x
+end:
+
 randGapLength := proc(maxLen:nonnegative, 
                       indelType:{'ZIPF', 'QG', 'NEGBIN', 'EXP', 'CUSTOM'} ; 
                       params:list)
@@ -334,6 +346,12 @@ randGapLength := proc(maxLen:nonnegative,
             od;
             if L <= maxLen then break fi:
         od:
+    
+#    do
+#        L := rand_zipf(params[1]):
+#        if L <= maxLen then break fi:
+#    od:
+
 
     elif indelType = 'QG' then
         # params should have the form [QG_c, QG_t]

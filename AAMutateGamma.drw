@@ -10,15 +10,12 @@ if not assigned(logPAM1) then
 fi;
     # prepare matrices for the different gamma classes
     MP := CreateArray(1..length(Pam),0):
-    for i to length(MP) do
-        MP[i]:=exp(Pam[i]*logPAM1);
-    od:
-    
     for j to length(MP) do
-        for i from 2 to length(MP[j]) do
-        MP[j,i]:=MP[j,i]+MP[j,i-1];
+        tmp:=remember(exp(Pam[j]*logPAM1));
+        for i from 2 to length(tmp) do
+            tmp[i]:=tmp[i]+tmp[i-1];
         od;
-        MP[j]:=transpose(MP[j]);
+        MP[j]:=transpose(tmp);
     od:
     
     # now mutate

@@ -652,23 +652,43 @@ WriteOrthologs := proc(trees, norgs)
 
     # store orthologs, paralogs and xenologs in separate files
     CallSystem('mkdir '.wdir.'/VP'):
-    for i to norgs do
-        CallSystem('mkdir '.wdir.sprintf('/VP/SE%03d', i)):
-        for j to norgs do
-            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.op', i, j)):
-            printf('OP := %A:\n', OPs[i,j]):
-            OpenWriting(previous):
-            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.pp', i, j)):
-            printf('PP := %A:\n', PPs[i,j]):
-            OpenWriting(previous):
-            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.xp', i, j)):
-            printf('XP := %A:\n', XPs[i,j]):
-            OpenWriting(previous):
-            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.hp', i, j)):
-            printf('HP := %A:\n', HPs[i,j]):
-            OpenWriting(previous):
-        od:
-    od:
+#    for i to norgs do
+#        CallSystem('mkdir '.wdir.sprintf('/VP/SE%03d', i)):
+#        for j to norgs do
+#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.op', i, j)):
+#            printf('OP := %A:\n', OPs[i,j]):
+#            OpenWriting(previous):
+#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.pp', i, j)):
+#            printf('PP := %A:\n', PPs[i,j]):
+#            OpenWriting(previous):
+#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.xp', i, j)):
+#            printf('XP := %A:\n', XPs[i,j]):
+#            OpenWriting(previous):
+#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.hp', i, j)):
+#            printf('HP := %A:\n', HPs[i,j]):
+#            OpenWriting(previous):
+#        od:
+#    od:
+    OpenWriting(wdir.'/VP/OP.drw'):
+    print('# OP[genome1,genome2, i]: list of genes in genome2 orthologous to '.
+          'gene i in genome1'):
+    printf('OP := %A:\n', OPs):
+    OpenWriting(previous):
+    OpenWriting(wdir.'/VP/PP.drw'):
+    print('# PP[genome1,genome2, i]: list of genes in genome2 paralogous to '.
+          'gene i in genome1'):
+    printf('PP := %A:\n', PPs):
+    OpenWriting(previous):
+    OpenWriting(wdir.'/VP/XP.drw'):
+    print('# XP[genome1,genome2, i]: list of genes in genome2 xenologous to '.
+          'gene i in genome1'):
+    printf('XP := %A:\n', XPs):
+    OpenWriting(previous):
+    OpenWriting(wdir.'/VP/PP.drw'):
+    print('# HP[genome1,genome2, i]: list of genes in genome2 homologous to '.
+          'gene i in genome1'):
+    printf('HP := %A:\n', HPs):
+    OpenWriting(previous):
     CallSystem('tar -czf '.wdir.'/VP.tgz --remove-files '.wdir.'/VP'):
 end:
 
