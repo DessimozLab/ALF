@@ -705,7 +705,9 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
         OpenWriting(previous);
     fi:
     printf('species %i was created at time %0004.4f\n', livingOrgs, evolTime);
-    DBoutAnc(evolution[livingOrgs], orgSource, livingOrgs, evolTime);
+    if simOutput intersect {'Ancestral'} <> {} then
+        DBoutAnc(evolution[livingOrgs], orgSource, livingOrgs, evolTime);
+    fi:
     if writeLog then
         OpenAppending(wdir.'/logfile.txt');
     fi:

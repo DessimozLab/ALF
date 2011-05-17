@@ -84,38 +84,63 @@ DBoutAnc := proc(organism, parent, child, birth)
         TimedCallSystem('mkdir -p '.wdir.dbAncdir, 2);
     fi;
     orgname := sprintf('SE%i-%i_%f', parent, child, birth);
-    OpenWriting(wdir.dbAncdir.orgname.'.db');
-    # header output
-    printf('<DBNAME>Synthetic organism %s</DBNAME>\n', orgname);
-    printf('<DBRELEASE>SE %s</DBRELEASE>\n', mname);
-    printf('<SOURCE>sequence simulation</SOURCE>\n');
-    printf('<DATE>%s</DATE>\n', date());
-    printf('<URL>http://www.cbrg.ethz.ch</URL>\n');
-    printf('<5LETTERNAME>%s</5LETTERNAME>\n', orgname);
-    printf('<SCINAME>Organismus syntheticus_%s</SCINAME>\n', orgname);
-    printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
-        'Organismus syntheticus_%s</OS>\n', orgname);
-    printf('<KINGDOM>Bacteria</KINGDOM>\n');
-    printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA; HGP; RATES</FIELDS>\n');
-    # entry output
-    for j to length(organism) do
-        loc := SearchArray(organism[j, 4], abs(geneR[child]));
-        if (geneR[child, loc] < 0) then
-            loc := -loc;
-        fi;
-        printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS>'.
-               '<HGP>%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
-            organism[j, 4], loc, organism[j, 3], organism[j, 5], organism[j, 7],
-            organism[j,1], organism[j, 2]): 
-        if (length(substModels) = 0 and 
-            (blocksize = 3 or organism[j,2] = 'AAA')) or 
-           (length(substModels) > 0 and 
-            substModels[organism[j,9]][Type] <> 'aa') then
-            printf('<DNA>%s</DNA>', organism[j, 6]);
-        fi:
-        printf('</E>\n'):
-    od;
-    OpenWriting(previous);
+    if simOutput intersect {'DarwinDB'} <> {} then
+        OpenWriting(wdir.dbAncdir.orgname.'.db');
+        # header output
+        printf('<DBNAME>Synthetic organism %s</DBNAME>\n', orgname);
+        printf('<DBRELEASE>SE %s</DBRELEASE>\n', mname);
+        printf('<SOURCE>sequence simulation</SOURCE>\n');
+        printf('<DATE>%s</DATE>\n', date());
+        printf('<URL>http://www.cbrg.ethz.ch</URL>\n');
+        printf('<5LETTERNAME>%s</5LETTERNAME>\n', orgname);
+        printf('<SCINAME>Organismus syntheticus_%s</SCINAME>\n', orgname);
+        printf('<OS>Bacteria; Syntheticales; Syntheticaceae; '.
+            'Organismus syntheticus_%s</OS>\n', orgname);
+        printf('<KINGDOM>Bacteria</KINGDOM>\n');
+        printf('<FIELDS>ID; LOC; SYNLOC; DE; OS; SEQ; DNA; HGP; RATES</FIELDS>\n');
+        # entry output
+        for j to length(organism) do
+            loc := SearchArray(organism[j, 4], abs(geneR[child]));
+            if (geneR[child, loc] < 0) then
+                loc := -loc;
+            fi;
+            printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS>'.
+                   '<HGP>%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
+                organism[j, 4], loc, organism[j, 3], organism[j, 5], organism[j, 7],
+                organism[j,1], organism[j, 2]): 
+            if (length(substModels) = 0 and 
+                (blocksize = 3 or organism[j,2] = 'AAA')) or 
+               (length(substModels) > 0 and 
+                substModels[organism[j,9]][Type] <> 'aa') then
+                printf('<DNA>%s</DNA>', organism[j, 6]);
+            fi:
+            printf('</E>\n'):
+        od;
+        OpenWriting(previous);
+    fi:
+    if simOutput intersect {'Fasta'} <> {} then
+        for j to length(organism) do
+            if (length(substModels) = 0 and 
+                (blocksize = 3 or organism[j,2] <> 'AAA')) or 
+               (length(substModels) > 0 and 
+                (substModels[organism[j,9]][Type] <> 'nuc' or 
+                 not substModels[organism[j,9]][NeutralDNA])) then
+                OpenWriting(wdir.dbAncdir.orgname.'_aa.fa'):
+                printf('>G%a_%s\n%s\n\n', organism[j, 4], orgname,
+                    organism[j, 2]);
+                OpenWriting(previous);
+            fi:
+            if (length(substModels) = 0 and 
+                (blocksize = 3 or organism[j,2] = 'AAA')) or 
+               (length(substModels) > 0 and 
+                substModels[organism[j,9]][Type] <> 'aa') then
+                OpenWriting(wdir.dbAncdir.orgname.'_dna.fa'):
+                printf('>G%a_%s\n%s\n\n', organism[j, 4], orgname,
+                    organism[j, 6]);
+                OpenWriting(previous);
+            fi:
+        od;
+    fi:
 end:
 
 CreateRealMSA := proc(cls, evol, tree)
@@ -336,8 +361,6 @@ end:
 #   msteps: the maximum number of simulation steps (for defining the depth of
 #           the leaves
 CreateGeneTrees := proc(clsts, evol, lheights)
-    # create output directory for gene trees
-    CallSystem('mkdir '.wdir.'/GeneTrees/'):
     trees := []:
     geneIDs := [seq(transpose(evol[i])[4], i=1..length(evol))]:
     
@@ -464,20 +487,36 @@ CreateGeneTrees := proc(clsts, evol, lheights)
         # correct leaf heights
         tree := CorrectLeafHeights(tree, lheights):
         
-        # store tree
-        OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.drw'):
-        printf('%A\n\n', tree):
-        OpenWriting(previous):
-        OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.nwk'):
-        printf('%A;\n\n', Tree_Newick(tree)):
-        OpenWriting(previous):
+        trees := append(trees, tree):
+    od:
+    
+    # store tree
+    if simOutput intersect {'GeneTrees'} <> {} then
+        # create output directory for gene trees
+        CallSystem('mkdir '.wdir.'/GeneTrees/'):
+        if simOutput intersect {'DarwinTree'} <> {} then
+            for c to length(trees) do
+                if trees[c] = 0 then next fi:
+                OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.drw'):
+                printf('%A\n\n', trees[c]):
+                OpenWriting(previous):
+            od:
+        fi:
+        if simOutput intersect {'Newick'} <> {} then
+            for c to length(trees) do
+                if trees[c] = 0 then next fi:
+                OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.nwk'):
+                printf('%A;\n\n', Tree_Newick(trees[c])):
+                OpenWriting(previous):
+            od;
+        fi:
 #        if not type(tree, Leaf) then
 #            DrawTree(tree, InternalNodes=ShowNodeType, CrossReference):
 #            CallSystem('mv '.wdir.'/temp.ps '.wdir.'/GeneTrees/GeneTree'.c.
 #                                                                         '.ps'):
 #        fi:
-        trees := append(trees, tree):
-    od:
+    fi:
+
     return(trees):
 end:
 
@@ -603,28 +642,15 @@ end:
 
 WriteOrthologs := proc(trees, norgs)
     global evolution:
-    VPs := CreateArray(1..norgs, 1..norgs, 0):
+    HPs := CreateArray(1..norgs, 1..norgs, 0):
+    OPs := CreateArray(1..norgs, 1..norgs, 0):
+    PPs := CreateArray(1..norgs, 1..norgs, 0):
+    XPs := CreateArray(1..norgs, 1..norgs, 0):
     idTab := CreateArray(1..norgs,0):
 
     for i to norgs do
         idTab[i] := table():
         for j to length(evolution[i]) do idTab[i,evolution[i,j,4]] := j od:
-        for j to norgs do
-            VPs[i,j] := CreateArray(1..length(evolution[i]), []):
-        od:
-    od:
-
-    for i to length(trees) do
-        curt := trees[i]:
-        if curt = 0 then next fi:
-        GetOrthologs(curt, VPs, idTab):
-    od:
-    
-    HPs := CreateArray(1..norgs, 1..norgs, 0):
-    OPs := CreateArray(1..norgs, 1..norgs, 0):
-    PPs := CreateArray(1..norgs, 1..norgs, 0):
-    XPs := CreateArray(1..norgs, 1..norgs, 0):
-    for i to norgs do
         for j to norgs do
             HPs[i,j] := CreateArray(1..length(evolution[i]), []):
             OPs[i,j] := CreateArray(1..length(evolution[i]), []):
@@ -632,68 +658,44 @@ WriteOrthologs := proc(trees, norgs)
             XPs[i,j] := CreateArray(1..length(evolution[i]), []):
         od:
     od:
-    
-    for i to norgs do
-        for j to norgs do
-            for g to length(VPs[i,j]) do
-                for n to length(VPs[i,j,g]) do
-                    if VPs[i,j,g, n, 2] = 'S' then
-                        OPs[i,j,g] := append(OPs[i,j,g], VPs[i,j,g,n,1]):
-                    elif VPs[i,j,g,n, 2] = 'D' then
-                        PPs[i,j,g] := append(PPs[i,j,g], VPs[i,j,g,n,1]):
-                    elif  VPs[i,j,g,n, 2] = 'L' then
-                        XPs[i,j,g] := append(XPs[i,j,g], VPs[i,j,g,n,1]):
-                    fi:
-                    HPs[i,j,g] := append(HPs[i,j,g], VPs[i,j,g,n,1]):
-                od:
-            od:
-        od:
-    od:
 
+    for i to length(trees) do
+        curt := trees[i]:
+        if curt = 0 then next fi:
+        GetOrthologs(curt, HPs, OPs, PPs, XPs, idTab):
+    od:
+        
     # store orthologs, paralogs and xenologs in separate files
     CallSystem('mkdir '.wdir.'/VP'):
-#    for i to norgs do
-#        CallSystem('mkdir '.wdir.sprintf('/VP/SE%03d', i)):
-#        for j to norgs do
-#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.op', i, j)):
-#            printf('OP := %A:\n', OPs[i,j]):
-#            OpenWriting(previous):
-#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.pp', i, j)):
-#            printf('PP := %A:\n', PPs[i,j]):
-#            OpenWriting(previous):
-#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.xp', i, j)):
-#            printf('XP := %A:\n', XPs[i,j]):
-#            OpenWriting(previous):
-#            OpenWriting(wdir.sprintf('/VP/SE%03d/SE%03d.hp', i, j)):
-#            printf('HP := %A:\n', HPs[i,j]):
-#            OpenWriting(previous):
-#        od:
-#    od:
     OpenWriting(wdir.'/VP/OP.drw'):
-    print('# OP[genome1,genome2, i]: list of genes in genome2 orthologous to '.
+    printf('# OP[genome1,genome2, i]: list of genes in genome2 orthologous to '.
           'gene i in genome1'):
     printf('OP := %A:\n', OPs):
     OpenWriting(previous):
     OpenWriting(wdir.'/VP/PP.drw'):
-    print('# PP[genome1,genome2, i]: list of genes in genome2 paralogous to '.
+    printf('# PP[genome1,genome2, i]: list of genes in genome2 paralogous to '.
           'gene i in genome1'):
     printf('PP := %A:\n', PPs):
     OpenWriting(previous):
     OpenWriting(wdir.'/VP/XP.drw'):
-    print('# XP[genome1,genome2, i]: list of genes in genome2 xenologous to '.
+    printf('# XP[genome1,genome2, i]: list of genes in genome2 xenologous to '.
           'gene i in genome1'):
     printf('XP := %A:\n', XPs):
     OpenWriting(previous):
-    OpenWriting(wdir.'/VP/PP.drw'):
-    print('# HP[genome1,genome2, i]: list of genes in genome2 homologous to '.
+    OpenWriting(wdir.'/VP/HP.drw'):
+    printf('# HP[genome1,genome2, i]: list of genes in genome2 homologous to '.
           'gene i in genome1'):
     printf('HP := %A:\n', HPs):
     OpenWriting(previous):
+
     CallSystem('tar -czf '.wdir.'/VP.tgz --remove-files '.wdir.'/VP'):
 end:
 
 
-GetOrthologs := proc(t:Tree, VPs:list(list(list(list))), idArr:list(table)) 
+GetOrthologs := proc(t:Tree, HPs:list(list(list)), 
+                             OPs:list(list(list)), 
+                             PPs:list(list(list)), 
+                             XPs:list(list(list)), idArr:list(table)) 
     #option internal:
     global evolution;
     if type(t, Leaf) then return(NULL) fi:
@@ -717,13 +719,24 @@ GetOrthologs := proc(t:Tree, VPs:list(list(list(list))), idArr:list(table))
             ev := le:
             if re[1] = 'L' then ev := re fi:
             
-            VPs[lo,ro,lg] := append(VPs[lo,ro,lg], [rg, ev]):
-            VPs[ro,lo,rg] := append(VPs[ro,lo,rg], [lg, ev]):
+            if ev = 'S' then
+                OPs[lo,ro,lg] := append(OPs[lo,ro,lg], rg):
+                OPs[ro,lo,rg] := append(OPs[ro,lo,rg], lg):
+            elif ev = 'D' then
+                PPs[lo,ro,lg] := append(PPs[lo,ro,lg], rg):
+                PPs[ro,lo,rg] := append(PPs[ro,lo,rg], lg):
+            elif ev = 'L' then
+                XPs[lo,ro,lg] := append(XPs[lo,ro,lg], rg):
+                XPs[ro,lo,rg] := append(XPs[ro,lo,rg], lg):
+            fi:
+            HPs[lo,ro,lg] := append(HPs[lo,ro,lg], rg):
+            HPs[ro,lo,rg] := append(HPs[ro,lo,rg], lg):
+            
         od:
     od:
     
-    GetOrthologs(t[Left], VPs, idArr):
-    GetOrthologs(t[Right], VPs, idArr):
+    GetOrthologs(t[Left], HPs, OPs, PPs, XPs, idArr):
+    GetOrthologs(t[Right], HPs, OPs, PPs, XPs, idArr):
 
     NULL:
 end:

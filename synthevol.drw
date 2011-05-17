@@ -123,9 +123,6 @@ fi:
 if not assigned(dbdir) then
     dbdir := 'DB/':
 fi:
-if not assigned(dbAncdir) then
-    dbAncdir := 'DBancestral/':
-fi:
 if not assigned(realseed) then
     realseed := false:
     if not assigned(specialAreas) then
@@ -137,6 +134,20 @@ if not assigned(writeLog) then
 fi:
 if not assigned(DawgPlacement) then
     DawgPlacement := true:
+fi:
+if not assigned(simOutput) then
+    simOutput := {'GeneTrees', 'DarwinTree', 'Newick', 'MSA', 'VP', 'DarwinDB', 
+                  'Fasta', 'Ancestral'}:
+fi:
+if simOutput intersect {'DarwinDB', 'Fasta'} = {} then
+    error('No output format for sequence databases selected'.
+          ' (DarwinDB and/or Fasta)!'):
+fi:
+if simOutput intersect {'DarwinTree', 'Newick'} = {} then
+    error('No output format for trees selected (DarwinTree or Newick)!'):
+fi:
+if not assigned(dbAncdir) and simOutput intersect 'Ancestral' <> {} then
+    dbAncdir := 'DBancestral/':
 fi:
     
 if not unitIsPam then
@@ -550,7 +561,9 @@ Naa := round(Naa/Nprot):
 clusters := [seq([], maxID)]: # gene families
 
 # write out DB file of first organism
-DBoutAnc(evolution[1], 1, 1, 0);
+if simOutput intersect {'Ancestral'} <> {} then
+    DBoutAnc(evolution[1], 1, 1, 0);
+fi:
 
 # logfile header 
 lastSpeciation := 1:
@@ -776,12 +789,16 @@ UpdateTreeLGT(treeEvo):
 DrawTree(treeEvo, ArcRadial, OrderLeaves=LeftHeavy, Legend, 
     Title = 'synthetic evolution');
 TimedCallSystem('mv '.wdir.'/temp.ps '.wdir.'/RealTree.ps', 2);
-OpenWriting(wdir . 'RealTree.drw');
-printf('RealTree := %A;\n', treeEvo);
-OpenWriting(previous);
-OpenWriting(wdir.'RealTree.nwk'):
-printf('%s;\n', Tree_Newick(treeEvo)):
-OpenWriting(previous):
+if simOutput intersect {'DarwinTree'} <> {} then
+    OpenWriting(wdir . 'RealTree.drw');
+    printf('RealTree := %A;\n', treeEvo);
+    OpenWriting(previous);
+fi:
+if simOutput intersect {'Newick'} <> {} then
+    OpenWriting(wdir.'RealTree.nwk'):
+    printf('%s;\n', Tree_Newick(treeEvo)):
+    OpenWriting(previous):
+fi:
 lprint('...real genome tree saved.');
 if writeLog then
     OpenAppending(wdir.'/logfile.txt');
@@ -833,13 +850,18 @@ geneTrees := CreateGeneTrees(clusters, evolution, leafHeights):
 lprint('...gene trees written.'):
 
 # create MSAs
+if simOutput intersect {'MSA'} <> {} then
 for i to length(clusters) do
     CreateRealMSA(clusters[i], evolution, geneTrees[i]):
 od:
 lprint('...real MSAs written.'):
+fi:
 
 # store orthologs for each pair of genes
-WriteOrthologs(geneTrees, livingOrgs):
+if simOutput intersect {'VP'} <> {} then
+    WriteOrthologs(geneTrees, livingOrgs):
+    lprint('...pairwise relationships written.'):
+fi:
 
 # logfile footer, DB output, GenomeSummaries
 if writeLog then
@@ -868,27 +890,32 @@ if writeLog then
     OpenWriting(previous);
 fi:
 
-DBout():
-DBoutFASTA():
+if simOutput intersect {'DarwinDB'} <> {} then
+    DBout():
+
+    if webRequest then
+        summariesString := wdir.'/DB/Summaries.drw';
+    else
+        summariesString := wdir.'/Summaries.drw':
+    fi:
+    OpenWriting(summariesString);
+    printf('GenomeSummaries := table():\ngenomes := []:\n');
+    for i to livingOrgs do
+        OpenWriting(previous);
+        orgname := sprintf('SE%03d', i):
+        DB := ReadDb(wdir.dbdir.orgname.'.db'):
+        OpenAppending(summariesString);
+        printf('genomes := append(genomes, %s):\n', orgname):
+        printf('GenomeSummaries[%s] :=', orgname );
+        dprint(copy(GenomeSummary(DB)));
+        printf(':\n');
+    od:
+    OpenWriting(previous);
+fi:
+if simOutput intersect {'Fasta'} <> {} then
+    DBoutFASTA():
+fi:
 lprint('...genome DBs saved.');
 
-if webRequest then
-    summariesString := wdir.'/DB/Summaries.drw';
-else
-    summariesString := wdir.'/Summaries.drw':
-fi:
-OpenWriting(summariesString);
-printf('GenomeSummaries := table():\ngenomes := []:\n');
-for i to livingOrgs do
-    OpenWriting(previous);
-    orgname := sprintf('SE%03d', i):
-    DB := ReadDb(wdir.dbdir.orgname.'.db'):
-    OpenAppending(summariesString);
-    printf('genomes := append(genomes, %s):\n', orgname):
-    printf('GenomeSummaries[%s] :=', orgname );
-    dprint(copy(GenomeSummary(DB)));
-    printf(':\n');
-od:
-OpenWriting(previous);
 lprint('\n   simulation finished!'):
 
