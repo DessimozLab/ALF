@@ -669,22 +669,22 @@ WriteOrthologs := proc(trees, norgs)
     CallSystem('mkdir '.wdir.'/VP'):
     OpenWriting(wdir.'/VP/OP.drw'):
     printf('# OP[genome1,genome2, i]: list of genes in genome2 orthologous to '.
-          'gene i in genome1'):
+          'gene i in genome1\n'):
     printf('OP := %A:\n', OPs):
     OpenWriting(previous):
     OpenWriting(wdir.'/VP/PP.drw'):
     printf('# PP[genome1,genome2, i]: list of genes in genome2 paralogous to '.
-          'gene i in genome1'):
+          'gene i in genome1\n'):
     printf('PP := %A:\n', PPs):
     OpenWriting(previous):
     OpenWriting(wdir.'/VP/XP.drw'):
     printf('# XP[genome1,genome2, i]: list of genes in genome2 xenologous to '.
-          'gene i in genome1'):
+          'gene i in genome1\n'):
     printf('XP := %A:\n', XPs):
     OpenWriting(previous):
     OpenWriting(wdir.'/VP/HP.drw'):
     printf('# HP[genome1,genome2, i]: list of genes in genome2 homologous to '.
-          'gene i in genome1'):
+          'gene i in genome1\n'):
     printf('HP := %A:\n', HPs):
     OpenWriting(previous):
 
