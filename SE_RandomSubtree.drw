@@ -1,6 +1,10 @@
-GetAllDistMatrix := proc()
+GetAllDistMatrix := proc(; (t=BestDimlessTree):Tree)
     global BestDimlessTree;
-    return(Tree_matrix(BestDimlessTree));
+    if t = BestDimlessTree and not assigned(BestDimlessTree) then
+        error('Default tree of life not assigned!')
+    fi;
+    
+    return(Tree_matrix(t));
 end:
 
 

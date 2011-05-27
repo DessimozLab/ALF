@@ -139,6 +139,7 @@ if not assigned(simOutput) then
     simOutput := {'GeneTrees', 'DarwinTree', 'Newick', 'MSA', 'VP', 'DarwinDB', 
                   'Fasta', 'Ancestral'}:
 fi:
+
 if simOutput intersect {'DarwinDB', 'Fasta'} = {} then
     error('No output format for sequence databases selected'.
           ' (DarwinDB and/or Fasta)!'):
@@ -146,7 +147,7 @@ fi:
 if simOutput intersect {'DarwinTree', 'Newick'} = {} then
     error('No output format for trees selected (DarwinTree or Newick)!'):
 fi:
-if not assigned(dbAncdir) and simOutput intersect 'Ancestral' <> {} then
+if not assigned(dbAncdir) and simOutput intersect {'Ancestral'} <> {} then
     dbAncdir := 'DBancestral/':
 fi:
     
@@ -206,7 +207,19 @@ elif treeType = 'BDTree' then
         tree := AddDeviation(tree):
     fi:
 elif treeType = 'ToLSample' then
-    D := GetAllDistMatrix():
+    if not assigned(treeFile) and not assigned(tree) then
+        D := GetAllDistMatrix():
+    else # sample from custom tree
+        if not assigned(tree) then
+            tree := treeFile:
+        fi:
+        tree := CheckTree(tree):
+        if not unitIsPam then
+            ConvertToPam(tree):
+        fi:
+        CheckBranchLengths(tree):
+        D := GetAllDistMatrix(tree):
+    fi:
     printf('generating tree with %d species\n', NSpecies):
     tree := GenRandomTree(D, NSpecies):
 else
