@@ -1,3 +1,4 @@
+module external AAMutateGamma;
 ##############################################################
 # Mutate a amino acid sequence according to gamma model.     #
 # Requires an array 'classes' that specifies the gamma class #
@@ -11,20 +12,23 @@ fi;
     # prepare matrices for the different gamma classes
     MP := CreateArray(1..length(Pam),0):
     for j to length(MP) do
-        tmp:=remember(exp(Pam[j]*logPAM1));
-        for i from 2 to length(tmp) do
-            tmp[i]:=tmp[i]+tmp[i-1];
-        od;
-        MP[j]:=transpose(tmp);
+#        tmp:=remember(exp(Pam[j]*logPAM1));
+#        print(Pam[j]): print(tmp):
+#        for i from 2 to length(tmp) do
+#            tmp[i]:=tmp[i]+tmp[i-1];
+#        od;
+#        MP[j]:=transpose(tmp);
+        MP[j] := remember(GetMatrix(Pam[j], logPAM1)):
     od:
-    
+#    for i to length(MP) do print(MP[i]): lprint() od:
+#    error('what''s wrong with this?'):
     # now mutate
     len:=length(seq1);
-    seq2:='';
+    seq2:=CreateString(len, 'X');
     for i to len do
         aa0:=AToInt(seq1[i]);
-        a:=RandomAA(MP[classes[i], aa0]);
-        seq2:=seq2.a;
+        seq2[i]:=RandomAA(MP[classes[i], aa0]);
+#        seq2:=seq2.a;
     od;
     seq2;
 end:
@@ -37,7 +41,10 @@ end:
 #######################################################
 RandomAA:=proc(CumFreq:array(numeric)) option internal;
     do
-        ind:=SearchOrderedArray(Rand(),CumFreq) + 1;
+        r := Rand():
+        #print(r):
+        ind:=SearchOrderedArray(r,CumFreq) + 1;
+        #print(ind):
         if ind<=20 then
           	c:=IntToA(ind);
           	break;
@@ -46,3 +53,12 @@ RandomAA:=proc(CumFreq:array(numeric)) option internal;
     c;
 end:
 
+GetMatrix := proc(Pam:positive, lp1:matrix) option internal;
+    tmp := exp(Pam*lp1):
+    for i from 2 to length(tmp) do
+        tmp[i]:=tmp[i]+tmp[i-1]:
+    od:
+    transpose(tmp)
+end:
+
+end: # module
