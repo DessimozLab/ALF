@@ -9,8 +9,8 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative,
         blockSize := substModel[Blocksize]:
         neutralDNA := substModel[NeutralDNA]:
         if enableGCAmelioration then
-            baseFreqs := curTargetFreqs[org][min(length(curTargetFreqs[org]), 
-                                                 evolution[org, gene, 9])]:
+            baseFreqs := curTargetFreqs[org, 1, min(length(curTargetFreqs[org]), 
+                                                    evolution[org, gene, 9])]:
         else
             baseFreqs := substModel[BaseFreqs]:
         fi:
@@ -599,9 +599,29 @@ PerformTranslocation := proc(org:integer)
     transLoc(org, place, target, tSize);
 end:
 
+AdaptAreas := proc(org, gene, curm:posint, newm:posint)
+    global evolution, substModels;
+
+    curSubstModel := substModels[curm]:
+    substModel := substModels[newm]:
+    if substModel[Name] = 'M0' then
+        if curSubstModel[Name] <> 'M0' then
+            evolution[org, gene, 1] := makeAreasOmega(substModel[Name],
+                                               length(evolution[org,gene,6])/3):
+        fi:
+    elif substModel[Name][1] = 'M' and 
+         (curSubstModel[Name] <> substModel[Name] or 
+          length(curSubstModel[Params][3]) <> length(
+                                    substModel[Params][3])) then
+        evolution[org, gene, 1] := makeAreasOmega(substModel[Name], 
+                                                length(evolution[org,gene,6])/3,
+                                                substModel[Params][3]):
+    fi:
+end:
+
 PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
     global evolution, geneR, livingOrgs, spec, treeData, treeEvo, GCratio, 
-           specModels, writeLog;
+           specModels, writeLog, curTargetFreqs, enableGCAmelioration;
     evoLen := length(evolution[orgSource]): i := 1:
     while i <= evoLen do
         seqmutation(orgSource, i, evolTime);
@@ -615,6 +635,10 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
     evolution := append(evolution, copy(evolution[orgSource]));
     geneR := append(geneR, copy(geneR[orgSource]));
     livingOrgs := livingOrgs + 1;
+    # copy (old) target frequencies
+    if enableGCAmelioration then
+        curTargetFreqs[livingOrgs] := curTargetFreqs[orgSource]:
+    fi:
     # updates history in gene descriptions
     if assigned(specModels) then
         curSpecModels := transpose(specModels[1]):
@@ -632,29 +656,39 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
         # model switch
         if length(substModels) > 0 then
             curm := evolution[livingOrgs, l, 9]:
-            curSubstModel := substModels[curm]:
+#            curSubstModel := substModels[curm]:
             if assigned(fromModels) then
                 modIndex := SearchOrderedArray(curm, fromModels):
                 if modIndex <> 0 then
-                    m := toModels[modIndex]:
-                    printf('model switch during speciation for gene %d of '.
-                    'species %d: %d -> %d\n', l, livingOrgs, curm, m):
-                    evolution[livingOrgs, l, 9] := m:
-                    substModel := substModels[m]:
-                    if substModel[Name] = 'M0' and 
-                       curSubstModel[Name] <> 'M0' then
-                        evolution[livingOrgs, l, 1] := makeAreasOmega(
-                                                               substModel[Name],
-                                                               aaStart):
-                    elif substModel[Name][1] = 'M' and 
-                         (curSubstModel[Name] <> substModel[Name] or 
-                          length(curSubstModel[Params][3]) <> length(
-                                                    substModel[Params][3])) then
-                        evolution[livingOrgs, l, 1] := makeAreasOmega(
-                                                               substModel[Name], 
-                                                               aaStart,
-                                                         substModel[Params][3]):
+                    if type(toModels[modIndex],list) then
+                        m1 := toModels[modIndex,1]:
+                        m2 := toModels[modIndex,2]:
+                        printf('model switch during speciation for gene %d of '.
+                        'species %d: %d -> %d\n', l, orgSource, curm, m1):
+                        evolution[orgSource, l, 9] := m1:
+                        AdaptAreas(orgSource, l, curm, m1):
+                    else
+                        m2 :=  toModels[modIndex]:
                     fi:
+                    printf('model switch during speciation for gene %d of '.
+                    'species %d: %d -> %d\n', l, livingOrgs, curm, m2):
+                    evolution[livingOrgs, l, 9] := m2:
+                    AdaptAreas(livingOrgs, l, curm, m2):
+#                    substModel := substModels[m2]:
+#                    if substModel[Name] = 'M0' and 
+#                       curSubstModel[Name] <> 'M0' then
+#                        evolution[livingOrgs, l, 1] := makeAreasOmega(
+#                                                               substModel[Name],
+#                                                               aaStart):
+#                    elif substModel[Name][1] = 'M' and 
+#                         (curSubstModel[Name] <> substModel[Name] or 
+#                          length(curSubstModel[Params][3]) <> length(
+#                                                    substModel[Params][3])) then
+#                        evolution[livingOrgs, l, 1] := makeAreasOmega(
+#                                                               substModel[Name], 
+#                                                               aaStart,
+#                                                         substModel[Params][3]):
+#                    fi:
                 fi:
             else
                 r := Rand():
@@ -715,7 +749,8 @@ end:
 
 # mutates gene k of organism org for a certain amount of time steps, 15.12.06
 seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
-    global evolution, substModels, curTargetFreqs, enableGCAmelioration, geneR;
+    global evolution, substModels, prevTargetFreqs, curTargetFreqs, 
+           enableGCAmelioration, geneR;
     # apply rate modifications from duplications
     rateFac := curT - evolution[org,gene,11]:
     if rateFac <= 0 then return() fi:
@@ -742,8 +777,11 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
             oldLen := length(evolution[org,gene,6])/substModel[Blocksize]:
         fi:
         if enableGCAmelioration then
-            targetFreqs := curTargetFreqs[org][min(length(curTargetFreqs[org]), 
+            targetFreqs := curTargetFreqs[org, 1, min(length(curTargetFreqs[org]), 
                                                     evolution[org, gene, 9])]:
+            prevFreqs := prevTargetFreqs[org, 1, min(length(prevTargetFreqs[org]), 
+                                                    evolution[org, gene, 9])]:
+            blen := curTargetFreqs[org, 2]:
         fi:
         if length(evolution[org,gene,2]) > 0 or 
            length(evolution[org,gene,6]) > 0 then
@@ -757,12 +795,13 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
                         for i to length(substModel[LogPAM1]) do
                             GCMatrix[i] := GCBiasMatrix(substModel[LogPAM1][i], 
                                                         substModel[BaseFreqs], 
-                                                        targetFreqs):
+                                                        targetFreqs, prevFreqs, 
+                                                        blen):
                         od:
                     else
                         GCMatrix := GCBiasMatrix(GCMatrix, 
                                                  substModel[BaseFreqs], 
-                                                 targetFreqs):
+                                                 targetFreqs, prevFreqs, blen):
                     fi:
                 fi:
             fi:
@@ -1222,6 +1261,8 @@ EventOrderFunction := proc(e1, e2) -> boolean;
         return(false):
     elif e1[3] = 'S' then
         return(true):
+    elif e1[3] = 'GC' and e2[3] = 'GC' then
+        return(e1[5] < e2[5] or e1[2] < e2[2]):
     else
         return(false):
     fi:

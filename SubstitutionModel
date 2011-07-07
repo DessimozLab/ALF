@@ -51,7 +51,7 @@ SubstitutionModel := proc(Name:string, Params:list(anything),
                 m := copy(CodonLogPAM1):
                 noeval(SubstitutionModel(Name, [], f, false, 'codon', m, 3)):
             elif Name = 'CustomP' then
-                res := LoadMatrixFile(matrixFile):
+                res := LoadMatrixFile(Params[1]):
                 CreateDayMatrices(op(res)):
                 f := copy(AF):
                 printf('AF: %a\n', AF):

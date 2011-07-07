@@ -104,7 +104,7 @@ CreateRandomTargetFrequencies_12 := proc(tree:Tree, nspec:posint)
 end:
 
 
-GenInternalTargetFreqs := proc(targetFreqs, tree)
+GenInternalTargetFreqs := proc(targetFreqs, tree, height)
     if type(tree[Left], Leaf) then
         curFreqs := CreateArray(1..length(targetFreqs),0):
         for i to length(targetFreqs) do
@@ -115,9 +115,9 @@ GenInternalTargetFreqs := proc(targetFreqs, tree)
                 fi:
             od:
         od:
-        tree[Left] := append(tree[Left], curFreqs):
+        tree[Left] := append(tree[Left], [curFreqs, |tree[Left,Height]-tree[Height]|]):
     else
-        tree[Left] := GenInternalTargetFreqs(targetFreqs, tree[Left]):
+        tree[Left] := GenInternalTargetFreqs(targetFreqs, tree[Left], tree[Height]):
     fi:
     if type(tree[Right], Leaf) then
         curFreqs := CreateArray(1..length(targetFreqs),0):
@@ -129,14 +129,14 @@ GenInternalTargetFreqs := proc(targetFreqs, tree)
                 fi:
             od:
         od:
-        tree[Right] := append(tree[Right], curFreqs):    
+        tree[Right] := append(tree[Right], [curFreqs, |tree[Right,Height]-tree[Height]|]):    
     else
-        tree[Right] := GenInternalTargetFreqs(targetFreqs, tree[Right]):
+        tree[Right] := GenInternalTargetFreqs(targetFreqs, tree[Right], tree[Height]):
     fi:
     bl := tree[Left][Height] - tree[Height]:
     br := tree[Right][Height] - tree[Height]:
     bsum := bl+br:
-    res := append(tree, br/bsum*tree[Left][-1]+bl/bsum*tree[Right][-1]):
+    res := append(tree, [br/bsum*tree[Left][-1,1]+bl/bsum*tree[Right][-1,1], |tree[Height]-height|]):
 end:
 
 ComputeTargetGCContent := proc(tf)
@@ -157,36 +157,68 @@ ComputeTargetGCContent := proc(tf)
 end:
 
 PerformNewGCTarget := proc(orgsource, evolTime, tf)
-    global curTargetFreqs:
+    global curTargetFreqs, prevTargetFreqs:
     printf('New GC content target in organism %d at time %g\n', 
            orgsource, evolTime):
+    prevTargetFreqs[orgsource] := curTargetFreqs[orgsource]:
     curTargetFreqs[orgsource] := tf:
+    #printf('org: %d\nprev: %A\ncur: %A\n', orgsource, prevTargetFreqs[orgsource], curTargetFreqs[orgsource]):
 end:
 
 # generates a CodonMatrix for GC amelioration (by adrian schneider)
 # adapted by daniel dalquen to compute a CodonMatrix based on a target
 # GC content (the bias for the matrix is computed from the target content
 # using a polynomial fit over the empirical convergence values)
-GCBiasMatrix := proc(lnM1:matrix, oldFreqs:list, newFreqs:list)
-    ratio := CreateArray(1..length(newFreqs),1..length(newFreqs),0):
-    for i to length(newFreqs) do
-        if oldFreqs[i] = 0 then
-            ratio[i,i] := newFreqs[i]:
-        else
-            ratio[i,i] := newFreqs[i]/oldFreqs[i]
-        fi
-    od:
-    if length(lnM1) > length(newFreqs) then
-        newQ := CreateArray(1..length(newFreqs),1..length(newFreqs), 0):
-        for i to length(newFreqs) do for j to length(newFreqs) do
-            newQ[i,j] := lnM1[i,j]
-        od od:
+GCBiasMatrix := proc(lnM1:matrix, oldFreqs:list, newFreqs:list, prevFreqs:list, blen:nonnegative)
+    global gcMethod:
+    if gcMethod = 'strict' then
+        error('not implemented yet!'):
+        oldF := CreateArray(1..length(oldFreqs), 1..length(oldFreqs),0):
+        p0 := CreateArray(1..length(prevFreqs), 1..length(prevFreqs),0):
+        pt := CreateArray(1..length(newFreqs), 1..length(newFreqs),0):
+        for i to length(oldFreqs) do
+            oldF[i,i] := oldFreqs[i]:
+            p0[i,i] := prevFreqs[i]:
+            pt[i,i] := newFreqs[i]:
+        od:
+        S := lnM1*(oldF^(-1)):
+        p := (log(pt)-log(p0))/blen*S^(-1):
+        print(p):
+        newQ := p*S:
     else
-        newQ := copy(lnM1):
+        ratio := CreateArray(1..length(newFreqs),1..length(newFreqs),0):
+        for i to length(newFreqs) do
+            if oldFreqs[i] = 0 then
+                ratio[i,i] := newFreqs[i]:
+            else
+                ratio[i,i] := newFreqs[i]/oldFreqs[i]
+            fi
+        od:
+        if length(lnM1) > length(newFreqs) then
+            newQ := CreateArray(1..length(newFreqs),1..length(newFreqs), 0):
+            for i to length(newFreqs) do for j to length(newFreqs) do
+                newQ[i,j] := lnM1[i,j]
+            od od:
+        else
+            newQ := copy(lnM1):
+        fi:
+        for i to length(newQ) do newQ[i,i] := 0 od:
+        newQ := ratio * newQ:
+        qsum := sum(newQ):
+        for i to length(newQ) do newQ[i,i] := -qsum[i] od:
     fi:
-    for i to length(newQ) do newQ[i,i] := 0 od:
-    newQ := ratio * newQ:
-    qsum := sum(newQ):
-    for i to length(newQ) do newQ[i,i] := -qsum[i] od:
     newQ
+end:
+
+
+# calculates the GC content for the genome of a given organism, 15.12.06
+calGCcont := proc(org)
+    sumGC := 0;
+    for i to length(org) do
+        if substModels[org[i,9]][Type] <> 'aa' and length(org[i,6]) > 0 then
+            cont := BaseCount(org[i, 6]);
+            sumGC := sumGC + ((cont[2] + cont[3]) / sum(cont[1..4]));
+        fi:
+    od;
+    return (sumGC / length(org) * 100);
 end:

@@ -132,6 +132,9 @@ fi:
 if not assigned(writeLog) then
     writeLog := true:
 fi:
+if not assigned(logGCContent) then
+    logGCContent := false:
+fi:
 if not assigned(DawgPlacement) then
     DawgPlacement := true:
 fi:
@@ -258,7 +261,8 @@ if enableGCAmelioration then
         error('Please supply either one set of target frequencies for all '.
               'models together or for each model separately.'):
     fi:
-    tree := GenInternalTargetFreqs(targetFreqs, tree):
+    tree := GenInternalTargetFreqs(targetFreqs, tree, 0):
+    prevTargetFreqs := CreateArray(1..NSpecies, 0):
     curTargetFreqs := CreateArray(1..NSpecies, tree[-1]):
 fi:
 
@@ -288,6 +292,8 @@ od:
 for i to length(timePts) do
     timePts[i,1] := atoi(timePts[i,1]):
 od:
+
+#print(timePts):
 
 tptransp := transpose(timePts):
 specTime := tptransp[2]:
@@ -515,8 +521,8 @@ else
             fi:
             if substModel[Type] <> 'aa' then
                 if enableGCAmelioration then
-                    nOfGCTargets := length(curTargetFreqs[1]):
-                    bf := curTargetFreqs[1][min(nOfGCTargets, 
+                    nOfGCTargets := length(curTargetFreqs[1,1]):
+                    bf := curTargetFreqs[1,1][min(nOfGCTargets, 
                                                 modelAssignments[i])]:
                 else
                     bf := substModel[BaseFreqs]:
@@ -640,7 +646,7 @@ for i to length(branches) do
     if enableGCAmelioration then
         curInd := floor(curT/10)+1:
         events[curInd] := append(events[curInd], 
-                                 [curT, branches[i,1], 'GC', branches[i, 4]]):
+                                 [curT, branches[i,1], 'GC', branches[i, 4], branches[i,3]]):
     fi:    
     
     if totalRate > 0 then
@@ -892,12 +898,18 @@ if enableGCAmelioration then
     printf('\norganism #\ttarget GC content\tactual GC content\n'); 
     for i to NSpecies do
         printf('\norganism %i\t', i):
-        for j to length(curTargetFreqs[i]) do
-            printf('%.2g\t\t', ComputeTargetGCContent(curTargetFreqs[i,j])):
-            if j < length(curTargetFreqs[i]) then printf(', ') fi
+        for j to length(curTargetFreqs[i,1]) do
+            printf('%.2g\t\t', ComputeTargetGCContent(curTargetFreqs[i,1,j])):
+            if j < length(curTargetFreqs[i,1]) then printf(', ') fi
         od:
         printf('%.2g', calGCcont(evolution[i])); 
     od;
+elif logGCContent then
+    print('\nGC content:'):
+    print('\norganism #\tGC content\n'):
+    for i to NSpecies do
+        printf('\norganism %d\t%.2g\n', i, calGCcont(evolution[i])):
+    od:
 fi:
 if writeLog then
     OpenWriting(previous);
