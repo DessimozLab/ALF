@@ -1,0 +1,292 @@
+\documentclass[11pt]{article}
+\usepackage{bibentry}
+\usepackage{url}
+\begin{document}
+\bibliographystyle{plain}
+\nobibliography{manual.bib}
+
+\title{ALF User Manual}
+\author{Daniel A. Dalquen}
+\maketitle
+
+\section{Getting Started}
+\subsection{Obtaining ALF}
+ALF is available as a web service as well as a stand-alone version. Both are available at \url{http://www.cbrg.ethz.ch/alf}. The web service can be used to run simulations directly or to generate parameter files for the stand-alone version. I recommend using the web service only for small simulations. If you want to be notified when new releases are available, you can register with your email address, when you download the stand-alone version.
+
+\subsection{Installing the stand-alone version}
+When you have download and unpack the stand-alone version of ALF, the following
+files and directories are created:
+
+\begin{description}
+\item[\texttt{install.sh}] \hfill \\
+install script (instructions below)
+\item[\texttt{bin/}] \hfill \\
+       - binaries of the darwin engine for Mac OS X and Linux\hfill \\
+	   - starter scripts for darwin and ALF
+\item[\texttt{lib/}] \hfill \\
+       - the darwin library\hfill \\
+	   - the entire ALF source code is located in lib/simulator
+\item[\texttt{params/}] \hfill \\
+sample parameter sets to reproduce some of the results from the publication
+\end{description}
+
+ALF can be started directly from this directory (see section \ref{sec.run}), but it will probably be more convenient to install the software, because that will allow you to start ALF directly from any directory.
+
+To install ALF on your system, run the script install.sh. By default, binary and script files will be copied to \texttt{/usr/local/bin} and the \texttt{lib} directory will be copied to \texttt{/usr/local/share/alfdarwin} (this will require super user privileges). If you wish to install ALF in a different location, pass the path to that location as parameter to \texttt{install.sh}. For example, if you want to install ALF in your home directory, use
+\begin{quote}
+\texttt{./install.sh /path/to/home}.
+\end{quote}
+This will create the directories \texttt{bin/} and \texttt{share/alfdarwin/} in your home directory, if they don't exist already.
+
+\subsection{Running Simulations}
+\label{sec.run}
+If you did not install ALF, run it with the following command:
+\begin{quote}
+\begin{verbatim}
+bin/alfsim [path to parameter file]
+\end{verbatim}
+\end{quote}
+If you did install ALF and the script is on your PATH, then this reduces to
+\begin{quote}
+\begin{verbatim}
+alfsim [path to parameter file]
+\end{verbatim}
+\end{quote}
+
+When no paramater file is given, ALF will look for the file parameters.drw in
+the current working directory. Section \ref{sec.params} lists and explains all available parameters.
+
+\subsection{Citing ALF}
+If you use ALF in your research, please cite:
+\begin{quote}
+\bibentry{Dalquen2011}
+\end{quote}
+
+\subsection{Contact information}
+If you have a question or want to report a bug, please send
+me an email to \url{ddalquen@inf.ethz.ch}. 
+
+
+\section{Parameters}
+\label{sec.params}
+Parameters for a simulation are passed in a parameter file that uses the Darwin syntax (see \url{http://www.biorecipes.com/DarwinHelp} for details). For example,
+\begin{quote}
+\texttt{protStart := 200;}
+\end{quote}
+sets the parameter \texttt{protStart} to 200. Note that each assignment is terminated by a semicolon.
+
+Some parameters expect a list (comma-separated values enclosed in square brackets, e.g. \texttt{[2.4, 133.8]}) or a set (comma-separated values in curly brackets, e.g. \texttt{\{0, 1, 2.5\}}).
+
+Strings are enclosed in single quotes, e.g. \texttt{'a string'}.
+
+Finally, comments start with the number sign (\verb|#|).
+
+
+%#SetRand(12345): # use this with any number, if you want reproducable results
+%
+\subsection{Root Genome}
+%protStart := 200;      # number of proteins first organism have
+%gammaLengthDist := [2.4, 133.8]; # parameters for the gene length distribution (~Gamma(k, theta))
+%minGeneLength := 10; # minimum length of a gene
+
+\subsection{Substitution Models}
+%## model definition
+%# available models: nucleotide substitution: F84, GTR, HKY, TN93
+%#                   codon substitution: CPAM, ECM, ECMu, M0, M2, M3, M8, CustomC
+%#                   aa substitution: GCB, JTT, LG, WAG, CustomP
+%#
+%# format: SubstitutionModel(name:string, parameters:list, frequencies:list, neutralDNA:boolean)
+%#     the number of arguments required depend on the model:
+%#     models CPAM, ECM, ECMu, GCB, JTT, WAG and LG require just the name of the model
+%#     when using a custom matrix, pass the path to the matrix file as parameter
+%#     for M-series models, pass also the codon frequencies
+%#     finally, for nucleotide models specify as fourth parameter whether non-sense mutations should be allowed
+%#
+%# order of parameters:
+%#     for custom empirical models: parameters[1] should contain a path to a matrix in PAML format
+%#     for M-series models:   kappa = parameters[1]
+%#                            omega = parameters[2] (single value or list)
+%#                            P     = parameters[3] (probabilities of w-class[es]) 
+%#                            p     = parameters[4] (for M8, 1st parameter of beta distribution)
+%#                            q     = parameters[5] (for M8, 2nd parameter of beta distribution)
+%#     for nucleotide models: GTR: a..f  = parameters[1]..parameters[6]
+%#                            HKY: alpha = parameters[1], beta = parameters[2]
+%#                            F84: kappa = parameters[1], beta = parameters[2]
+%#                            TN93: alpha1 = parameters[1], alpha2 = parameters[2], beta = parameters[3]
+%substModels := [
+%SubstitutionModel('CPAM'),
+%SubstitutionModel('TN93', [.3, .4, .7], [seq(0.25,4)], true),
+%#SubstitutionModel('M8', [0.7, 0.5, 0.2, 0.269, 4.669], [seq(1/64,64)]),
+%#SubstitutionModel('M2', [0.7, 1, [0.4, 0.6]], [seq(1/64,64)]),
+%#SubstitutionModel('M2', [0.7, 1.2, [0.4, 0.4]], [seq(1/64,64)]),
+%#SubstitutionModel('WAG'),
+%NULL
+%]:
+%
+%## model selection
+%# supply an array of frequencies of models 1..n defined above for random assignment
+%# supply an array of of length protStart with model assignments for each initial gene
+%#modelAssignments := [1]:
+%modelAssignments := [0.75, 0.25]:
+%#modelAssignments := [0.25, 0.5, 0.25]:
+%## model switch
+%# matrix with probabilitis of switch from model i to model j after speciation/duplication
+%# a switch is not possible between  M-series and non M-series models
+%#modelSwitchS := [[1]]:
+%#modelSwitchD := [[1]]:
+%modelSwitchS := [[1,0],[0,1]]:
+%modelSwitchD := [[1,0],[0,1]]:
+%#modelSwitchS := [[1,0,0],[0,1,0],[0,0,1]]:
+%#modelSwitchD := [[1,0,0],[0,1,0],[0,0,1]]:
+%# when no substitution model is given (pure gap simulation), select block size for gaps
+%blocksize := 3:
+%###
+
+\subsection{Gap Model}
+%indelModel := 'ZIPF';         # ZIPF, NEGBIN, QG, EXP, CUSTOM
+%indelVector := []:          # define a custom indel distribution here
+% Z_c := 1.821:             # exponent of Zipfian distribution
+% QG_c := 300:              # c parameter for generalized Qian-Goldstein model in PAM (see Pang et al. BMC Bioinformatics, 6:235 2005)
+%# QG_t := 50:              # c parameter for generalized Qian-Goldstein model in PAM (see Pang et al. BMC Bioinformatics, 6:235 2005)
+% #NB_r := 1:                # r parameter for negative binomial model (must be positive integer)
+% #NB_q := 2/3:              # q parameter for negative binomial model (0 < q < 1):
+% E_p := 0.333:                # proportion for geometric distribution with mean 1/E_p
+%###
+%aaGainRate := 0.00005;       # rate that a gene gains 1 aa, p for single genes
+%aaLossRate := 0.00005;       # rate that a gene loses 1 aa, p for single genes
+%maxIndelLength := 50;   # maximal length of indels
+%delsAcrossDomains := false: # for simulations with custom or Poisson amongSiteDistr, allow deletions accross boundaries of domains
+
+\subsection{GC Content Amelioration}
+%targetFreqs := ['Random']: # creates random target frequencies for all leaf species (overrides frequencies supplied in substitution model above)
+%# If you want to have specific target frequencies per species and substitution model, give an array with the following structure:
+%# targetFeqs := [freqs_for_subst_model_1, freqs_for_subst_model_2, ...] with
+%# freqs_for_subst_model_i = [['species_name_1, [list_of_frequencies_1]], ['species_name_2, [list_of_frequencies_2]], ...]
+%# example for a simulation with 4 species using a nucleotide model:
+%# targetFreqs := [[['S1',[0.15, 0.35, 0.3, 0.2]],
+%#                 ['S2',[0.2, 0.25, 0.3, 0.25]],
+%#                 ['S3',[0.25, 0.2, 0.25, 0.3]],
+%#                 ['S4',[0.35, 0.15, 0.2, 0.3]]]]:
+%
+
+\subsection{Tree Parameters}
+%treeType := 'BDTree':       # BDTree, ToLSample, Custom
+%scaleTree := false:          # scale tree to match Pam distance defined below (parameter mutRate)
+%birthRate := 0.01:            # b parameter (for BDTree)
+%deathRate := 0.001:           # d parameter (for BDTree)
+%NSpecies := 15:            # number of species in the tree (for BD and ToL)
+%ultrametric := false:     # for BDTree: should resulting tree be ultrametric
+%
+%treeFile := 'tree.drw': # path to tree file with tree in darwin or Newick format OR a darwin tree structure
+%# unitIsPam := true:   # set to false if branch lengths are in substitutions per site, set rate parameters accordingly.
+%###
+%
+%
+%# probabilities and evolution parameters
+%mutRate := 100;        # PAM distance from origin to recent species (for random trees)
+
+\subsection{Rate Variation}
+%amongGeneDistr := 'Gamma': # distribution of rates among genes. Use 'None' for no variation or 'Custom'
+%                           # for using custom rates from file stored at aGPath.
+%aGAlpha := 1:              # Shape parameter of among gene distribution. The mean is always moved to 1
+%                           # in order to keep the mean branch length.
+%aGPath := 'realseed/customRates.drw': # path to file with custom rates (see example file, only for custom root sequences)
+%amongSiteDistr := 'None'; # distribution of rates (Gamma or Poisson)
+%                             # 'Poisson' generates a random number of domains (at most areas) per
+%                             # gene with rates drawn from a Poisson distribution around the mean
+%                             # rate (given by mutRate). motifFreq defines the fraction of domains
+%                             # with mutation rate 0 (motif).
+%                             # 'Gamma' uses gamma rates. The number of bins is defined by the areas
+%                             # parameter. Additionally, motifs occur with frequency motifFreq.
+%                             # If user-defined rates are given, this option is ignored.
+%                             # For M-series models this option is ignored and replaced with the classes of the model
+%areas := 5;                  # maximal number of areas with different mutRate within a gene
+%motifFreq := 0.01:           # rate for of invariable sites
+%alphaG := 1;                 # alpha parameter of gamma function
+
+\subsection{Gene Duplication and Loss}
+%geneDuplRate := 0.0005;    # rate that gene duplication occurs
+%  transDupl := 0.5;     # ratio of tranlocation after duplication
+%  numberDupl := 5;     # maximal number of genes involved in one duplication
+%  fissionDupl := 0;   # rate of fission after duplication of a single gene
+%  fusionDupl := 0;    # rate of fusion of two genes after duplication
+%## duplicate evolves as pseudogene  (permanent rate change for duplicate)
+%  P_pseudogene := 0: # probability of duplicate becoming a pseudogene
+%  ratefac_pseudogene := 0.9: # rate change factor 
+%## duplicate evolves under neofunctionalization (temporary rate change for duplicate)
+%  P_neofunc := 0:          # probability of duplicate undergoing neofunctionalization
+%  ratefac_neofunc := 1.5:    # rate change factor
+%  life_neofunc := 10:        # life of increased rate (time to normalization of rate)
+%## both copies evolving by subfunctionalization (temporary rate change for original and duplicate)
+%  P_subfunc := 0:           # probability of both genes undergoing subfunctionalization
+%  ratefac_subfunc := 1.2:     # rate change factor
+%  life_subfunc := 10:         # life of rate change (time to normalization of rate)
+%  
+%geneLossRate := 0.0005;    # rate that gene loss occurs
+%  numberLoss := 5:    # maximal number of genes involved in one duplication
+%
+\subsection{Lateral Gene Transfer}
+%lgtRate := 0.0005;         # rate that single lateral gene transfer occurs
+%  orthRep := 0;       # how much of the transfer will be orthologous
+%                       # replacement (rest is novel gene acquisition)
+%lgtGRate := 0.00005;	       # rate that lateral gene transfer of groups occurs
+%  lgtGSize := 10;      # number of genes which are transferred in one go
+
+\subsection{Genome Rearrangement}  
+%invers := 0.00;	       # rate that gene inversion occurs
+%  invSize := 1;        # number of genes which are inversed in one go
+%transloc := 0.00;	       # rate that gene translocation occurs
+%  transSize := 1;      # number of genes which are translocated in one go
+%invtrans := 0.10;	       # rate that inversed translocation occurs
+
+\subsection{Gene Fusion and Fission}
+%fissionRate := 0;      # rate of gene fissions without prior duplication
+%fusionRate := 0;       # rate of gene fusions occuring without prior duplication of fused genes
+%  numberFusion := 3:
+%
+%# parameters for additional features
+%realseed := false;     # real genome db as first organism
+%realorganism := 'realseed/se_ECOLI_core.db';
+%specialAreas := false; # user defined domains
+%areaPath := 'realseed/areaSet.drw';
+%
+
+\subsection{Output}
+The following parameters define what output is generated and where it is stored. ALF will always generate a species tree, that reflects the ancestry of the simulated species, and the set of genomes of the species at the leaves of that tree.
+
+\begin{itemize}
+\item{\texttt{simOutput}} \hfill \\
+A set of output files and formats. If this variable is not defined, all outputs are generated. Possible values include:
+\begin{description}
+\item{\texttt{'GeneTrees'}}\hfill \\
+all gene trees
+\item{\texttt{'Ancestral'}}\hfill \\
+output ancestral genomes
+\item{\texttt{'MSA'}}\hfill \\
+MSAs of all related sequences
+\item{\texttt{'VP'}}\hfill \\
+pairwise evolutionary relationships (ortho/para/xenologs)
+\item{\texttt{'DarwinTree'}}\hfill \\
+output trees in Darwin format
+\item{\texttt{'Newick'}}\hfill \\
+output trees in Newick format (default)
+\item{\texttt{'DarwinDB'}}\hfill \\
+output genomes as Darwin databases
+\item{\texttt{'Fasta'}}\hfill \\
+output genomes as Fasta files (default)
+\end{description}
+
+\noindent \textbf{Example} (creates species tree in Darwin format, MSAs of all gene families, and Darwin databases for all ancestral and leaf species):
+\begin{quote}
+\begin{verbatim}
+simOutput := {'DarwinTree', 'MSA', 'DarwinDB', 'Ancestral'};
+\end{verbatim}
+\end{quote}
+
+\item{\texttt{wdir}} \hfill \\
+A string specifying the working directory, i.e. the directory where simulation results are stored. current working directory by default, can also be set as argument of alfsim
+
+\item{\texttt{mname}} \hfill \\
+A string specifying the name of the simulation. ALF will create a directory of that name in the working directory containing all result files.
+\end{itemize}
+\end{document}
