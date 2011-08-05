@@ -5,7 +5,7 @@ module external AAMutateGamma;
 # for each site.                                             #
 # DD 6 Feb. 2009                                             #
 ##############################################################
-AAMutateGamma := proc(seq1:string, Pam:list(positive), classes:array(posint))
+AAMutateGamma := proc(seq1:string, Pam:list(nonnegative), classes:array(posint))
 if not assigned(logPAM1) then
     error('logPAM1 is not assigned. Use CreateDayMatrices().')
 fi;
@@ -18,7 +18,7 @@ fi;
 #            tmp[i]:=tmp[i]+tmp[i-1];
 #        od;
 #        MP[j]:=transpose(tmp);
-        MP[j] := remember(GetMatrix(Pam[j], logPAM1)):
+        MP[j] := remember(GetMatrix(max(1/DBL_MAX, Pam[j]), logPAM1)):
     od:
 #    for i to length(MP) do print(MP[i]): lprint() od:
 #    error('what''s wrong with this?'):

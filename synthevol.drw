@@ -144,11 +144,16 @@ if not assigned(simOutput) then
 fi:
 
 if simOutput intersect {'DarwinDB', 'Fasta'} = {} then
-    error('No output format for sequence databases selected'.
-          ' (DarwinDB and/or Fasta)!'):
+#    error('No output format for sequence databases selected'.
+#          ' (DarwinDB and/or Fasta)!'):
+    print('No output format for sequence databases specified.'.
+          'Using Fasta.'):
+          simOutput := append(simOutput, 'Fasta'):
 fi:
 if simOutput intersect {'DarwinTree', 'Newick'} = {} then
-    error('No output format for trees selected (DarwinTree or Newick)!'):
+#    error('No output format for trees selected (DarwinTree or Newick)!'):
+    print('No output format for trees specified. Using Newick.'):
+          simOutput := append(simOutput, 'Newick'):
 fi:
 if not assigned(dbAncdir) and simOutput intersect {'Ancestral'} <> {} then
     dbAncdir := 'DBancestral/':
@@ -408,7 +413,8 @@ if realseed = true then # generates the first organism with real data
             next
         fi:
         dnaseq := ReplaceString('U','T',SearchTag('DNA', Entry(i)));
-        if length(SearchAllString('R',dnaseq)) > 0 or
+        if substModels[modelAssignments[i], Type] <> 'aa' and
+           (length(SearchAllString('R',dnaseq)) > 0 or
            length(SearchAllString('Y',dnaseq)) > 0 or
            length(SearchAllString('S',dnaseq)) > 0 or
            length(SearchAllString('W',dnaseq)) > 0 or
@@ -419,7 +425,7 @@ if realseed = true then # generates the first organism with real data
            length(SearchAllString('H',dnaseq)) > 0 or
            length(SearchAllString('V',dnaseq)) > 0 or
            length(SearchAllString('N',dnaseq)) > 0 or
-           length(SearchAllString('X',dnaseq)) > 0 then 
+           length(SearchAllString('X',dnaseq)) > 0) then 
             remArr := append(remArr, i): 
             next
         fi:
@@ -482,7 +488,7 @@ if realseed = true then # generates the first organism with real data
         evolution[1, i, 9] := modelAssignments[i]:
         evolution[1, i, 10] := []:
         if amongGeneDistr = 'Gamma' then
-            evolution[1,i,10] := [[mutRate, Rand(GammaDist(aGAlpha))/aGAlpha]]:
+            evolution[1,i,10] := [[mutRate, max(1/DBL_MAX, Rand(GammaDist(aGAlpha))/aGAlpha)]]:
         elif amongGeneDistr = 'Custom' then
             evolution[1, i, 10] := [[mutRate, customRates[i]]]:            
         fi:
