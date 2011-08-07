@@ -85,77 +85,162 @@ Finally, comments start with the number sign (\verb|#|).
 %#SetRand(12345): # use this with any number, if you want reproducable results
 %
 \subsection{Root Genome}
-%protStart := 200;      # number of proteins first organism have
-%gammaLengthDist := [2.4, 133.8]; # parameters for the gene length distribution (~Gamma(k, theta))
-%minGeneLength := 10; # minimum length of a gene
+\begin{itemize}
+\item{\texttt{realorganism}} \hfill \\
+ A string specifying the path to the Darwin DB with the sequence data. Use the ALF web interface to convert Fasta files into the Darwin DB format.
+
+Example:
+\begin{quote}
+\begin{verbatim}
+realorganism := 'realseed/se_ECOLI_core.db';
+\end{verbatim}
+\end{quote}
+\item{\texttt{areaPath}} \hfill \\
+\[TODO\]
+\item{\texttt{protStart}} \hfill \\
+The number of sequences that the first organism should have (only if the root genome is generated).
+\item{\texttt{gammaLengthDist}} \hfill \\
+List of parameters for the length distribution of the generated sequences ($\sim\Gamma(k,\theta)$). 
+
+Example:
+\begin{quote}
+\begin{verbatim}
+gammaLengthDist := [2.4, 133.8];
+\end{verbatim}
+\end{quote}
+If lengths of all sequences should be identical, set $k=\theta=1$ and specify the desired length with \texttt{minGeneLength}.
+
+\item{\texttt{minGeneLength}} \hfill \\
+Minimum length of a gene.
+\end{itemize}
 
 \subsection{Substitution Models}
-%## model definition
-%# available models: nucleotide substitution: F84, GTR, HKY, TN93
-%#                   codon substitution: CPAM, ECM, ECMu, M0, M2, M3, M8, CustomC
-%#                   aa substitution: GCB, JTT, LG, WAG, CustomP
-%#
-%# format: SubstitutionModel(name:string, parameters:list, frequencies:list, neutralDNA:boolean)
-%#     the number of arguments required depend on the model:
-%#     models CPAM, ECM, ECMu, GCB, JTT, WAG and LG require just the name of the model
-%#     when using a custom matrix, pass the path to the matrix file as parameter
-%#     for M-series models, pass also the codon frequencies
-%#     finally, for nucleotide models specify as fourth parameter whether non-sense mutations should be allowed
-%#
-%# order of parameters:
-%#     for custom empirical models: parameters[1] should contain a path to a matrix in PAML format
-%#     for M-series models:   kappa = parameters[1]
-%#                            omega = parameters[2] (single value or list)
-%#                            P     = parameters[3] (probabilities of w-class[es]) 
-%#                            p     = parameters[4] (for M8, 1st parameter of beta distribution)
-%#                            q     = parameters[5] (for M8, 2nd parameter of beta distribution)
-%#     for nucleotide models: GTR: a..f  = parameters[1]..parameters[6]
-%#                            HKY: alpha = parameters[1], beta = parameters[2]
-%#                            F84: kappa = parameters[1], beta = parameters[2]
-%#                            TN93: alpha1 = parameters[1], alpha2 = parameters[2], beta = parameters[3]
-%substModels := [
-%SubstitutionModel('CPAM'),
-%SubstitutionModel('TN93', [.3, .4, .7], [seq(0.25,4)], true),
-%#SubstitutionModel('M8', [0.7, 0.5, 0.2, 0.269, 4.669], [seq(1/64,64)]),
-%#SubstitutionModel('M2', [0.7, 1, [0.4, 0.6]], [seq(1/64,64)]),
-%#SubstitutionModel('M2', [0.7, 1.2, [0.4, 0.4]], [seq(1/64,64)]),
-%#SubstitutionModel('WAG'),
-%NULL
-%]:
-%
-%## model selection
-%# supply an array of frequencies of models 1..n defined above for random assignment
-%# supply an array of of length protStart with model assignments for each initial gene
-%#modelAssignments := [1]:
-%modelAssignments := [0.75, 0.25]:
-%#modelAssignments := [0.25, 0.5, 0.25]:
-%## model switch
-%# matrix with probabilitis of switch from model i to model j after speciation/duplication
-%# a switch is not possible between  M-series and non M-series models
-%#modelSwitchS := [[1]]:
-%#modelSwitchD := [[1]]:
-%modelSwitchS := [[1,0],[0,1]]:
-%modelSwitchD := [[1,0],[0,1]]:
-%#modelSwitchS := [[1,0,0],[0,1,0],[0,0,1]]:
-%#modelSwitchD := [[1,0,0],[0,1,0],[0,0,1]]:
-%# when no substitution model is given (pure gap simulation), select block size for gaps
-%blocksize := 3:
-%###
+\begin{itemize}
+\item{\texttt{substModels}} \hfill \\
+List of substitution models, where each model definition has the following format:
+\begin{quote}
+\begin{verbatim}
+SubstitutionModel(name:string, parameters:list, 
+                  frequencies:list, neutralDNA:boolean)
+\end{verbatim}
+\end{quote}
+The number of arguments required depend on the model:
+\begin{itemize}
+\item models \texttt{CPAM}, \texttt{ECM}, \texttt{ECMu}, \texttt{GCB}, \texttt{JTT}, \texttt{WAG} and \texttt{LG} require just the name of the model (e.g. \texttt{SubstitutionModel('CPAM')}).
+\item When using a custom matrix (\texttt{CustomC}, \texttt{CustomP}), pass the path to the matrix file as parameter.
+\item For M-series models, pass also the codon frequencies.
+\item Finally, for nucleotide models specify as fourth parameter whether non-sense mutations should be allowed.
+\end{itemize}
+Available models include:
+\begin{description}
+\item{nucleotide substitution} \hfill \\
+\texttt{F84}, \texttt{GTR}, \texttt{HKY}, \texttt{TN93}
+\item{codon substitution} \hfill \\
+\texttt{CPAM}, \texttt{ECM}, \texttt{ECMu}, \texttt{M0}, \texttt{M2}, \texttt{M3}, \texttt{M8}, \texttt{CustomC}
+\item{amino acid substitution} \hfill \\
+\texttt{GCB}, \texttt{JTT}, \texttt{LG}, \texttt{WAG}, \texttt{CustomP}
+\end{description}
+Parameters are ordered as follows
+\begin{description}
+\item{custom empirical models} \hfill \\
+\texttt{parameters[1]} should contain a path to a matrix in PAML format (lower triangular matrix of exchangabilitites, followed by a line with codon/aa frequencies).
+\item{M-series models} \hfill \\
+\texttt{parameters[1]}: $\kappa$ \hfill \\
+\texttt{parameters[2]}: $\omega$ (single value or list) \hfill \\
+\texttt{parameters[3]}: list of probabilities for $\omega$-class[es] \hfill \\
+\texttt{parameters[4]}: for M8, parameter $p$ of beta distribution \hfill \\
+\texttt{parameters[5]}: for M8, parameter $q$ of beta distribution \hfill \\
+\item{nucleotide models} \hfill \\
+\texttt{GTR}:
+\begin{description}
+\item{\texttt{parameters[1]}\ldots\texttt{parameters[6]}} \hfill \\
+$a\ldots f$ \hfill \\
+\end{description}
+\texttt{HKY}:
+\begin{description}
+\item{\texttt{parameters[1]}:} $\alpha$ \hfill \\
+\item{\texttt{parameters[2]}:} $\beta$ \hfill \\
+\end{description}
+\texttt{F84}: \hfill \\
+\begin{description}
+\item{\texttt{parameters[1]:}} $\kappa$ \hfill \\
+\item{\texttt{parameters[2]:}} $\beta$ \hfill \\
+\end{description}
+\texttt{TN93}: \hfill \\
+\begin{description}
+\item{\texttt{parameters[1]:}} $\alpha_{1}$ \hfill \\
+\item{\texttt{parameters[2]:}} $\alpha_{2}$ \hfill \\
+\item{\texttt{parameters[3]:}} $\beta$ \hfill \\
+\end{description}
+\end{description}
+ Example:
+\begin{quote}
+\begin{verbatim}
+substModels := [SubstitutionModel('CPAM'),
+                SubstitutionModel('TN93', [.3, .4, .7],
+                                  [seq(0.25,4)], true)]:
+\end{verbatim}
+\end{quote}
+\item{\texttt{modelAssignments}} \hfill \\
+Parameter concerning selection of substitution model for each sequence of the root genome. Either supply a list of frequencies of models $1\ldots n$ defined above for random assignment or a list of assignments for each sequence of the root genome.
+
+Example:
+\begin{quote}
+\begin{verbatim}
+modelAssignments := [0.75, 0.25];
+\end{verbatim}
+\end{quote}
+\item{\texttt{modelSwitchS}/\texttt{modelSwitchD}} \hfill \\
+A matrix with probabilities for a switch from model $i$ to model $j$ after speciation or duplication, respectively.
+
+Example:
+\begin{quote}
+\begin{verbatim}
+modelSwitchS := [[0.8,0.2],[0,1]];
+modelSwitchD := [[1,0],[0,1]]; # no switch
+\end{verbatim}
+\end{quote}
+\item{\texttt{blocksize}} \hfill \\
+When no substitution model is given (pure gap simulation), select block size for gaps
+\end{itemize}
 
 \subsection{Gap Model}
-%indelModel := 'ZIPF';         # ZIPF, NEGBIN, QG, EXP, CUSTOM
-%indelVector := []:          # define a custom indel distribution here
-% Z_c := 1.821:             # exponent of Zipfian distribution
-% QG_c := 300:              # c parameter for generalized Qian-Goldstein model in PAM (see Pang et al. BMC Bioinformatics, 6:235 2005)
-%# QG_t := 50:              # c parameter for generalized Qian-Goldstein model in PAM (see Pang et al. BMC Bioinformatics, 6:235 2005)
-% #NB_r := 1:                # r parameter for negative binomial model (must be positive integer)
-% #NB_q := 2/3:              # q parameter for negative binomial model (0 < q < 1):
-% E_p := 0.333:                # proportion for geometric distribution with mean 1/E_p
-%###
-%aaGainRate := 0.00005;       # rate that a gene gains 1 aa, p for single genes
-%aaLossRate := 0.00005;       # rate that a gene loses 1 aa, p for single genes
-%maxIndelLength := 50;   # maximal length of indels
-%delsAcrossDomains := false: # for simulations with custom or Poisson amongSiteDistr, allow deletions accross boundaries of domains
+\begin{itemize}
+\item{\texttt{indelModel}} \hfill \\
+ \begin{description}
+\item{\texttt{'ZIPF'}} \hfill \\
+
+\item{\texttt{'NEGBIN'}} \hfill \\
+
+\item{\texttt{'QG'}} \hfill \\
+
+\item{\texttt{'EXP'}} \hfill \\
+
+\item{\texttt{'CUSTOM'}} \hfill \\
+
+\end{description}
+\item{\texttt{indelVector}} \hfill \\
+A list with probabilities defining a custom indel distribution. Should be \texttt{maxIndelLength} elements long.
+\item{\texttt{Z\_c}} \hfill \\
+Exponent of Zipfian distribution
+\item{\texttt{QG\_c}} \hfill \\
+c parameter for generalized Qian-Goldstein model in PAM (see Pang et al. BMC Bioinformatics, 6:235 2005)
+\item{\texttt{QG\_t}} \hfill \\
+c parameter for generalized Qian-Goldstein model in PAM (see Pang et al. BMC Bioinformatics, 6:235 2005)
+\item{\texttt{NB\_r}} \hfill \\
+r parameter for negative binomial model (must be positive integer)
+\item{\texttt{NB\_q}} \hfill \\
+q parameter for negative binomial model (0 < q < 1):
+\item{\texttt{E\_p}} \hfill \\
+proportion for geometric distribution with mean 1/E\_p
+\item{\texttt{maxIndelLength}} \hfill \\
+maximal length of indels
+
+\item{\texttt{aaGainRate}} \hfill \\
+rate that a gene gains 1 aa, p for single genes
+\item{\texttt{aaLossRate}} \hfill \\
+rate that a gene loses 1 aa, p for single genes
+\end{itemize}
 
 \subsection{GC Content Amelioration}
 %targetFreqs := ['Random']: # creates random target frequencies for all leaf species (overrides frequencies supplied in substitution model above)
@@ -243,13 +328,6 @@ Finally, comments start with the number sign (\verb|#|).
 %fissionRate := 0;      # rate of gene fissions without prior duplication
 %fusionRate := 0;       # rate of gene fusions occuring without prior duplication of fused genes
 %  numberFusion := 3:
-%
-%# parameters for additional features
-%realseed := false;     # real genome db as first organism
-%realorganism := 'realseed/se_ECOLI_core.db';
-%specialAreas := false; # user defined domains
-%areaPath := 'realseed/areaSet.drw';
-%
 
 \subsection{Output}
 The following parameters define what output is generated and where it is stored. ALF will always generate a species tree, that reflects the ancestry of the simulated species, and the set of genomes of the species at the leaves of that tree.

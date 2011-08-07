@@ -124,9 +124,9 @@ if not assigned(dbdir) then
     dbdir := 'DB/':
 fi:
 if not assigned(realseed) then
-    realseed := false:
+    realseed :=  assigned(realorganism):
     if not assigned(specialAreas) then
-        specialAreas := false:
+        specialAreas := assigned(areaPath):
     fi:
 fi:
 if not assigned(writeLog) then
