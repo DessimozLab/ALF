@@ -3,7 +3,7 @@
 \usepackage{url}
 \begin{document}
 \bibliographystyle{plain}
-\nobibliography{manual.bib}
+\nobibliography*
 
 \title{ALF User Manual}
 \author{Daniel A. Dalquen}
@@ -79,30 +79,26 @@ Some parameters expect a list (comma-separated values enclosed in square bracket
 
 Strings are enclosed in single quotes, e.g. \texttt{'a string'}.
 
-Finally, comments start with the number sign (\verb|#|).
+Finally, comments start with the number sign (\verb|%|).
 
 
-%#SetRand(12345): # use this with any number, if you want reproducable results
-%
 \subsection{Root Genome}
 \begin{itemize}
 \item{\texttt{realorganism}} \hfill \\
  A string specifying the path to the Darwin DB with the sequence data. Use the ALF web interface to convert Fasta files into the Darwin DB format.
 
-Example:
+\noindent \textbf{Example} (reads sequences from the file \texttt{se\_ECOLI\_core.db} in directory \texttt{realseed}):
 \begin{quote}
 \begin{verbatim}
 realorganism := 'realseed/se_ECOLI_core.db';
 \end{verbatim}
 \end{quote}
-\item{\texttt{areaPath}} \hfill \\
-\[TODO\]
 \item{\texttt{protStart}} \hfill \\
 The number of sequences that the first organism should have (only if the root genome is generated).
 \item{\texttt{gammaLengthDist}} \hfill \\
 List of parameters for the length distribution of the generated sequences ($\sim\Gamma(k,\theta)$). 
 
-Example:
+\noindent \textbf{Example} (lengths will be drawn from $\sim\Gamma(2.4,133.8)$):
 \begin{quote}
 \begin{verbatim}
 gammaLengthDist := [2.4, 133.8];
@@ -128,7 +124,7 @@ The number of arguments required depend on the model:
 \begin{itemize}
 \item models \texttt{CPAM}, \texttt{ECM}, \texttt{ECMu}, \texttt{GCB}, \texttt{JTT}, \texttt{WAG} and \texttt{LG} require just the name of the model (e.g. \texttt{SubstitutionModel('CPAM')}).
 \item When using a custom matrix (\texttt{CustomC}, \texttt{CustomP}), pass the path to the matrix file as parameter.
-\item For M-series models, pass also the codon frequencies.
+\item For M-series models, pass also the codon frequencies (in the order AAA, AAC, AAG, AAT, ACA,\ldots, TTT).
 \item Finally, for nucleotide models specify as fourth parameter whether non-sense mutations should be allowed.
 \end{itemize}
 Available models include:
@@ -151,29 +147,25 @@ Parameters are ordered as follows
 \texttt{parameters[4]}: for M8, parameter $p$ of beta distribution \hfill \\
 \texttt{parameters[5]}: for M8, parameter $q$ of beta distribution \hfill \\
 \item{nucleotide models} \hfill \\
-\texttt{GTR}:
-\begin{description}
-\item{\texttt{parameters[1]}\ldots\texttt{parameters[6]}} \hfill \\
-$a\ldots f$ \hfill \\
-\end{description}
-\texttt{HKY}:
-\begin{description}
-\item{\texttt{parameters[1]}:} $\alpha$ \hfill \\
-\item{\texttt{parameters[2]}:} $\beta$ \hfill \\
-\end{description}
+\texttt{GTR}: \hfill \\
+\texttt{parameters[1]}: $a$\hfill \\
+\vdots \hfill \\
+\texttt{parameters[6]}: $f$\hfill \\
+
+\texttt{HKY}: \hfill \\
+\texttt{parameters[1]}: $\alpha$ \hfill \\
+\texttt{parameters[2]}: $\beta$ \hfill \\
+
 \texttt{F84}: \hfill \\
-\begin{description}
-\item{\texttt{parameters[1]:}} $\kappa$ \hfill \\
-\item{\texttt{parameters[2]:}} $\beta$ \hfill \\
-\end{description}
+\texttt{parameters[1]}: $\kappa$ \hfill \\
+\texttt{parameters[2]}: $\beta$ \hfill \\
+
 \texttt{TN93}: \hfill \\
-\begin{description}
-\item{\texttt{parameters[1]:}} $\alpha_{1}$ \hfill \\
-\item{\texttt{parameters[2]:}} $\alpha_{2}$ \hfill \\
-\item{\texttt{parameters[3]:}} $\beta$ \hfill \\
+\texttt{parameters[1]}: $\alpha_{1}$ \hfill \\
+\texttt{parameters[2]}: $\alpha_{2}$ \hfill \\
+\texttt{parameters[3]}: $\beta$ \hfill \\
 \end{description}
-\end{description}
- Example:
+\noindent \textbf{Example} (defines two substitution models, the CodonPam model for coding sequences and one a TN93 model with $\alpha_{1}=0.3, \alpha_{2}=0.4$ and $\beta=0.7$ and equal base frequencies for non-coding sequences):
 \begin{quote}
 \begin{verbatim}
 substModels := [SubstitutionModel('CPAM'),
@@ -184,20 +176,20 @@ substModels := [SubstitutionModel('CPAM'),
 \item{\texttt{modelAssignments}} \hfill \\
 Parameter concerning selection of substitution model for each sequence of the root genome. Either supply a list of frequencies of models $1\ldots n$ defined above for random assignment or a list of assignments for each sequence of the root genome.
 
-Example:
+\noindent \textbf{Example} (assign $M_{1}$ with probability $0.75$ and $M_{2}$ with probability $0.25$):
 \begin{quote}
 \begin{verbatim}
 modelAssignments := [0.75, 0.25];
 \end{verbatim}
 \end{quote}
 \item{\texttt{modelSwitchS}/\texttt{modelSwitchD}} \hfill \\
-A matrix with probabilities for a switch from model $i$ to model $j$ after speciation or duplication, respectively.
+A matrix with probabilities for a switch from model $M_{i}$ to model $M_{j}$ after speciation or duplication, respectively.
 
-Example:
+\noindent \textbf{Example} (switch from $M_{1}$ to $M_{2}$ with probability $0.2$ during speciation):
 \begin{quote}
 \begin{verbatim}
 modelSwitchS := [[0.8,0.2],[0,1]];
-modelSwitchD := [[1,0],[0,1]]; # no switch
+modelSwitchD := [[1,0],[0,1]]; % no switch
 \end{verbatim}
 \end{quote}
 \item{\texttt{blocksize}} \hfill \\
@@ -209,15 +201,15 @@ When no substitution model is given (pure gap simulation), select block size for
 \item{\texttt{indelModel}} \hfill \\
  \begin{description}
 \item{\texttt{'ZIPF'}} \hfill \\
-
+Use a Zipfian distribution of the form $L^{-Z\_c}$, described in \cite{Chang:2004p3310}.
 \item{\texttt{'NEGBIN'}} \hfill \\
-
+Use a negative binomial distribution $\sim NB(NB\_r, NB\_q)$
 \item{\texttt{'QG'}} \hfill \\
-
+Use the Qian-Goldstein distribution with parameters $QG\_c$ and $QG\_t$, described in \cite{Qian:2001p3863}.
 \item{\texttt{'EXP'}} \hfill \\
-
+Use a geometric distribution with parameter $E\_p$. This corresponds to a negative binomial distribution $\sim NB(1, E\_p)$
 \item{\texttt{'CUSTOM'}} \hfill \\
-
+Use a custom distribution with probabilities from \texttt{indelVector}.
 \end{description}
 \item{\texttt{indelVector}} \hfill \\
 A list with probabilities defining a custom indel distribution. Should be \texttt{maxIndelLength} elements long.
@@ -243,91 +235,179 @@ rate that a gene loses 1 aa, p for single genes
 \end{itemize}
 
 \subsection{GC Content Amelioration}
-%targetFreqs := ['Random']: # creates random target frequencies for all leaf species (overrides frequencies supplied in substitution model above)
-%# If you want to have specific target frequencies per species and substitution model, give an array with the following structure:
-%# targetFeqs := [freqs_for_subst_model_1, freqs_for_subst_model_2, ...] with
-%# freqs_for_subst_model_i = [['species_name_1, [list_of_frequencies_1]], ['species_name_2, [list_of_frequencies_2]], ...]
-%# example for a simulation with 4 species using a nucleotide model:
-%# targetFreqs := [[['S1',[0.15, 0.35, 0.3, 0.2]],
-%#                 ['S2',[0.2, 0.25, 0.3, 0.25]],
-%#                 ['S3',[0.25, 0.2, 0.25, 0.3]],
-%#                 ['S4',[0.35, 0.15, 0.2, 0.3]]]]:
-%
+GC content amelioration can be enabled by setting the variable \texttt{targetFreqs}. There are two possibilities:
+\begin{description}
+\item{\texttt{targetFreqs := ['Random'];}} \hfill \\
+Creates random target frequencies for all leaf species and all models. Overrides frequencies supplied in substitution models.
+
+\item{Use specific frequencies per species and substitution model} \hfill \\
+If you want to have specific target frequencies per species and substitution model, set \texttt{targetFreqs} to an array with the following structure:
+\begin{quote}
+\begin{verbatim}
+targetFeqs := [freqsModel_1, freqsModel_2, ...]
+\end{verbatim}
+\end{quote}
+where
+\begin{quote}
+\begin{verbatim}
+freqsModel_i = [['speciesName_1', [freqList_1]],
+                ['speciesName_2', [freqList_2]], ...]
+\end{verbatim}
+\end{quote}
+
+\noindent \textbf{Example} (Simulation with 4 species using a single nucleotide model):
+\begin{quote}
+\begin{verbatim}
+targetFreqs := [[['S1',[0.15, 0.35, 0.3, 0.2]],
+                 ['S2',[0.2, 0.25, 0.3, 0.25]],
+                 ['S3',[0.25, 0.2, 0.25, 0.3]],
+                 ['S4',[0.35, 0.15, 0.2, 0.3]]]]:
+\end{verbatim}
+\end{quote}
+\end{description}
 
 \subsection{Tree Parameters}
-%treeType := 'BDTree':       # BDTree, ToLSample, Custom
-%scaleTree := false:          # scale tree to match Pam distance defined below (parameter mutRate)
-%birthRate := 0.01:            # b parameter (for BDTree)
-%deathRate := 0.001:           # d parameter (for BDTree)
-%NSpecies := 15:            # number of species in the tree (for BD and ToL)
-%ultrametric := false:     # for BDTree: should resulting tree be ultrametric
-%
-%treeFile := 'tree.drw': # path to tree file with tree in darwin or Newick format OR a darwin tree structure
-%# unitIsPam := true:   # set to false if branch lengths are in substitutions per site, set rate parameters accordingly.
-%###
-%
-%
-%# probabilities and evolution parameters
-%mutRate := 100;        # PAM distance from origin to recent species (for random trees)
+\begin{itemize}
+\item{\texttt{treeType}} \hfill \\
+Method for creating the species tree. Accepts the following values:
+\begin{description}
+\item{\texttt{'BDTree'}} \hfill \\
+Creates a birt-death tree with distance \texttt{mutRate} from origin to leaves, and $\lambda=\tt{birthRate}$ and $\mu=\tt{deathRate}$. Uses the sampling process described by \cite{Gernhard:2008p4607}.
+\item{\texttt{'ToLSample'}} \hfill \\
+Creates a tree by sampling from the tree of life (currently consists of 1038 species derived from OMA)
+\item{\texttt{'Custom'}} \hfill \\
+Use a custom tree defined by \texttt{treeFile}.
+\end{description}
+\item{\texttt{mutRate}} \hfill \\
+Distance from origin to species at the leaves (for random trees)
+\item{\texttt{scaleTree}} \hfill \\
+Set to \texttt{true}, if the distance from root to deepest leaf should be scaled to match \texttt{mutRate} (default \texttt{false}).
+\item{\texttt{birthRate}} \hfill \\
+For \texttt{'BDTree'}: birth rate ($\lambda$)
+\item{\texttt{deathRate}} \hfill \\
+For \texttt{'BDTree'}: death rate ($\mu$)
+\item{\texttt{NSpecies}} \hfill \\
+The number of species in the tree (for \texttt{'BDTree'} and \texttt{'ToLSample'}).
+\item{\texttt{ultrametric}} \hfill \\
+For \texttt{BDTree}: should resulting tree be ultrametric (default \texttt{true}).
+\item{\texttt{treeFile}} \hfill \\
+String with path to tree file with tree in Darwin or Newick format. You can also directly assign a darwin tree structure.
+\item{\texttt{unitIsPam}} \hfill \\
+Set to \texttt{false} if branch lengths are in substitutions per site. Set rate parameters for events accordingly. By default, ALF uses PAM distances.
+\end{itemize}
 
 \subsection{Rate Variation}
-%amongGeneDistr := 'Gamma': # distribution of rates among genes. Use 'None' for no variation or 'Custom'
-%                           # for using custom rates from file stored at aGPath.
-%aGAlpha := 1:              # Shape parameter of among gene distribution. The mean is always moved to 1
-%                           # in order to keep the mean branch length.
-%aGPath := 'realseed/customRates.drw': # path to file with custom rates (see example file, only for custom root sequences)
-%amongSiteDistr := 'None'; # distribution of rates (Gamma or Poisson)
-%                             # 'Poisson' generates a random number of domains (at most areas) per
-%                             # gene with rates drawn from a Poisson distribution around the mean
-%                             # rate (given by mutRate). motifFreq defines the fraction of domains
-%                             # with mutation rate 0 (motif).
-%                             # 'Gamma' uses gamma rates. The number of bins is defined by the areas
-%                             # parameter. Additionally, motifs occur with frequency motifFreq.
-%                             # If user-defined rates are given, this option is ignored.
-%                             # For M-series models this option is ignored and replaced with the classes of the model
-%areas := 5;                  # maximal number of areas with different mutRate within a gene
-%motifFreq := 0.01:           # rate for of invariable sites
-%alphaG := 1;                 # alpha parameter of gamma function
+The parameters in this section control rate variation among sequences and among sites within sequences.
+\begin{itemize}
+\item{\texttt{amongGeneDistr}} \hfill \\
+Distribution of rates among genes. Possible values include:
+\begin{description}
+\item{\texttt{'None'}} \hfill \\
+No variation among genes.
+\item{\texttt{'Gamma'}} \hfill \\
+Draw rate for each sequence from a gamma distribution with shape parameter \texttt{aGAlpha} and average $1$.
+\item{\texttt{'Custom'}} \hfill \\
+Use custom rates from file defined by \texttt{aGPath}.
+\end{description}
+\item{\texttt{aGAlpha}} \hfill \\
+Shape parameter of among gene rate distribution.
+\item{\texttt{aGPath}} \hfill \\
+Path to file with custom rates (see example file, only for custom root sequences)
+\item{\texttt{amongSiteDistr}} \hfill \\
+Distribution of rates among sites. this parameter is ignored for M-series models and when custom rates are used (see \texttt{areaPath}. Possible values include:
+\begin{description}
+\item{\texttt{'None'}} \hfill \\
+No rate variation among sites.
+\item{\texttt{'Gamma'}} \hfill \\ % distribution of rates (Gamma or Poisson)
+Use gamma rates. The number of bins is defined by \texttt{areas}, additionally, motifs occur with frequency \texttt{motifFreq}.
+\item{\texttt{'Poisson'}} \hfill \\
+Generates a random number of domains (at most \texttt{areas}) per gene with rates drawn from a Poisson distribution. \texttt{motifFreq} defines the fraction of domains with mutation rate 0 (motif).
+\end{description}
+
+\item{\texttt{areaPath}} \hfill \\
+\[TODO\]
+\item{\texttt{areas}} \hfill \\
+For \texttt{'Poisson'}: maximum number of areas with different rate within a gene. \hfill \\
+For \texttt{'Gamma'}: number of rate classes. \hfill \\
+\item{\texttt{motifFreq}} \hfill \\
+Proportion of invariable sites (motifs)
+\item{\texttt{alphaG}} \hfill \\
+Shape parameter of gamma distribution for gamma rates among sites.
+\end{itemize}
 
 \subsection{Gene Duplication and Loss}
-%geneDuplRate := 0.0005;    # rate that gene duplication occurs
-%  transDupl := 0.5;     # ratio of tranlocation after duplication
-%  numberDupl := 5;     # maximal number of genes involved in one duplication
-%  fissionDupl := 0;   # rate of fission after duplication of a single gene
-%  fusionDupl := 0;    # rate of fusion of two genes after duplication
-%## duplicate evolves as pseudogene  (permanent rate change for duplicate)
-%  P_pseudogene := 0: # probability of duplicate becoming a pseudogene
-%  ratefac_pseudogene := 0.9: # rate change factor 
-%## duplicate evolves under neofunctionalization (temporary rate change for duplicate)
-%  P_neofunc := 0:          # probability of duplicate undergoing neofunctionalization
-%  ratefac_neofunc := 1.5:    # rate change factor
-%  life_neofunc := 10:        # life of increased rate (time to normalization of rate)
-%## both copies evolving by subfunctionalization (temporary rate change for original and duplicate)
-%  P_subfunc := 0:           # probability of both genes undergoing subfunctionalization
-%  ratefac_subfunc := 1.2:     # rate change factor
-%  life_subfunc := 10:         # life of rate change (time to normalization of rate)
-%  
-%geneLossRate := 0.0005;    # rate that gene loss occurs
-%  numberLoss := 5:    # maximal number of genes involved in one duplication
-%
+The following parameters control gene duplication and gene loss.
+\begin{itemize}
+\item{\texttt{geneDuplRate}} \hfill \\
+Rate of gene duplications (relative to substitutions).
+\item{\texttt{transDupl}} \hfill \\
+Probability of a tranlocation after duplication.
+\item{\texttt{numberDupl}} \hfill \\
+Maximum number of consecutive genes involved in one duplication event.
+\item{\texttt{fissionDupl}} \hfill \\
+Probability of a fission event after the duplication of a single gene.
+\item{\texttt{fusionDupl}} \hfill \\
+Probability of a fusion event after the duplication of two or more genes.
+\item{\texttt{P\_pseudogene}} \hfill \\
+Probability of duplicate becoming a pseudogene (permanent rate change for duplicate).
+\item{\texttt{ratefac\_pseudogene}} \hfill \\
+Factor by which the rate for the pseudogene is modified.
+%%% duplicate evolves under neofunctionalization 
+\item{\texttt{P\_neofunc}} \hfill \\
+Probability of duplicate undergoing neofunctionalization (temporary rate change for duplicate).
+\item{\texttt{ratefac\_neofunc}} \hfill \\
+Factor by which the rate for the duplicate is modified.
+\item{\texttt{life\_neofunc}} \hfill \\
+Life of increased rate (time to normalization of rate, in PAM units or substitutions per site)
+%%% both copies evolving by subfunctionalization 
+\item{\texttt{P\_subfunc}} \hfill \\
+Probability of both copies undergoing subfunctionalization (temporary rate change for original and duplicate)
+\item{\texttt{ratefac\_subfunc}} \hfill \\
+Factor by which the rate for the duplicate is modified.
+\item{\texttt{life\_subfunc}} \hfill \\
+Life of rate change (time to normalization of rate, in PAM units or substitutions per site).
+  
+\item{\texttt{geneLossRate}} \hfill \\
+Rate of gene losses (relative to substitutions)
+\item{\texttt{numberLoss}} \hfill \\
+Maximum number of consecutive genes involved in one loss event.
+\end{itemize}
+
 \subsection{Lateral Gene Transfer}
-%lgtRate := 0.0005;         # rate that single lateral gene transfer occurs
-%  orthRep := 0;       # how much of the transfer will be orthologous
-%                       # replacement (rest is novel gene acquisition)
-%lgtGRate := 0.00005;	       # rate that lateral gene transfer of groups occurs
-%  lgtGSize := 10;      # number of genes which are transferred in one go
+\begin{itemize}
+\item{\texttt{lgtRate}} \hfill \\
+Rate of single lateral gene transfers (relative to substitutions).
+\item{\texttt{orthRep}} \hfill \\
+Proportion of lateral gene transfers that are orthologous replacements (i.e. the transferred gene replaces the orthologous gene in the recipient).
+\item{\texttt{lgtGRate}} \hfill \\
+Rate of lateral transfers of groups of genes.
+\item{\texttt{lgtGSize}} \hfill \\
+Maximum number of genes which can be transferred in one event.
+\end{itemize}
 
 \subsection{Genome Rearrangement}  
-%invers := 0.00;	       # rate that gene inversion occurs
-%  invSize := 1;        # number of genes which are inversed in one go
-%transloc := 0.00;	       # rate that gene translocation occurs
-%  transSize := 1;      # number of genes which are translocated in one go
-%invtrans := 0.10;	       # rate that inversed translocation occurs
+\begin{itemize}
+\item{\texttt{invers}} \hfill \\
+Rate of gene inversions (relative to substitutions).
+\item{\texttt{invSize}} \hfill \\
+Maximum number of genes which are inverted in one inversion event
+\item{\texttt{transloc}} \hfill \\
+Rate of gene translocations (relative to substitutions).
+\item{\texttt{transSize}} \hfill \\
+Maximum number of genes which are translocated in one go
+\item{\texttt{invtrans}} \hfill \\
+Rate of inverted translocations (relative to substitutions).
+\end{itemize}
 
 \subsection{Gene Fusion and Fission}
-%fissionRate := 0;      # rate of gene fissions without prior duplication
-%fusionRate := 0;       # rate of gene fusions occuring without prior duplication of fused genes
-%  numberFusion := 3:
+\begin{itemize}
+\item{\texttt{fissionRate}} \hfill \\
+Rate of gene fissions without prior duplication (relative to substitutions).
+\item{\texttt{fusionRate}} \hfill \\
+Rate of gene fusions without prior duplication of fused genes (relative to substitutions).
+\item{\texttt{numberFusion}} \hfill \\
+ := 3:
+\end{itemize}
 
 \subsection{Output}
 The following parameters define what output is generated and where it is stored. ALF will always generate a species tree, that reflects the ancestry of the simulated species, and the set of genomes of the species at the leaves of that tree.
@@ -367,4 +447,14 @@ A string specifying the working directory, i.e. the directory where simulation r
 \item{\texttt{mname}} \hfill \\
 A string specifying the name of the simulation. ALF will create a directory of that name in the working directory containing all result files.
 \end{itemize}
+
+\subsection{Misc}
+\begin{itemize}
+\item{Initialize random number generator} \hfill \\
+If you are interested in getting reproducible results, put \texttt{SetRand(}$seed$\texttt{);} on the very first line of the parameter file, where $seed$ is an arbitrary integer number.
+\end{itemize}
+
+\bibliographystyle{plain}
+\bibliography{manual.bib}
+
 \end{document}

@@ -114,6 +114,12 @@ fi:
 if not assigned(unitIsPam) then
     unitIsPam := true:
 fi:
+if not assigned(scaleTree) then
+    scaleTree := false:
+fi:
+if not assigned(ultrametric) then
+    ultrametric := true:
+fi:
 if not assigned(webRequest) then
     webRequest := false:
 fi:
@@ -172,6 +178,8 @@ if not unitIsPam then
     fusionRate := fusionRate / 100:
     aaGainRate := aaGainRate / 100:
     aaLossRate := aaLossRate / 100:
+    life_neofunc := life_neofunc * 100:
+    life_subfunc := life_subfunc * 100:
 fi:
 
 
