@@ -1,6 +1,18 @@
 # procedures for Synthetic evolution
 # Daniel Dalquen, Daniel Margadant, Sereina Riniker, CBRG, 2006
 #
+GenerateAssignments := proc(modelProbs, malen)
+    for i from 2 to length(modelProbs) do
+        modelProbs[i] := modelProbs[i-1] + modelProbs[i]:
+    od:
+    modelAssignments := CreateArray(1..malen):
+    for i to malen do
+        modelAssignments[i] := SearchOrderedArray(Rand()*modelProbs[-1], 
+                                                  modelProbs) + 1:
+    od:
+    modelAssignments
+end:
+
 
 ########################################################################
 # procedures for analyses and reports on ALF data
@@ -333,7 +345,7 @@ rand_zipf := proc(a)
 end:
 
 randGapLength := proc(maxLen:nonnegative, 
-                      indelType:{'ZIPF', 'QG', 'NEGBIN', 'EXP', 'CUSTOM'} ; 
+                      indelType:{'ZIPF', 'QG', 'NEGBIN', 'GEOM', 'CUSTOM'} ; 
                       params:list)
     L := 0; s := 0;
     rp := Rand();
@@ -355,8 +367,8 @@ randGapLength := proc(maxLen:nonnegative,
 
     elif indelType = 'QG' then
         # params should have the form [QG_c, QG_t]
-        normFactor := QGNormalizationFactor(maxLen, params[2], params[3]):
-        c := params[2]: t := params[3]:
+        normFactor := QGNormalizationFactor(maxLen, params[1], params[2]):
+        c := params[1]: t := params[2]:
         while s < rp and L < maxLen do
             L := L + 1:
             s := s + (1.027e-2*exp(-L*c/(0.96*t)) + 3.031e-3*exp(-L*c/(3.13*t))
@@ -365,19 +377,19 @@ randGapLength := proc(maxLen:nonnegative,
         od:
     elif indelType = 'NEGBIN' then
         # params should have the form [NB_r, NB_q]
-        if not type(params[4], posint) or 
-           not (type(params[5], nonnegative) and params[5] <= 1) then
+        if not type(params[1], posint) or 
+           not (type(params[2], nonnegative) and params[2] <= 1) then
             print('parameters for negative binomial distribution do '.
                    'not match!'):
         fi:
-        r := params[4]: q := params[5]:
+        r := params[1]: q := params[2]:
         while r > 0 do
             L := L + floor(log(1-Rand())/log(q)):
             r := r - 1:
         od:
         L := L + 1:
-    elif indelType = 'EXP' then
-        L := 1 + Rand(Geometric(params[6])):
+    elif indelType = 'GEOM' then
+        L := 1 + Rand(Geometric(params[1])):
     else
         # param[i] should contain the probability of a gap of length i from 
         # the custom distribution
@@ -387,7 +399,7 @@ randGapLength := proc(maxLen:nonnegative,
         fi:
         while s < rp and L < maxLen do
             L := L + 1:
-            s := s + params[7,L]:
+            s := s + params[1,L]:
         od:
     fi:
     L
@@ -571,8 +583,7 @@ end:
 
 # updates the area borders after a AA gain or loss
 updateBorder := proc(domains: array, dom, value, len, event: string; 
-                     (gamma=false):boolean, areas: nonnegative)
-    global motifFreq;
+                     (gamma=false):boolean, areas:posint, motifFreq:nonnegative)
     doms := domains:
     d := {};
     if event = 'insert' then    
@@ -642,6 +653,7 @@ end:
 
 
 ComputeIndelPos := proc(e, sms, gr)
+    print('deprecated function ComputeIndelPos: please notify the authors!'):
     # calculates sum of all domain/gene probabilities
     indelSum := indelPos := 0;
     for k to length(e) do

@@ -11,7 +11,8 @@
 #                            [6]: dna
 #                            [7]: cluster
 #                            [8]: indels
-#                            [9]: mutModel
+#                            [9,1]: mutModel
+#                            [9,2]: indelModel
 #                           [10]: rateChange
 #                           [11]: lastMutation
 # mutRate = [[domain start, domain end, mutrate], ...] (domains with poisson 
@@ -34,9 +35,9 @@ timesteps := CreateArray(1..1);
 geneR := [];
 c := 0;
 dupsOnLevel := [];
-if specialAreas = true then
-  ReadProgram(areaPath);
-fi;
+#if specialAreas = true then
+#  ReadProgram(areaPath);
+#fi;
 if amongGeneDistr = 'Custom' then
     customRates := parse(ReadRawFile(aGPath)):
 fi:
@@ -78,11 +79,35 @@ fi:
 if not assigned(transloc) then
     transloc := 0:
 fi:
-if not assigned(aaGainRate) then
-    aaGainRate := 0:
-fi:
-if not assigned(aaLossRate) then
-    aaLossRate := 0:
+if not assigned(indelModels) then
+    if not assigned(aaGainRate) and not assigned(aaLossRate) then
+        indelModels := [IndelModel(0)]:
+    else # backwards compatibility
+        if indelModel = 'ZIPF' then
+            p := [Z_c]:
+        elif indelModel = 'EXP' then
+            p := [E_p]:
+        elif indelModel = 'NEGBIN' then
+            p := [NB_r, NB_q]:
+        elif indelModel = 'QG' then
+            p := [QG_c, QG_t]:
+        elif indelModel = 'CUSTOM' then
+            p := [indelVector]:
+        else
+            error('unknown indel model'):
+        fi:
+        if not assigned(aaGainRate) then
+            aaGainRate := 0:
+        fi:
+        if not assigned(aaLossRate) then
+            aaLossRate := 0:
+        fi:
+        indelModels := [IndelModel(aaGainRate, aaLossRate,
+                        If(indelModel='EXP', 'GEOM', indelModel), p,
+                        maxIndelLength)]:
+    fi
+elif indelModels = [] then
+    indelModels := [IndelModel(0)]:
 fi:
 if not assigned(invtrans) then
     invtrans := 0:
@@ -93,8 +118,18 @@ fi:
 if not assigned(fusionRate) then
     fusionRate := 0:
 fi:
-if not assigned(modelAssignments) then
-    modelAssignments := [1]:
+if not assigned(substModelAssignments) then
+    if assigned(modelAssignments) then
+        substModelAssignments := modelAssignments:
+    else
+        substModelAssignments := [1]:
+    fi:
+fi:
+if not assigned(indelModelAssignments) then
+    indelModelAssignments := [1]:
+fi:
+if not assigned(rateVarModelAssignments) then
+    rateVarModelAssignments := [1]:
 fi:
 if not assigned(modelSwitchS) then
     modelSwitchS := [[1]]:
@@ -102,11 +137,17 @@ fi:
 if not assigned(modelSwitchD) then
     modelSwitchD := [[1]]:
 fi:
-if not assigned(amongSiteDistr) then
-    amongSiteDistr := 'None':
-fi:
-if not assigned(motifFreq) then
-    motifFreq := 0:
+if not assigned(rateVarModels) then
+    if not assigned(motifFreq) then
+        motifFreq := 0:
+    fi:
+    if not assigned(amongSiteDistr) or amongSiteDistr = 'None' then
+        rateVarModels := [RateVarModel()]:
+    else # backwards compatibility
+        rateVarModels := [RateVarModel(amongSiteDistr, areas, motifFreq, alphaG)]:
+    fi:
+elif rateVarModels = [] then
+    rateVarModels := [RateVarModel()]:
 fi:
 if not assigned(substModels) then
     substModels := []:
@@ -133,6 +174,9 @@ if not assigned(realseed) then
     realseed :=  assigned(realorganism):
     if not assigned(specialAreas) then
         specialAreas := assigned(areaPath):
+    fi:
+    if specialAreas then
+        areaSet := parse(ReadRawFile(areaPath));
     fi:
 fi:
 if not assigned(writeLog) then
@@ -164,6 +208,38 @@ fi:
 if not assigned(dbAncdir) and simOutput intersect {'Ancestral'} <> {} then
     dbAncdir := 'DBancestral/':
 fi:
+
+if not assigned(seqTypes) then
+    sm := length(substModels):
+    if sm < 2 then
+        if length(indelModels) = length(rateVarModels) then
+            seqTypes := [seq([sm,i,i], i=1..length(indelModels))]:
+        elif length(indelModels) = 1 then
+            seqTypes := [seq([sm,1,i], i=1..length(rateVarModels))]:
+        elif length(rateVarModels) = 1 then
+            seqTypes := [seq([sm,i,1], i=1..length(indelModels))]:
+        else
+            error('number of indel models does not match the number of models for rate variation! '.
+                  'Please specify seqTypes manually.'):
+        fi:
+    else
+        if sm = length(indelModels) and sm = length(rateVarModels) then
+            seqTypes := [seq([i,i,i], i=1..sm)]:
+        elif length(indelModels) = 1 and length(rateVarModels) = 1 then
+            seqTypes := [seq([i,1,1], i=1..sm)]:
+        elif length(indelModels) = 1 and length(rateVarModels) = sm then
+            seqTypes := [seq([i,1,i], i=1..sm)]:
+        elif length(indelModels) = sm and length(rateVarModels) = 1 then
+            seqTypes := [seq([i,i,1], i=1..sm)]:
+        else
+            error('number of substitution models does not match number of indel models and/or '.
+                  'models for rate variationa! Pleas specify seqTypes manually.'):
+        fi:
+    fi:
+fi:
+if not assigned(seqTypeAssignemnts) then
+    seqTypeAssignments := CreateArray(1..length(seqTypes), 1/length(seqTypes)):
+fi:
     
 if not unitIsPam then
     mutRate := muteRate * 100:
@@ -176,8 +252,14 @@ if not unitIsPam then
     invtrans := invtrans / 100:
     fissionRate := fissionRate / 100:
     fusionRate := fusionRate / 100:
-    aaGainRate := aaGainRate / 100:
-    aaLossRate := aaLossRate / 100:
+    indelModelsNew := CreateArray(1..length(indelModels),0):
+    for i to length(indelModels) do
+        IM := indelModels[i]:
+        indelModelsNew[i] := IndelModel(IM['GainRate']/100, IM['LossRate']/100, IM[3..-1]):
+    od:
+    indelModels := indelModelsNew:
+    #aaGainRate := aaGainRate / 100:
+    #aaLossRate := aaLossRate / 100:
     life_neofunc := life_neofunc * 100:
     life_subfunc := life_subfunc * 100:
 fi:
@@ -364,10 +446,10 @@ nextDupIndex := 1:
 cSpecies := length(specTime) + 1:
     
 
-if amongSiteDistr = 'Gamma' then
-    gammaRates := GammaRates(alphaG, areas) / (1-motifFreq):
-    gammaRates := append(gammaRates, 1/DBL_MAX):
-fi:
+#if amongSiteDistr = 'Gamma' then
+#    gammaRates := GammaRates(alphaG, areas) / (1-motifFreq):
+#    gammaRates := append(gammaRates, 1/DBL_MAX):
+#fi:
 
 # assign each gene a substitution model
 if realseed then
@@ -377,19 +459,23 @@ else
     malen := protStart:
 fi:
 if length(substModels) = 0 then
-    modelAssignments := [seq(0, malen)]:
+    substModelAssignments := [seq(0, malen)]:
 elif length(substModels) = 1 then
-    modelAssignments := [seq(1, malen)]:
-elif length(substModels) > 1 and length(modelAssignments) <> malen then
-    modelProbs := modelAssignments:
-    for i from 2 to length(modelProbs) do
-        modelProbs[i] := modelProbs[i-1] + modelProbs[i]:
-    od:
-    modelAssignments := CreateArray(1..malen):
-    for i to malen do
-        modelAssignments[i] := SearchOrderedArray(Rand()*modelProbs[-1], 
-                                                  modelProbs) + 1:
-    od:
+    substModelAssignments := [seq(1, malen)]:
+elif length(substModels) > 1 and length(substModelAssignments) <> malen then
+    substModelAssignments := GenerateAssignments(substModelAssignments, malen):
+fi:
+
+if length(indelModels) = 1 then
+    indelModelAssignments := [seq(1, malen)]:
+elif length(indelModels) > 1 and length(indelModelAssignments) <> malen then
+    indelModelAssignments := GenerateAssignments(indelModelAssignments, malen):
+fi:
+
+if length(rateVarModels) = 1 then
+    rateVarModelAssignments := [seq(1, malen)]:
+elif length(rateVarModels) > 1 and length(rateVarModelAssignments) <> malen then
+    rateVarModelAssignments := GenerateAssignments(rateVarModelAssignments, malen):
 fi:
 
 for i to length(substModels) do
@@ -421,7 +507,7 @@ if realseed = true then # generates the first organism with real data
             next
         fi:
         dnaseq := ReplaceString('U','T',SearchTag('DNA', Entry(i)));
-        if substModels[modelAssignments[i], Type] <> 'aa' and
+        if substModels[substModelAssignments[i], Type] <> 'aa' and
            (length(SearchAllString('R',dnaseq)) > 0 or
            length(SearchAllString('Y',dnaseq)) > 0 or
            length(SearchAllString('S',dnaseq)) > 0 or
@@ -437,44 +523,46 @@ if realseed = true then # generates the first organism with real data
             remArr := append(remArr, i): 
             next
         fi:
-        if substModels[modelAssignments[i], Type] <> 'nuc' or
-           substModels[modelAssignments[i]][Blocksize] = 3 then
+        if substModels[substModelAssignments[i], Type] <> 'nuc' or
+           substModels[substModelAssignments[i]][Blocksize] = 3 then
             while CodonToA(dnaseq[-3..-1]) = '$' do
                 dnaseq := dnaseq[1..-4]: # remove stop codons at end of sequence
             od:
         fi:
         if protseq = 'AAA' or 
-           substModels[modelAssignments[i]][Type] <> 'aa' then
+           substModels[substModelAssignments[i]][Type] <> 'aa' then
             if length(substModels) = 0 then
                 seqLen := length(dnaseq)/blocksize:
             else
                 seqLen := length(dnaseq)
-                                  /substModels[modelAssignments[i]][Blocksize]:
+                                  /substModels[substModelAssignments[i]][Blocksize]:
             fi
         else
             seqLen := length(protseq):
             if length(substModels) > 0 and 
-               substModels[modelAssignments[i]][Blocksize] = 3 then
+               substModels[substModelAssignments[i]][Blocksize] = 3 then
                dnaseq := dnaseq[1..3*seqLen]
             fi:
         fi:
         Naa := Naa + seqLen:
         # switch for real domainfile
-        if (specialAreas = true) then
+        if specialAreas then
             for j to length(areaSet[i]) do
                 areaSet[i, j, 3] := max(areaSet[i, j, 3], 1/DBL_MAX);
             od;
             evolution[1, i, 1] := areaSet[i];
         elif length(substModels) > 0 then
-            substModel := substModels[modelAssignments[i]]:
+            substModel := substModels[substModelAssignments[i]]:
             if substModel[Name] = 'M0' then
                 evolution[1, i, 1] := makeAreasOmega(substModel[Name], seqLen):
             elif substModel[Name][1] = 'M' then
                 evolution[1, i, 1] := makeAreasOmega(substModel[Name], seqLen, 
                                                      substModel[Params][3]):
             else
-                evolution[1, i, 1] := makeAreas(seqLen, areas, mutRate, 
-                                                amongSiteDistr, motifFreq);
+#                evolution[1, i, 1] := makeAreas(seqLen, areas, mutRate, 
+#                                                amongSiteDistr, motifFreq);
+                evolution[1, i, 1] := makeAreas(seqLen, mutRate, 
+                                                rateVarModels[rateVarModelAssignments[i]]);
             fi:
         else
             evolution[1, i, 1] := [[1, seqLen, 1]]:
@@ -484,7 +572,7 @@ if realseed = true then # generates the first organism with real data
         evolution[1, i, 5] := '1';
         evolution[1, i, 6] := dnaseq;
         if protseq = 'AAA' and ((length(substModels) > 0 and 
-           substModels[modelAssignments[i]][Type] <> 'nuc') or 
+           substModels[substModelAssignments[i]][Type] <> 'nuc') or 
            blocksize = 3) then
             print(evolution[1,i,6]):
             evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]):
@@ -493,7 +581,10 @@ if realseed = true then # generates the first organism with real data
         fi:
         evolution[1, i, 7] := i;
         evolution[1, i, 8] := []:
-        evolution[1, i, 9] := modelAssignments[i]:
+        evolution[1, i, 9] := CreateArray(1..3,0):
+        evolution[1, i, 9, 1] := substModelAssignments[i]:
+        evolution[1, i, 9, 2] := indelModelAssignments[i]:
+        evolution[1, i, 9, 3] := rateVarModelAssignments[i]:
         evolution[1, i, 10] := []:
         if amongGeneDistr = 'Gamma' then
             evolution[1,i,10] := [[mutRate, max(1/DBL_MAX, Rand(GammaDist(aGAlpha))/aGAlpha)]]:
@@ -523,21 +614,23 @@ else
                                     * Rand(GammaDist(gammaLengthDist[1]))));
         Naa := Naa + aaStart:
         if length(substModels) > 0 then
-            substModel := substModels[modelAssignments[i]]:
+            substModel := substModels[substModelAssignments[i]]:
             if substModel[Name] = 'M0' then
                 evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart):
             elif substModel[Name][1] = 'M' then
                 evolution[1, i, 1] := makeAreasOmega(substModel[Name], aaStart, 
                                                      substModel[Params][3]):
             else
-                evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, 
-                                                amongSiteDistr, motifFreq);
+#                evolution[1, i, 1] := makeAreas(aaStart, areas, mutRate, 
+#                                                amongSiteDistr, motifFreq);
+                evolution[1, i, 1] := makeAreas(aaStart, mutRate, 
+                                                rateVarModels[rateVarModelAssignments[i]]);
             fi:
             if substModel[Type] <> 'aa' then
                 if enableGCAmelioration then
                     nOfGCTargets := length(curTargetFreqs[1,1]):
                     bf := curTargetFreqs[1,1][min(nOfGCTargets, 
-                                                modelAssignments[i])]:
+                                                substModelAssignments[i])]:
                 else
                     bf := substModel[BaseFreqs]:
                 fi:
@@ -577,7 +670,10 @@ else
         evolution[1, i, 5] := '1';
         evolution[1, i, 7] := i;
         evolution[1, i, 8] := []:
-        evolution[1, i, 9] := modelAssignments[i]:
+        evolution[1, i, 9] := CreateArray(1..3,0):
+        evolution[1, i, 9, 1] := substModelAssignments[i]:
+        evolution[1, i, 9, 2] := indelModelAssignments[i]:
+        evolution[1, i, 9, 3] := rateVarModelAssignments[i]:
         evolution[1, i, 10] := []:
         if amongGeneDistr = 'Gamma' then
             evolution[1,i,10] := [[mutRate, Rand(GammaDist(aGAlpha))/aGAlpha]]:            
@@ -850,7 +946,7 @@ for org to length(leafHeights) do
                                op(evolution[org,g+1..-1])]:
         else
             if length(substModels) > 0 and 
-               substModels[evolution[org,g,9],Blocksize] = 3 then
+               substModels[evolution[org,g,9,1],Blocksize] = 3 then
                 evolution[org,g,2] := ProteinSeq(evolution[org,g,6]);
             fi:
             g := g+1:

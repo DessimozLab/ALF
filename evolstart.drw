@@ -22,6 +22,8 @@ if not assigned(libsLoaded) then
     ReadProgram(SEbasedir.'KHG_Matrix.drw'):
     ReadProgram(SEbasedir.'NucleotideMatrix.drw'):
     ReadProgram(SEbasedir.'SubstitutionModel'):
+    ReadProgram(SEbasedir.'IndelModel'):
+    ReadProgram(SEbasedir.'RateVarModel'):
     ReadProgram(SEbasedir.'SE_DataOutput.drw');
     ReadProgram(SEbasedir.'SE_Rearrangement.drw');
     ReadProgram(SEbasedir.'SE_procedures.drw');

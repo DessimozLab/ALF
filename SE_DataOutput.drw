@@ -34,7 +34,7 @@ DBout := proc()
             if (length(substModels) = 0 and 
                 (blocksize = 3 or evolution[i,j,2] = 'AAA')) or 
                (length(substModels) > 0 and 
-                substModels[evolution[i,j,9]][Type] <> 'aa') then
+                substModels[evolution[i,j,9,1]][Type] <> 'aa') then
                 printf('<DNA>%s</DNA>', evolution[i, j, 6]);
             fi:
             printf('</E>\n'):
@@ -55,8 +55,8 @@ DBoutFASTA := proc()
             if (length(substModels) = 0 and 
                 (blocksize = 3 or evolution[i,j,2] <> 'AAA')) or 
                (length(substModels) > 0 and 
-                (substModels[evolution[i,j,9]][Type] <> 'nuc' or 
-                 not substModels[evolution[i,j,9]][NeutralDNA])) then
+                (substModels[evolution[i,j,9,1]][Type] <> 'nuc' or 
+                 not substModels[evolution[i,j,9,1]][NeutralDNA])) then
                 OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'_aa.fa');
                 printf('>G%a_SE%03d\n%s\n\n', evolution[i, j, 4], i,
                     evolution[i, j, 2]);
@@ -65,7 +65,7 @@ DBoutFASTA := proc()
             if (length(substModels) = 0 and 
                 (blocksize = 3 or evolution[i,j,2] = 'AAA')) or 
                (length(substModels) > 0 and 
-                substModels[evolution[i,j,9]][Type] <> 'aa') then
+                substModels[evolution[i,j,9,1]][Type] <> 'aa') then
                 OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'_dna.fa');
                 printf('>G%a_SE%03d\n%s\n\n', evolution[i, j, 4], i,
                     evolution[i, j, 6]);
@@ -111,7 +111,7 @@ DBoutAnc := proc(organism, parent, child, birth)
             if (length(substModels) = 0 and 
                 (blocksize = 3 or organism[j,2] = 'AAA')) or 
                (length(substModels) > 0 and 
-                substModels[organism[j,9]][Type] <> 'aa') then
+                substModels[organism[j,9,1]][Type] <> 'aa') then
                 printf('<DNA>%s</DNA>', organism[j, 6]);
             fi:
             printf('</E>\n'):
@@ -123,9 +123,9 @@ DBoutAnc := proc(organism, parent, child, birth)
             if (length(substModels) = 0 and 
                 (blocksize = 3 or organism[j,2] <> 'AAA')) or 
                (length(substModels) > 0 and 
-                (substModels[organism[j,9]][Type] <> 'nuc' or 
-                 not substModels[organism[j,9]][NeutralDNA])) then
-                OpenWriting(wdir.dbAncdir.orgname.'_aa.fa'):
+                (substModels[organism[j,9,1]][Type] <> 'nuc' or 
+                 not substModels[organism[j,9,1]][NeutralDNA])) then
+                OpenAppending(wdir.dbAncdir.orgname.'_aa.fa'):
                 printf('>G%a_%s\n%s\n\n', organism[j, 4], orgname,
                     organism[j, 2]);
                 OpenWriting(previous);
@@ -133,8 +133,8 @@ DBoutAnc := proc(organism, parent, child, birth)
             if (length(substModels) = 0 and 
                 (blocksize = 3 or organism[j,2] = 'AAA')) or 
                (length(substModels) > 0 and 
-                substModels[organism[j,9]][Type] <> 'aa') then
-                OpenWriting(wdir.dbAncdir.orgname.'_dna.fa'):
+                substModels[organism[j,9,1]][Type] <> 'aa') then
+                OpenAppending(wdir.dbAncdir.orgname.'_dna.fa'):
                 printf('>G%a_%s\n%s\n\n', organism[j, 4], orgname,
                     organism[j, 6]);
                 OpenWriting(previous);
@@ -155,8 +155,8 @@ CreateRealMSA := proc(cls, evol, tree)
     
     # get type of sequence
     if length(substModels) > 0 then
-        simType := substModels[evol[cls[1,1],cls[1,2], 9]][Type]:
-        blockSize := substModels[evol[cls[1,1],cls[1,2], 9]][Blocksize]:
+        simType := substModels[evol[cls[1,1],cls[1,2], 9,1]][Type]:
+        blockSize := substModels[evol[cls[1,1],cls[1,2], 9,1]][Blocksize]:
     else
         blockSize := blocksize:
         if blocksize = 3 or evol[cls[1,1],cls[1,2],2] = 'AAA' then

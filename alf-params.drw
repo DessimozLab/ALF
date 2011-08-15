@@ -7,8 +7,8 @@
 # or, if you previously installed ALF, simply
 # alfsim
 
-#SetRand(12345): # use this with any number, if you want reproducable results
-SetRandSeed(); # Initialize the random number generator with an arbitrary seed
+SetRand(2345): # use this with any number, if you want reproducable results
+#SetRandSeed(); # Initialize the random number generator with an arbitrary seed
 
 # start parameters
 protStart := 200;      # number of proteins first organism have
@@ -107,12 +107,12 @@ treeFile := 'tree.drw': # path to tree file with tree in darwin or Newick format
 # probabilities and evolution parameters
 mutRate := 100;        # PAM distance from origin to recent species (for random trees)
 
-amongGeneDistr := 'Gamma': # distribution of rates among genes. Use 'None' for no variation or 'Custom'
+amongGeneDistr := 'None': # distribution of rates among genes. Use 'None' for no variation or 'Custom'
                            # for using custom rates from file stored at aGPath.
 aGAlpha := 1:              # Shape parameter of among gene distribution. The mean is always moved to 1
                            # in order to keep the mean branch length.
 aGPath := 'realseed/customRates.drw': # path to file with custom rates (see example file, only for custom root sequences)
-amongSiteDistr := 'None'; # distribution of rates (Gamma or Poisson)
+amongSiteDistr := 'Gamma'; # distribution of rates (Gamma or Poisson)
                              # 'Poisson' generates a random number of domains (at most areas) per
                              # gene with rates drawn from a Poisson distribution around the mean
                              # rate (given by mutRate). motifFreq defines the fraction of domains
@@ -182,12 +182,12 @@ mname := 'test_simulation';
 # - at least one output format (DarwinDB/Fasta) has to be selected
 # - at least one output format (DarwinTree/Newick) has to be selected
 simOutput := {
-              'GeneTrees',  # all gene trees
+#              'GeneTrees',  # all gene trees
               'DarwinTree', # output trees in Darwin format
               'Newick',     # output trees in Newick format
               'MSA',        # MSAs of all related sequences
-              'VP',         # pairwise evolutionary relationships (ortho/para/xenologs)
-              'DarwinDB',   # output genomes as Darwin databases
+#              'VP',         # pairwise evolutionary relationships (ortho/para/xenologs)
+#              'DarwinDB',   # output genomes as Darwin databases
               'Fasta',      # output genomes as Fasta files
               'Ancestral',  # output ancestral genomes
               NULL}:
