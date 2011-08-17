@@ -2,6 +2,7 @@
 \usepackage{bibentry}
 \usepackage{url}
 \usepackage[pdftex]{color,graphicx}
+\usepackage{amsfonts}
 \begin{document}
 \bibliographystyle{plain}
 \nobibliography*
@@ -152,9 +153,12 @@ If lengths of all sequences should be identical, set $k=\theta=1$ and specify th
 Minimum length of a gene.
 \end{itemize}
 
-\subsection{Substitution Models}
+\subsection{Sequence types}
+In ALF, you can configure different sequence types defined by a substitution model, an indel model and a model for rate variability among sites. The following sections describe how to set up the models, define sequence types and assign them to the sequences of the root genome. Switches between different sequence types can be performed during speciation or duplication.
+ 
+\subsubsection{Substitution Models}
 \label{sec.substmodels}
-ALF supports a variety of nucleotide, codon and amino acid substitution models. Several models can be simulated in parallel for a subset of sequences. The parameters in this section allow you to set up substitution models and assign them to the sequences in the root genome. Model switches can also be performed during speciation or duplication.
+ALF supports a variety of nucleotide, codon and amino acid substitution models. Several models can be simulated in parallel for a subset of sequences. The parameters in this section allow you to set up substitution models.
 \begin{itemize}
 \item{\texttt{substModels}} \hfill \\
 List of substitution models, where each model definition has the following format:
@@ -217,87 +221,12 @@ substModels := [SubstitutionModel('CPAM'),
                                   [seq(0.25,4)], true)]:
 \end{verbatim}
 \end{quote}
-\item{\texttt{modelAssignments}} \hfill \\
-Parameter concerning selection of substitution model for each sequence of the root genome. Either supply a list of frequencies of models $1\ldots n$ defined above for random assignment or a list of assignments for each sequence of the root genome.
-
-\noindent \textbf{Example} (assign $M_{1}$ with probability $0.75$ and $M_{2}$ with probability $0.25$):
-\begin{quote}
-\begin{verbatim}
-modelAssignments := [0.75, 0.25];
-\end{verbatim}
-\end{quote}
-\item{\texttt{modelSwitchS}/\texttt{modelSwitchD}} \hfill \\
-A matrix with probabilities for a switch from model $M_{i}$ to model $M_{j}$ after speciation or duplication, respectively.
-
-\noindent \textbf{Example} (switch from $M_{1}$ to $M_{2}$ with probability $0.2$ during speciation in the new species):
-\begin{quote}
-\begin{verbatim}
-modelSwitchS := [[0.8,0.2],[0,1]];
-modelSwitchD := [[1,0],[0,1]]; % no switch
-\end{verbatim}
-\end{quote}
-
-\noindent \textbf{Note}: You can define model switches in more detail by using a custom tree and annotate it accordingly. Here is an example that creates the scenario depicted in figure \ref{fig.modelswitchtree} (branch lengths are 40 PAM for $a$ and $b$, and 80 PAM for $c$ - $f$):
-\begin{quote}
-\begin{verbatim}
-treeFile := Tree(Tree(Leaf('S1', 120), 40, 
-                      Leaf('S3', 120), [S,[[1,[3,4]]]]), 
-                 0, Tree(Leaf('S2', 120), 40, 
-                         Leaf('S4',120), [S,[[2,[5,6]]]]), 
-                 [S,[[1,[1,2]]]]);
-\end{verbatim}
-\end{quote}
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.5\textwidth]{modelswitchtree.pdf}
-    \caption{This tree represents the following scenario: All sequences are initially assigned $M_{1}$. At node $A$, a switch occurs from $M_{1}$ to $M_{2}$ for branch $b$. At node $B$ a switch occurs from $M_{1}$ to $M_{3}$ for branch $c$ and from $M_{1}$ to $M_{4}$ for branch $d$. At node $C$ a switch occurs from $M_{2}$ to $M_{5}$ for branch $e$ and from $M_{2}$ to $M_{6}$ for branch $f$.}
-    \label{fig.modelswitchtree}
-\end{figure}
 
 \item{\texttt{blocksize}} \hfill \\
 When no substitution model is given (pure gap simulation), select block size for gaps
 \end{itemize}
 
-\subsection{Gap Model}
-\begin{itemize}
-\item{\texttt{indelModel}} \hfill \\
- \begin{description}
-\item{\texttt{'ZIPF'}} \hfill \\
-Use a Zipfian distribution of the form $L^{-\tt{Z\_c}}$, described in \cite{Chang:2004p3310}.
-\item{\texttt{'NEGBIN'}} \hfill \\
-Use a negative binomial distribution $\sim NB(\tt{NB\_r}, \tt{NB\_q})$
-\item{\texttt{'QG'}} \hfill \\
-Use the Qian-Goldstein distribution with parameters \texttt{QG\_c} and \texttt{QG\_t}, described in \cite{Qian:2001p3863}.
-\item{\texttt{'EXP'}} \hfill \\
-Use a geometric distribution with parameter \texttt{E\_p}. This corresponds to a negative binomial distribution $\sim NB(1, \tt{E\_p})$
-\item{\texttt{'CUSTOM'}} \hfill \\
-Use a custom distribution with probabilities from \texttt{indelVector}.
-\end{description}
-\item{\texttt{indelVector}} \hfill \\
-A list with probabilities defining a custom indel distribution. Should be \texttt{maxIndelLength} elements long.
-\item{\texttt{Z\_c}} \hfill \\
-Exponent of Zipfian distribution
-\item{\texttt{QG\_c}} \hfill \\
-c parameter for generalized Qian-Goldstein model in PAM (see Pang et al. BMC Bioinformatics, 6:235 2005)
-\item{\texttt{QG\_t}} \hfill \\
-c parameter for generalized Qian-Goldstein model in PAM (see Pang et al. BMC Bioinformatics, 6:235 2005)
-\item{\texttt{NB\_r}} \hfill \\
-r parameter for negative binomial model (must be positive integer)
-\item{\texttt{NB\_q}} \hfill \\
-q parameter for negative binomial model (0 < q < 1):
-\item{\texttt{E\_p}} \hfill \\
-proportion for geometric distribution with mean 1/E\_p
-\item{\texttt{maxIndelLength}} \hfill \\
-maximal length of indels
-
-\item{\texttt{aaGainRate}} \hfill \\
-rate that a gene gains 1 aa, p for single genes
-\item{\texttt{aaLossRate}} \hfill \\
-rate that a gene loses 1 aa, p for single genes
-\end{itemize}
-
-\subsection{GC Content Amelioration}
+\subsubsection{GC Content Amelioration}
 GC content amelioration can be enabled by setting the variable \texttt{targetFreqs}. There are three possibilities:
 \begin{description}
 \item{- \texttt{targetFreqs := ['Random'];}} \hfill \\
@@ -334,25 +263,85 @@ targetFreqs := [[['S1',[0.15, 0.35, 0.3, 0.2]],
 You can define different substitution models for each branch (see section \ref{sec.substmodels}).
 \end{description}
 
-\subsection{Rate Variation}
-The parameters in this section control rate variation among sequences and among sites within sequences.
+\subsubsection{Gap Models}
+You can define multiple models for insertions and deletions and assign each of them (or have them assigned) to a subset of sequences. Use the following parameters to define indel models.
 \begin{itemize}
-\item{\texttt{amongGeneDistr}} \hfill \\
-Distribution of rates among genes. Possible values include:
+\item{\texttt{indelModels}} \hfill \\
+List of indel models, where each model definition has one of the following formats:
 \begin{description}
-\item{\texttt{'None'}} \hfill \\
-No variation among genes.
-\item{\texttt{'Gamma'}} \hfill \\
-Draw rate for each sequence from a gamma distribution with shape parameter \texttt{aGAlpha} and average $1$.
-\item{\texttt{'Custom'}} \hfill \\
-Use custom rates from file defined by \texttt{aGPath}.
+\item{\texttt{IndelModel(0)}} \hfill \\
+for no indels
+\item{\texttt{IndelModel(rate:nonnegative, model:string, parameters:list, maxLen:posint)}} \hfill \\
+for one model for insertions and deletions with the same rate
+\item{\texttt{IndelModel(gainRate:nonnegative, model:string, parameters:list, maxLen:posint, lossRate:nonnegative)}} \hfill \\
+for one model for insertions and deletions with separate rates for insertions and deletions
+\item{\texttt{IndelModel(gainRrate:nonnegative, gainModel:string, gainParameters:list, gainMaxLen:posint, lossRate:nonnegative, lossModel:string, lossParameters:list, lossMaxLen:posint)}}\hfill \\
+for separate models for insertions and deletions
 \end{description}
-\item{\texttt{aGAlpha}} \hfill \\
-Shape parameter of among gene rate distribution.
-\item{\texttt{aGPath}} \hfill \\
-Path to file with custom rates (see example file, only for custom root sequences)
-\item{\texttt{amongSiteDistr}} \hfill \\
-Distribution of rates among sites. this parameter is ignored for M-series models and when custom rates are used (see \texttt{areaPath}. Possible values include:
+
+\noindent The parameters are as follows:
+\begin{itemize}
+\item{\texttt{gainRate}/\texttt{lossRate}} \hfill \\
+rate of insertions/deletions
+\item \texttt{model} \hfill \\
+can be one of the following:
+\begin{description}
+\item{\texttt{'ZIPF'}} \hfill \\
+Use a Zipfian distribution of the form $L^{-\tt{Z\_c}}$, described in \cite{Chang:2004p3310}.
+\item{\texttt{'NEGBIN'}} \hfill \\
+Use a negative binomial distribution $\sim NB(\tt{NB\_r}, \tt{NB\_q})$
+\item{\texttt{'QG'}} \hfill \\
+Use the Qian-Goldstein distribution with parameters \texttt{QG\_c} and \texttt{QG\_t}, described in \cite{Qian:2001p3863}.
+\item{\texttt{'GEOM'}} \hfill \\
+Use a geometric distribution with parameter \texttt{E\_p}. This corresponds to a negative binomial distribution $\sim NB(1, \tt{E\_p})$
+\item{\texttt{'CUSTOM'}} \hfill \\
+Use a custom distribution with probabilities from \texttt{indelVector}.
+\end{description}
+
+\item{\texttt{gainParameters}/\texttt{lossParameters}} \hfill \\
+the model parameters:
+\begin{description}
+\item{\texttt{'ZIPF'}} \hfill \\
+\texttt{parameters[1]}: $c$ (Exponent of Zipfian distribution)
+\item{\texttt{'GEOM'}} \hfill \\
+\texttt{parameters[1]}: $p$ (geometric distribution with mean $1/p$)
+\item{\texttt{'QG'}} \hfill \\
+\texttt{parameters[1]}: $c$ \hfill \\
+\texttt{parameters[2]}: $t$ (see \cite{Qian:2001p3863})
+\item{\texttt{'NEGBIN'}} \hfill \\
+\texttt{parameters[1]}: $r$ ($r \in \mathbb{N}$) \hfill \\
+\texttt{parameters[2]}: $q$ ($0 < q < 1$)
+\item{\texttt{'CUSTOM'}} \hfill \\
+\texttt{parameters[1]}: $p_{1}$ ($\mathrm{Pr}(indel~of~length~1)$) \hfill \\
+\vdots \hfill \\
+\texttt{parameters[N]}: $p_{N}$ ($\mathrm{Pr}(indel~of~length~N)$) \hfill \\
+
+A list with probabilities defining a custom indel distribution. Should be \texttt{MaxLen} elements long.
+\end{description}
+
+\item{\texttt{gainMaxLen}/\texttt{lossMaxLen}} \hfill \\
+maximal length of indels
+\end{itemize}
+\end{itemize}
+
+\subsubsection{Rate Variation Among Sites}
+The parameters in this section control rate variation among sites within sequences.
+\begin{itemize}
+\item{\texttt{rateVarModels}} \hfill \\
+List of models for rate variation among sites. Each model definition has one of the following formats:
+\begin{description}
+\item{\texttt{RateVarModel()}} \hfill \\
+for no rate variation
+\item{\texttt{RateVarModel(model:string, areas:posint, motifFreq:nonnegative, alpha:nonnegative)}} \hfill \\
+for defining a model
+\end{description}
+
+\noindent \textbf{Note}: These parameters are ignored, if M-series models or custom rates are used (use \texttt{RateVarModel()} in these cases).
+
+\noindent The model definitions take the following parameters:
+\begin{itemize}
+\item{\texttt{model}} \hfill \\
+possible values include:
 \begin{description}
 \item{\texttt{'None'}} \hfill \\
 No rate variation among sites.
@@ -361,6 +350,14 @@ Use gamma rates. The number of bins is defined by \texttt{areas}, additionally, 
 \item{\texttt{'Poisson'}} \hfill \\
 Generates a random number of domains (at most \texttt{areas}) per gene with rates drawn from a Poisson distribution. \texttt{motifFreq} defines the fraction of domains with mutation rate 0 (motif).
 \end{description}
+\item{\texttt{areas}} \hfill \\
+For \texttt{'Poisson'}: maximum number of areas with different rate within a gene. \hfill \\
+For \texttt{'Gamma'}: number of rate classes. \hfill \\
+\item{\texttt{motifFreq}} \hfill \\
+Proportion of invariable sites (motifs)
+\item{\texttt{alpha}} \hfill \\
+Shape parameter of gamma distribution for gamma rates among sites.
+\end{itemize}
 
 \item{\texttt{areaPath}} \hfill \\
 The path to a file, containing for each gene a list of areas with different substitution rates. The file should have the following format:
@@ -377,14 +374,74 @@ area_i = [start_pos, end_pos, rate]
 \end{verbatim}
 \end{quote}
 
-\item{\texttt{areas}} \hfill \\
-For \texttt{'Poisson'}: maximum number of areas with different rate within a gene. \hfill \\
-For \texttt{'Gamma'}: number of rate classes. \hfill \\
-\item{\texttt{motifFreq}} \hfill \\
-Proportion of invariable sites (motifs)
-\item{\texttt{alphaG}} \hfill \\
-Shape parameter of gamma distribution for gamma rates among sites.
+\noindent \textbf{Note}: If you use \texttt{areaPath} to provide custom rate variation, set \texttt{rateVarModels} to \texttt{[RateVarModel()]} and define your sequence types (see section \ref{sec.seqtypes}) accordingly.
 \end{itemize}
+
+\subsubsection{Assigning and Switching Between Sequence Types}
+\label{sec.seqtypes}
+The following parameters define different sequence types and probabilities for switching between different types.
+\begin{itemize}
+\item{\texttt{seqTypes}} \hfill \\
+A list of triplets \texttt{[i,j,k]}, where \texttt{i} defines the substitution model, \texttt{j} defines the indel model, and \texttt{k} defines the model for variation among sites.
+\item{\texttt{seqTypeAssignments}} \hfill \\
+Parameter concerning selection of sequence type for each sequence of the root genome. Either supply a list of frequencies of the types $1\ldots n$ defined in \texttt{seqTypes} for random assignment or a list of assignments for each sequence of the root genome.
+
+\noindent \textbf{Example} (assign $T_{1}$ with probability $0.75$ and $T_{2}$ with probability $0.25$):
+\begin{quote}
+\begin{verbatim}
+seqTypes := [[1,1,1], [2,1,1]];
+seqTypeAssignments := [0.75, 0.25];
+\end{verbatim}
+\end{quote}
+\item{\texttt{modelSwitchS}/\texttt{modelSwitchD}} \hfill \\
+A matrix with probabilities for a switch from sequence type $T_{i}$ to type $T_{j}$ after speciation or duplication, respectively.
+
+\noindent \textbf{Example} (switch from $T_{1}$ to $T_{2}$ with probability $0.2$ during speciation in the new species):
+\begin{quote}
+\begin{verbatim}
+modelSwitchS := [[0.8,0.2],[0,1]];
+modelSwitchD := [[1,0],[0,1]]; % no switch
+\end{verbatim}
+\end{quote}
+
+\noindent \textbf{Note}: You can define model switches in more detail by using a custom tree and annotate it accordingly. Here is an example that creates the scenario depicted in figure \ref{fig.modelswitchtree} (branch lengths are 40 PAM for $a$ and $b$, and 80 PAM for $c$ - $f$):
+\begin{quote}
+\begin{verbatim}
+treeFile := Tree(Tree(Leaf('S1', 120), 40, 
+                      Leaf('S3', 120), [S,[[1,[3,4]]]]), 
+                 0, Tree(Leaf('S2', 120), 40, 
+                         Leaf('S4',120), [S,[[2,[5,6]]]]), 
+                 [S,[[1,[1,2]]]]);
+\end{verbatim}
+\end{quote}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.5\textwidth]{modelswitchtree.pdf}
+    \caption{This tree represents the following scenario: All sequences are initially assigned $T_{1}$. At node $A$, a switch occurs from $T_{1}$ to $T_{2}$ for branch $b$. At node $B$ a switch occurs from $T_{1}$ to $T_{3}$ for branch $c$ and from $T_{1}$ to $T_{4}$ for branch $d$. At node $C$ a switch occurs from $T_{2}$ to $T_{5}$ for branch $e$ and from $T_{2}$ to $T_{6}$ for branch $f$.}
+    \label{fig.modelswitchtree}
+\end{figure}
+\end{itemize}
+
+\subsection{Rate Variation Among Genes}
+The parameters in this section control rate variation among sequences.
+\begin{itemize}
+\item{\texttt{amongGeneDistr}} \hfill \\
+Distribution of rates among genes. Possible values include:
+\begin{description}
+\item{\texttt{'None'}} \hfill \\
+No variation among genes.
+\item{\texttt{'Gamma'}} \hfill \\
+Draw rate for each sequence from a gamma distribution with shape parameter \texttt{aGAlpha} and average $1$.
+\item{\texttt{'Custom'}} \hfill \\
+Use custom rates from file defined by \texttt{aGPath}.
+\end{description}
+\item{\texttt{aGAlpha}} \hfill \\
+Shape parameter of among gene rate distribution.
+\item{\texttt{aGPath}} \hfill \\
+Path to file with custom rates (see example file, only for custom root sequences)
+\end{itemize}
+
 
 \subsection{Gene Duplication and Loss}
 The following parameters control gene duplication and gene loss.

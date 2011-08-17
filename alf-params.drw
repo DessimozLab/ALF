@@ -8,12 +8,13 @@
 # alfsim
 
 SetRand(2345): # use this with any number, if you want reproducable results
-#SetRandSeed(); # Initialize the random number generator with an arbitrary seed
 
-# start parameters
+### parameters for root genome
 protStart := 200;      # number of proteins first organism have
 gammaLengthDist := [2.4, 133.8]; # parameters for the gene length distribution (~Gamma(k, theta))
 minGeneLength := 10; # minimum length of a gene
+# realorganism := 'realseed/se_ECOLI_core.db'; # real genome db as first organism
+###
 
 ### substitution models
 ## model definition
@@ -49,35 +50,94 @@ SubstitutionModel('TN93', [.3, .4, .7], [seq(0.25,4)], true),
 NULL
 ]:
 
+# when no substitution model is given (pure gap simulation), select block size for gaps
+blocksize := 3:
+###
+
+### parameters for gap model
+## model definition
+# possible formats: no indels:
+#                   IndelModel(0)
+#
+#                   define one model for insertions and deletions with the same
+#                   rate:
+#                   IndelModel(rate:nonnegative, model:string, parameters:list,
+#                              maxLen:posint)
+#
+#                   define one model for insertions and deletions with separate
+#                   rates for insertions and deletions:
+#                   IndelModel(gainRate:nonnegative, model:string,
+#                              parameters:list, maxLen:posint,
+#                              lossRate:nonnegative)
+#
+#                   define separate models for insertions and deletions:
+#                   IndelModel(gainRrate:nonnegative, gainModel:string,
+#                              gainParameters:list, gainMaxLen:posint,
+#                              lossRate:nonnegative, lossModel:string,
+#                              lossParameters:list, lossMaxLen:posint)
+#
+# available models: ZIPF, NEGBIN, GEOM, QG (see manual for details on parameters)
+indelModels := [
+IndelModel(0.00005,'ZIPF', [1.821], 50),
+IndelModel(0.001,'ZIPF', [1.821], 50),
+#IndelModel(0.00005, 'ZIPF', [1.821], 50, 0.0001, 'GEOM', [0.5], 50),
+NULL
+]:
+###
+
+### parameters for among site rate variability
+# areaPath := 'realseed/areaSet.drw'; # user defined domains (with custom root genome)
+
+## model definition
+# possible formats: no rate variation among sites:
+#                   RateVarModel()
+#
+#                   define model:
+#                   RateVarModel(model:string, areas:posint, motifFreq:nonnegative, alpha:nonnegative)
+
+# available models: 'Poisson' generates a random number of domains (at most areas) per
+#                             gene with rates drawn from a Poisson distribution around the mean
+#                             rate (given by mutRate). motifFreq defines the fraction of domains
+#                             with mutation rate 0 (motif).
+#                   'Gamma'   uses gamma rates. The number of bins is defined by the areas
+#                             parameter. Additionally, motifs occur with frequency motifFreq.
+#                             If user-defined rates are given, this option is ignored.
+#                             For M-series models this option is ignored and replaced with the classes of the model
+#
+# parameters:       areas     maximal number of areas with different mutRate within a gene
+#                   motifFreq rate for of invariable sites
+#                   alpha     alpha parameter of gamma function
+rateVarModels := [
+RateVarModel('Gamma', 5, 0.01, 1),
+NULL
+]:
+###
+
+###
 ## model selection
-# supply an array of frequencies of models 1..n defined above for random assignment
-# supply an array of of length protStart with model assignments for each initial gene
-#modelAssignments := [1]:
-modelAssignments := [0.75, 0.25]:
-#modelAssignments := [0.25, 0.5, 0.25]:
-## model switch
-# matrix with probabilitis of switch from model i to model j after speciation/duplication
-# a switch is not possible between  M-series and non M-series models
+# enumerate combinations of substitution/indel/rate variation models that define
+# your different types of sequences
+seqTypes := [[1,1,1], [2,2,1]]:
+
+# supply an array of frequencies of types 1..n defined above for random assignment
+# supply an array of of length protStart with type assignments for each initial gene
+#seqTypeAssignments := [1]:
+#seqTypeAssignments := [0.75, 0.25]:
+seqTypeAssignments := [2, 1, 2, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 2, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 2, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 2, 2, 2, 1, 2, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 2, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1]:
+#seqTypeAssignments := [0.25, 0.5, 0.25]:
+
+## type switch
+# matrix with probabilitis of switch from sequence type i to sequence type j
+# after speciation/duplication a switch is not possible between  M-series and
+# non M-series models
 #modelSwitchS := [[1]]:
 #modelSwitchD := [[1]]:
 modelSwitchS := [[1,0],[0,1]]:
 modelSwitchD := [[1,0],[0,1]]:
 #modelSwitchS := [[1,0,0],[0,1,0],[0,0,1]]:
 #modelSwitchD := [[1,0,0],[0,1,0],[0,0,1]]:
-# when no substitution model is given (pure gap simulation), select block size for gaps
-blocksize := 3:
 ###
 
-### parameters for gap model
-indelModel := 'ZIPF';         # ZIPF, NEGBIN, QG, EXP, CUSTOM
-indelVector := []:          # define a custom indel distribution here
- Z_c := 1.821:             # exponent of Zipfian distribution
- QG_c := 300:              # c parameter for generalized Qian-Goldstein model in PAM (see Pang et al. BMC Bioinformatics, 6:235 2005)
-# QG_t := 50:              # c parameter for generalized Qian-Goldstein model in PAM (see Pang et al. BMC Bioinformatics, 6:235 2005)
- #NB_r := 1:                # r parameter for negative binomial model (must be positive integer)
- #NB_q := 2/3:              # q parameter for negative binomial model (0 < q < 1):
- E_p := 0.333:                # proportion for geometric distribution with mean 1/E_p
-###
 
 # GC content amelioration
 targetFreqs := ['Random']: # creates random target frequencies for all leaf species (overrides frequencies supplied in substitution model above)
@@ -93,6 +153,7 @@ targetFreqs := ['Random']: # creates random target frequencies for all leaf spec
 
 ### tree parameters
 treeType := 'BDTree':       # BDTree, ToLSample, Custom
+mutRate := 100;        # PAM distance from origin to recent species (for random trees)
 scaleTree := false:          # scale tree to match Pam distance defined below (parameter mutRate)
 birthRate := 0.01:            # b parameter (for BDTree)
 deathRate := 0.001:           # d parameter (for BDTree)
@@ -104,26 +165,13 @@ treeFile := 'tree.drw': # path to tree file with tree in darwin or Newick format
 ###
 
 
-# probabilities and evolution parameters
-mutRate := 100;        # PAM distance from origin to recent species (for random trees)
-
+### rate variation among sequences
 amongGeneDistr := 'None': # distribution of rates among genes. Use 'None' for no variation or 'Custom'
                            # for using custom rates from file stored at aGPath.
 aGAlpha := 1:              # Shape parameter of among gene distribution. The mean is always moved to 1
                            # in order to keep the mean branch length.
 aGPath := 'realseed/customRates.drw': # path to file with custom rates (see example file, only for custom root sequences)
-amongSiteDistr := 'Gamma'; # distribution of rates (Gamma or Poisson)
-                             # 'Poisson' generates a random number of domains (at most areas) per
-                             # gene with rates drawn from a Poisson distribution around the mean
-                             # rate (given by mutRate). motifFreq defines the fraction of domains
-                             # with mutation rate 0 (motif).
-                             # 'Gamma' uses gamma rates. The number of bins is defined by the areas
-                             # parameter. Additionally, motifs occur with frequency motifFreq.
-                             # If user-defined rates are given, this option is ignored.
-                             # For M-series models this option is ignored and replaced with the classes of the model
-areas := 5;                  # maximal number of areas with different mutRate within a gene
-motifFreq := 0.01:           # rate for of invariable sites
-alphaG := 1;                 # alpha parameter of gamma function
+###
 
 ### parameters for gene duplication
 geneDuplRate := 0.0005;    # rate that gene duplication occurs
@@ -142,38 +190,34 @@ geneDuplRate := 0.0005;    # rate that gene duplication occurs
   P_subfunc := 0:           # probability of both genes undergoing subfunctionalization
   ratefac_subfunc := 1.2:     # rate change factor
   life_subfunc := 10:         # life of rate change (time to normalization of rate)
-  
+###  
   
 ### parameters for gene loss  
 geneLossRate := 0.0005;    # rate that gene loss occurs
   numberLoss := 5:    # maximal number of genes involved in one duplication
+###
 
+### parameters for lateral gene transfer
 lgtRate := 0.0005;         # rate that single lateral gene transfer occurs
   orthRep := 0;       # how much of the transfer will be orthologous
                        # replacement (rest is novel gene acquisition)
 lgtGRate := 0.00005;	       # rate that lateral gene transfer of groups occurs
   lgtGSize := 10;      # number of genes which are transferred in one go
-  
+###
+
+### parameters for genome rearrangement
 invers := 0.00;	       # rate that gene inversion occurs
   invSize := 1;        # number of genes which are inversed in one go
 transloc := 0.00;	       # rate that gene translocation occurs
   transSize := 1;      # number of genes which are translocated in one go
 invtrans := 0.10;	       # rate that inversed translocation occurs
+###
 
+### parameters for gene fusion/fission
 fissionRate := 0;      # rate of gene fissions without prior duplication
 fusionRate := 0;       # rate of gene fusions occuring without prior duplication of fused genes
-  numberFusion := 3:
-
-aaGainRate := 0.00005;       # rate that a gene gains 1 aa, p for single genes
-aaLossRate := 0.00005;       # rate that a gene loses 1 aa, p for single genes
-maxIndelLength := 50;   # maximal length of indels
-delsAcrossDomains := false: # for simulations with custom or Poisson amongSiteDistr, allow deletions accross boundaries of domains
-
-# parameters for additional features
-realseed := false;     # real genome db as first organism
-realorganism := 'realseed/se_ECOLI_core.db';
-specialAreas := false; # user defined domains
-areaPath := 'realseed/areaSet.drw';
+  numberFusion := 3:   # maximum number of genes fused in one fusion event
+###
 
 # simulation name
 mname := 'test_simulation';

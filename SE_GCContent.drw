@@ -215,7 +215,7 @@ end:
 calGCcont := proc(org)
     sumGC := 0;
     for i to length(org) do
-        if substModels[org[i,9,1]][Type] <> 'aa' and length(org[i,6]) > 0 then
+        if substModels[seqTypes[org[i,9],1],'Type'] <> 'aa' and length(org[i,6]) > 0 then
             cont := BaseCount(org[i, 6]);
             sumGC := sumGC + ((cont[2] + cont[3]) / sum(cont[1..4]));
         fi:

@@ -4,13 +4,14 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative,
            enableGCAmelioration;
 
     if length(substModels) > 0 then
-        substModel := substModels[evolution[org,gene,9,1]]:
+        substModel := substModels[seqTypes[evolution[org,gene,9],1]]:
         simType := substModel[Type]:
         blockSize := substModel[Blocksize]:
         neutralDNA := substModel[NeutralDNA]:
         if enableGCAmelioration then
             baseFreqs := curTargetFreqs[org, 1, min(length(curTargetFreqs[org]), 
-                                                    evolution[org, gene, 9,1])]:
+                                                    seqTypes[evolution[org, 
+                                                                   gene,9],1])]:
         else
             baseFreqs := substModel[BaseFreqs]:
         fi:
@@ -102,12 +103,13 @@ PerformInsertion := proc(org:posint, gene:posint, evolTime:nonnegative,
               evolution[org,gene,1,l,2] < indelStart / blockSize do
             l := l + 1:
         od:
-        if length(substModels) > 0 and rateVarModels[evolution[org,gene,9,3],'Model'] = 'Gamma' then
+        rateVarModel := rateVarModels[seqTypes[evolution[org,gene,9],3]]:
+        if length(substModels) > 0 and rateVarModel['Model'] = 'Gamma' then
             evolution[org, gene, 1] := updateBorder(evolution[org, gene, 1], l, 
                                                     (indelStart / blockSize), 
                                                     indelLength, 'insert', true,
-                                                    rateVarModels[evolution[org,gene,9,3],'Areas'],
-                                                    rateVarModels[evolution[org,gene,9,3],'MotifFreq']);
+                                                    rateVarModel['Areas'],
+                                                    rateVarModel['MotifFreq']);
        else
             evolution[org, gene, 1] := updateBorder(evolution[org, gene, 1], l, 
                                                     (indelStart / blockSize),
@@ -128,7 +130,7 @@ PerformDeletion := proc(org:integer, gene, evolTime:nonnegative,
                         indelLength_:posint)
     global evolution, substModels,  DawgPlacement;
     if length(substModels) > 0 then
-        substModel := substModels[evolution[org,gene,9,1]]:
+        substModel := substModels[seqTypes[evolution[org,gene,9],1]]:
         simType := substModel[Type]:
         blockSize := substModel[Blocksize]:
         neutralDNA := substModel[NeutralDNA]:
@@ -217,7 +219,7 @@ PerformDeletion := proc(org:integer, gene, evolTime:nonnegative,
                                                (indelStart-1)/blockSize+1, 
                                                indelLength, 'delet', 
                                                length(substModels) > 0 and 
-                                                        rateVarModels[evolution[org,gene,9,3],'Model']='Gamma'):
+                                                        rateVarModels[seqTypes[evolution[org,gene,9],3],'Model']='Gamma'):
         if sequlen <> evolution[org,gene,1,-1,2]*blockSize then 
             error(org, gene, 'sequence length and domains don''t match '.
                   'anymore!')
@@ -283,21 +285,29 @@ PerformGeneDuplication := proc(org:integer, evolTime:nonnegative;
         
         # model switch
         r := Rand():
-        for m to length(substModels) do
-            if r <= modelSwitchD[evolution[org, -1, 9,1], m] then
-                if m <>  evolution[org, -1, 9,1] then
+#        for m to length(substModels) do
+#            if r <= modelSwitchD[evolution[org, -1, 9,1], m] then
+#                if m <>  evolution[org, -1, 9,1] then
+#                    printf('model switch during duplication: %d -> %d\n', 
+#                           evolution[org, -1, 9,1], m):
+#                    evolution[org, -1, 9,1] := m:
+#                    substModel := substModels[m]:
+#                    if substModel[Name] = 'M0' then
+#                        evolution[org,-1,1] := makeAreasOmega(substModel[Name], 
+#                                                              aaStart):
+#                    elif substModel[Name][1] = 'M' then
+#                        evolution[org,-1,1] := makeAreasOmega(substModel[Name], 
+#                                                              aaStart, 
+#                                                         substModel[Params][3]):
+        curm := evolution[org,-1,9]:
+        for m to length(seqTypes) do
+            if r <= modelSwitchD[evolution[org, -1, 9], m] then
+                if m <>  evolution[org, -1, 9] then
                     printf('model switch during duplication: %d -> %d\n', 
-                           evolution[org, -1, 9,1], m):
-                    evolution[org, -1, 9,1] := m:
-                    substModel := substModels[m]:
-                    if substModel[Name] = 'M0' then
-                        evolution[org,-1,1] := makeAreasOmega(substModel[Name], 
-                                                              aaStart):
-                    elif substModel[Name][1] = 'M' then
-                        evolution[org,-1,1] := makeAreasOmega(substModel[Name], 
-                                                              aaStart, 
-                                                         substModel[Params][3]):
-                    fi:
+                           evolution[org, -1, 9], m):
+                    evolution[org, -1, 9] := m:
+                    seqType := seqTypes[m]:
+                    AdaptAreas(org, -1, seqTypes[curm,1], seqTypes[m,1]):
                 fi:
                 break:
             fi:
@@ -517,7 +527,7 @@ PerformLGTG := proc(org:integer, evolTime:nonnegative, lgtSize)
         fi:
     od:
 
-    for i from 0 to lgtSize-1 do
+    for k from 0 to lgtSize-1 do
         geneDonor := SearchArray(abs(geneR[orgDonor,geneDonorIndex+k]), idArr):
         evolution[org] := append(evolution[org],
                                  copy(evolution[orgDonor, geneDonor]));
@@ -602,22 +612,30 @@ PerformTranslocation := proc(org:integer)
 end:
 
 AdaptAreas := proc(org, gene, curm:posint, newm:posint)
-    global evolution, substModels;
+    global evolution, substModels, seqTypes, rateVarModels;
 
-    curSubstModel := substModels[curm]:
-    substModel := substModels[newm]:
-    if substModel[Name] = 'M0' then
-        if curSubstModel[Name] <> 'M0' then
-            evolution[org, gene, 1] := makeAreasOmega(substModel[Name],
+    curSubstModel := substModels[seqTypes[curm,1]]:
+    substModel := substModels[seqTypes[newm,1]]:
+    curRVModel := rateVarModels[seqTypes[curm,3]]:
+    RVModel := rateVarModels[seqTypes[newm,3]]:
+    if substModel['Name'] = 'M0' then
+        if curSubstModel['Name'] <> 'M0' then
+            evolution[org, gene, 1] := makeAreasOmega(substModel['Name'],
                                                length(evolution[org,gene,6])/3):
         fi:
-    elif substModel[Name][1] = 'M' and 
-         (curSubstModel[Name] <> substModel[Name] or 
-          length(curSubstModel[Params][3]) <> length(
-                                    substModel[Params][3])) then
-        evolution[org, gene, 1] := makeAreasOmega(substModel[Name], 
+    elif substModel['Name'][1] = 'M' and 
+         (curSubstModel['Name'] <> substModel['Name'] or 
+          length(curSubstModel['Params'][3]) <> length(
+                                    substModel['Params'][3])) then
+        evolution[org, gene, 1] := makeAreasOmega(substModel['Name'], 
                                                 length(evolution[org,gene,6])/3,
-                                                substModel[Params][3]):
+                                                substModel['Params'][3]):
+    elif curRVModel['Model'] <> RVModel['Model'] or
+         curRVModel['Areas'] <> RVModel['Areas'] or
+         curRVModel['MotifFreq'] <> RVModel['MotifFreq'] or
+         curRVModel['Alpha'] <> RVModel['Alpha'] then
+                evolution[org,gene,1] := makeAreas(evolution[org,gene,1,-1,2],
+                                                   mutRate, RVModel);
     fi:
 end:
 
@@ -657,7 +675,7 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
                                         string(evolTime).')'.livingOrgs;
         # model switch
         if length(substModels) > 0 then
-            curm := evolution[livingOrgs, l, 9,1]:
+            curm := evolution[livingOrgs, l, 9]:
 #            curSubstModel := substModels[curm]:
             if assigned(fromModels) then
                 modIndex := SearchOrderedArray(curm, fromModels):
@@ -667,15 +685,15 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
                         m2 := toModels[modIndex,2]:
                         printf('model switch during speciation for gene %d of '.
                         'species %d: %d -> %d\n', l, orgSource, curm, m1):
-                        evolution[orgSource, l, 9,1] := m1:
-                        AdaptAreas(orgSource, l, curm, m1):
+                        evolution[orgSource, l, 9] := m1:
+                        AdaptAreas(orgSource, l, seqTypes[curm,1], seqTypes[m1,1]):
                     else
                         m2 :=  toModels[modIndex]:
                     fi:
                     printf('model switch during speciation for gene %d of '.
                     'species %d: %d -> %d\n', l, livingOrgs, curm, m2):
-                    evolution[livingOrgs, l, 9,1] := m2:
-                    AdaptAreas(livingOrgs, l, curm, m2):
+                    evolution[livingOrgs, l, 9] := m2:
+                    AdaptAreas(livingOrgs, l, seqTypes[curm,1], seqTypes[m2,1]):
 #                    substModel := substModels[m2]:
 #                    if substModel[Name] = 'M0' and 
 #                       curSubstModel[Name] <> 'M0' then
@@ -694,24 +712,12 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
                 fi:
             else
                 r := Rand():
-                for m to length(substModels) do
-                    if r <= modelSwitchS[evolution[livingOrgs, l, 9,1], m] then
-                        if m <>  evolution[livingOrgs, l, 9,1] then
-                            evolution[livingOrgs, l, 9,1] := m:
-                            substModel := substModels[m]:
-                            if substModel[Name] = 'M0' and 
-                               curSubstModel[Name] <> 'M0' then
-                                evolution[livingOrgs, l, 1] := makeAreasOmega(
-                                                     substModel[Name], aaStart):
-                            elif substModel[Name][1] = 'M' and 
-                                 (curSubstModel[Name] <> substModel[Name] or 
-                                  length(curSubstModel[Params][3]) <> length(
-                                                    substModel[Params][3])) then
-                                evolution[livingOrgs, l, 1] := makeAreasOmega(
-                                                               substModel[Name],
-                                                               aaStart,
-                                                         substModel[Params][3]):
-                            fi:
+                curm := evolution[livingOrgs,l,9]:
+                for m to length(seqTypes) do
+                    if r <= modelSwitchS[evolution[livingOrgs, l, 9], m] then
+                        if m <>  evolution[livingOrgs, l, 9] then
+                            evolution[livingOrgs, l, 9] := m:
+                            AdaptAreas(livingOrgs,l, seqTypes[curm,1], seqTypes[m,1]):
                         fi:
                         break:
                     fi:
@@ -767,7 +773,7 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
     od:
     rateFac := rateFac * rateF:
     if length(substModels) > 0 then
-        substModel := substModels[evolution[org, gene, 9,1]]:
+        substModel := substModels[seqTypes[evolution[org, gene, 9],1]]:
 #        if substModel[Type] = 'nuc' and substModel[Blocksize] = 1 then
 #            oldLen := length(evolution[org,gene,6]):
 #        else
@@ -780,9 +786,9 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
         fi:
         if enableGCAmelioration then
             targetFreqs := curTargetFreqs[org, 1, min(length(curTargetFreqs[org]), 
-                                                    evolution[org, gene, 9,1])]:
+                                                    seqTypes[evolution[org, gene, 9],1])]:
             prevFreqs := prevTargetFreqs[org, 1, min(length(prevTargetFreqs[org]), 
-                                                    evolution[org, gene, 9,1])]:
+                                                    seqTypes[evolution[org, gene, 9],1])]:
             blen := curTargetFreqs[org, 2]:
         fi:
         if length(evolution[org,gene,2]) > 0 or 
@@ -817,7 +823,7 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
                                          [(evolution[org, gene, 1][i, 1])..
                                            evolution[org, gene, 1][i, 2]];
                     if type(evolution[org,gene,1][i,3], list) then
-                        sequence := AAMutateGamma(sequence,rateFac * rateVarModels[evolution[org,gene,9,3],'GammaRates'],
+                        sequence := AAMutateGamma(sequence,rateFac * rateVarModels[seqTypes[evolution[org,gene,9],3],'GammaRates'],
                                                   evolution[org, gene, 1][i,3]):
                     else
                         sequence := Mutate(sequence, rateFac * evolution[org, 
@@ -836,7 +842,7 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
                     if substModel[Type] = 'nuc' then
                         if type(evolution[org,gene,1][i,3], list) then
                             sequence := NucleotideMutate(sequence, 
-                                                         rateFac * rateVarModels[evolution[org,gene,9,3],'GammaRates'], 
+                                                         rateFac * rateVarModels[seqTypes[evolution[org,gene,9],3],'GammaRates'], 
                                                          GCMatrix, 
                                                    evolution[org, gene, 1][i,3],
                                                         substModel[NeutralDNA]):
@@ -855,7 +861,7 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
                             else
                                 ol := length(sequence):
                                 sequence := CodonMutate(sequence, 
-                                                        rateFac * rateVarModels[evolution[org,gene,9,3],'GammaRates'], 
+                                                        rateFac * rateVarModels[seqTypes[evolution[org,gene,9],3],'GammaRates'], 
                                                         GCMatrix, 
                                                     evolution[org,gene,1][i,3]):
                                 if ol <> length(sequence) then
@@ -891,8 +897,8 @@ seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
             fi:
         fi:
     fi:
-    aaGainRate := indelModels[evolution[org,gene,9,2], GainRate]:
-    aaLossRate := indelModels[evolution[org,gene,9,2], LossRate]:
+    aaGainRate := indelModels[seqTypes[evolution[org,gene,9],2], GainRate]:
+    aaLossRate := indelModels[seqTypes[evolution[org,gene,9],2], LossRate]:
     if aaGainRate + aaLossRate > 0 then
         if length(substModels) > 0 then
             addIndels(org, gene, curT, rateF, substModel):
@@ -935,15 +941,23 @@ end:
 
 # performs a gene fusion event
 geneFusion := proc(org:posint, g1:posint, g2:posint, etime:nonnegative)
-    global evolution, geneR, substModels, rateVarModels;
+    global evolution, geneR, substModels, rateVarModels, mutRate;
     indArr := transpose(evolution[org])[4]:
     gene1 := SearchArray(abs(geneR[org,g1]), indArr):
     gene2 := SearchArray(abs(geneR[org,g2]), indArr):
     printf('performing gene fusion on genes %d and %d of species %d\n', 
             gene1, gene2, org):
-    if evolution[org, gene1, 9,1] <> evolution[org, gene2, 9,1] then
-        printf('did not fuse genes because models are different\n'):
-        return():
+    if length(substModels) = 0 then 
+        simType := If(blocksize = 3 or evolution[org,g,2] = 'AAA', 'nuc', 'aa'):
+    else
+        substModel1 := substModels[seqTypes[evolution[org, gene1, 9],1]]:
+        substModel2 := substModels[seqTypes[evolution[org, gene2, 9],1]]:
+        if substModel1['Type'] = 'aa' and substModel2['Type'] <> 'aa' or
+           substModel1['Type'] <> 'aa' and substModel2['Type'] = 'aa' or
+           substModel1['Blocksize'] <> substModel2['Blocksize'] then
+            printf('did not fuse genes because models don''t match\n'):
+            return():
+        fi:
     fi:
     seqmutation(org, gene1, etime):
     seqmutation(org, gene2, etime):
@@ -952,28 +966,27 @@ geneFusion := proc(org:posint, g1:posint, g2:posint, etime:nonnegative)
     l2 := evolution[org,gene2,1,-1,2]:
     # longer gene defines cluster shorter gene is treated as insertion
     blockSize := blocksize:
-    if length(substModels) = 0 then 
-        simType := If(blocksize = 3 or evolution[org,g,2] = 'AAA', 'nuc', 'aa'):
-    fi:
     if offset < l2 then
         if length(substModels) > 0 then
-            blockSize := substModels[evolution[org, gene2, 9,1]][Blocksize]:
-            simType := substModels[evolution[org, gene2, 9,1]][Type]:
+            blockSize := substModel2['Blocksize']:
+            simType := substModel2['Type']:
         fi:
         evolution[org,gene2,8] := append(evolution[org, gene2, 8], 
                                          [etime+.0001,'I',0,offset*blockSize]):
         newGene := gene2:
         oldGene := gene1:
+        oldLen := offset:
         og := g1:
     else
         if length(substModels) > 0 then
-            blockSize := substModels[evolution[org, gene1, 9,1]][Blocksize]:
-            simType := substModels[evolution[org, gene1, 9,1]][Type]:
+            blockSize := substModel1['Blocksize']:
+            simType := substModel1['Type']:
         fi:
         evolution[org, gene1, 8] := append(evolution[org, gene1, 8], 
                                [etime+.0001,'I',offset*blockSize,l2*blockSize]):
         newGene := gene1:
         oldGene := gene2:
+        oldLen := l2:
         og := g2:
     fi:
 
@@ -981,8 +994,22 @@ geneFusion := proc(org:posint, g1:posint, g2:posint, etime:nonnegative)
         evolution[org,newGene,1,1,2] := evolution[org,gene1,1,1,2] + 
                                          evolution[org,gene2,1,1,2]:
     else
-        if substModels[evolution[org, gene1, 9,1]][Name][1] = 'M' or 
-           rateVarModels[evolution[org, gene1, 9,3]['Model']] = 'Gamma' then
+        newType := seqTypes[evolution[org,newGene,9]]:
+        oldType := seqTypes[evolution[org,oldGene,9]]:
+        if substModels[newType[1],'Name'] <> substModels[oldType[1],'Name'] then
+            # update substitution model of fused gene
+            newSubstModel := substModels[newType[1]]:
+            if newSubstModel['Name'] = 'M0' then
+                evolution[org,oldGene,1] := makeAreasOmega(newSubstModel['Name'], oldLen):
+            elif newSubstModel['Name',1] = 'M' then
+                evolution[org,oldGene,1] := makeAreasOmega(newSubstModel['Name'], oldLen, newSubstModel['Params',3]):
+            elif rateVarModels[oldType[3]] <> rateVarModels[newType[3]] then
+                evolution[org,oldGene,1] := makeAreas(oldLen, mutRate, rateVarModels[newType[3]]):
+            fi:
+                
+        fi:
+        if substModels[newType[1],'Name'][1] = 'M' or 
+           rateVarModels[newType[3]['Model']] = 'Gamma' then
             evolution[org,newGene,1,1,2] := evolution[org,gene1,1,1,2] + 
                                              evolution[org,gene2,1,1,2]:
             evolution[org,newGene,1,1,3] := append(evolution[org,gene1,1,1,3], 
@@ -1042,8 +1069,9 @@ geneFission := proc(org:posint, g:posint, etime:nonnegative)
     if evolution[org,gene,1,-1,2] = 1 then return() fi:
     printf('performing gene fission on gene %d of species %d\n', gene, org):
     seqmutation(org, gene, etime):
+    seqType := seqTypes[evolution[org,gene,9]]:
     if length(substModels) > 0 then
-        substModel := substModels[evolution[org, gene, 9,1]]:
+        substModel := substModels[seqType[1]]:
         simType := substModel[Type]:
         blockSize := substModel[Blocksize]:
         neutralDNA := substModel[NeutralDNA]:
@@ -1062,7 +1090,7 @@ geneFission := proc(org:posint, g:posint, etime:nonnegative)
     # create new gene with second part of original gene
     newGene := CreateArray(1..11):
     if length(substModels) > 0 and (substModel[Name][1] = 'M' or 
-       rateVarModels[evolution[org,gene,9,3],'Model'] = 'Gamma') then
+       rateVarModels[seqType[3],'Model'] = 'Gamma') then
         newGene[1] := [[1, seqLen/blockSize - breakPoint, 
                         evolution[org,gene,1,1,3,breakPoint+1..-1]]]:
         evolution[org,gene,1,1,2] := breakPoint:
@@ -1179,8 +1207,7 @@ end:
 addIndels := proc(org:posint, gene:posint, evolTime:nonnegative, 
                   rateFac:nonnegative; substModel:structure)
     global evolution, blocksize, geneR;
-
-    IM := indelModels[evolution[org,gene,9,2]]:
+    IM := indelModels[seqTypes[evolution[org,gene,9],2]]:
     aaGainRate := IM['GainRate']:
     aaLossRate := IM['LossRate']:
     insModel := IM['GainModel']:
