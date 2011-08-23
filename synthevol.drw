@@ -765,7 +765,7 @@ for i to length(branches) do
         events[curInd] := append(events[curInd], 
                                  [curT, branches[i,1], 'GC', branches[i, 4], branches[i,3]]):
     fi:    
-    
+
     if totalRate > 0 then
         do
             curInt := Rand(Exponential(0,1/totalRate)):

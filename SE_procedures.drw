@@ -393,7 +393,7 @@ randGapLength := proc(maxLen:nonnegative,
     else
         # param[i] should contain the probability of a gap of length i from 
         # the custom distribution
-        if length(params[7]) <> maxLen then
+        if length(params[1]) <> maxLen then
             error('length of array of gap length probabilities must match the '.
                   'maximum gap length!'):
         fi:
