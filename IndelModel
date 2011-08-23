@@ -1,0 +1,85 @@
+# data structure to stor information about an indel model.
+# Depending on the model, Params should take the following values:
+# ZIPF:   Params[1]: Z_c
+# GEOM:   Params[1]: E_p
+# NEGBIN: Params[1]: NB_r
+#         Params[2]: NB_q
+# QG:     Params[1]: QG_c
+#         Params[2]: QG_t
+# CUSTOM: Params[1]: indelVector (list of probabilities: indelVector[i] = P(indel of length i) )
+
+IndelModel := proc(GainRate:nonnegative; GainModel:{'ZIPF', 'GEOM', 'NEGBIN', 'QG', 'CUSTOM', 'NONE'},
+                   GainParams:{list(numeric), list(list(numeric))},GainMaxLen:posint,
+                   LossRate:nonnegative, LossModel:{'ZIPF', 'GEOM', 'NEGBIN', 'QG', 'CUSTOM', 'NONE'},
+                   LossParams:{list(numeric), list(list(numeric))}, LossMaxLen:posint)
+
+    if nargs = 1 and GainRate > 0 then
+        error('Too few arguments for indel model')
+    fi:
+    if assigned(GainModel) and assigned(GainParams) then
+        lparam := length(GainParams):
+        if (GainModel = 'ZIPF' and lparam <> 1) or (GainModel = 'GEOM' and lparam <> 1) or
+           (GainModel = 'NEGBIN' and lparam <> 2) or (GainModel = 'QG' and lparam <> 2) or
+           (GainModel = 'CUSTOM' and lparam <> 1) then
+            error('Number of parameters don''nt match selected insertion model!'):
+        fi
+    fi:
+    if assigned(LossModel) and assigned(LossParams) then
+        lparam := length(LossParams):
+        if (LossModel = 'ZIPF' and lparam <> 1) or (LossModel = 'GEOM' and lparam <> 1) or
+           (LossModel = 'NEGBIN' and lparam <> 2) or (LossModel = 'QG' and lparam <> 2) or
+           (LossModel = 'CUSTOM' and lparam <> 1) then
+            error('Number of parameters don''nt match selected deletion model!'):
+        fi
+    elif assigned(LossModel) or assigned(LossParams) then
+        error('incomplete definition of deletion model!'):
+    fi:
+    gr := GainRate:
+    gm := GainModel:
+    gp := GainParams:
+    if not assigned(GainModel) then
+        gm := 'NONE':
+        gp := []:
+        gml := 0:
+    elif GainModel = 'CUSTOM' then
+        gml := length(GainParams[1])
+    elif GainModel = 'NONE' then
+        gml := 0:
+        gp := []:
+    else
+        gml := If(assigned(GainMaxLen), GainMaxLen, 100000):
+    fi:
+    lr := If(assigned(LossRate), LossRate, GainRate):
+    lm := LossModel:
+    lp := LossParams:
+    if not assigned(LossModel) then
+        lm := gm:
+        lp := gp:
+        lml := gml:
+    elif LossModel = 'CUSTOM' then
+        lml := length(LossParams[1])
+    elif LossModel = 'NONE' then
+        lml := 0:
+        lp := []:
+    else
+        lml := If(assigned(LossMaxLen), LossMaxLen, 100000):
+    fi:
+
+    noeval(IndelModel(gr, gm, gp, gml, lr, lm, lp, lml))
+end:
+
+IndelModel_select := proc(im, sel, val)
+    if nargs = 3 then error('cannot change IndelModel, create a new one!'): fi:
+    if sel = 'GainRate' then im[1]
+    elif sel = 'LossRate' then im[5]
+    elif sel = 'GainModel' then im[2]
+    elif sel = 'GainParams' then im[3]
+    elif sel = 'GainMaxLen' then im[4]
+    elif sel = 'LossModel' then im[6]
+    elif sel = 'LossParams' then im[7]
+    elif sel = 'LossMaxLen' then im[8]
+    else error(sel, 'is an invalid selector for IndelModel!')
+    fi:
+end:
+
+CompleteClass(IndelModel);

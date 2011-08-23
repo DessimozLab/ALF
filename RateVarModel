@@ -1,0 +1,34 @@
+RateVarModel := proc(;(Model='None'):{'None', 'Gamma', 'Poisson'}, (Areas=0):{0,posint},
+                     (MotifFreq=0):nonnegative, (Alpha=0):nonnegative,
+                     gammaRates:list(nonnegative))
+    option polymorphic:
+    
+    if Model <> 'None' and Areas = 0 then
+        error('Areas parameter has to be > 0!'):
+    elif Model = 'Gamma' and Alpha = 0 then
+        error('shape parameter has to be > 0!'):
+    fi:
+    if Model = 'Gamma' then
+        gr := GammaRates(Alpha, Areas) / (1-MotifFreq):
+        gr := append(gr, 1/DBL_MAX):
+    else
+        gr := []:
+    fi:
+    noeval(RateVarModel(Model,Areas,MotifFreq,Alpha,gr))
+end:
+
+RateVarModel_select := proc(rvm, sel, val)
+    if nargs = 3 then error('cannot change IndelModel, create a new one!'): fi:
+    if sel = 'Model' then rvm[1]
+    elif sel = 'Areas' then rvm[2]
+    elif sel = 'MotifFreq' then rvm[3]
+    elif sel = 'Alpha' then rvm[4]
+    elif sel = 'GammaRates' then rvm[5]
+    else error(sel, 'is an invalid selector for IndelModel!')
+    fi:
+end:
+
+RateVarModel_type := noeval(RateVarModel({'None', 'Gamma', 'Poisson'},{0,posint},
+                     nonnegative, nonnegative, list(nonnegative))):
+
+CompleteClass(RateVarModel):
