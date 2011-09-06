@@ -79,7 +79,7 @@ blocksize := 3:
 # available models: ZIPF, NEGBIN, GEOM, QG (see manual for details on parameters)
 indelModels := [
 IndelModel(0.00005,'ZIPF', [1.821], 50),
-IndelModel(0.001,'ZIPF', [1.821], 50),
+#IndelModel(0.001,'ZIPF', [1.821], 50),
 #IndelModel(0.00005, 'ZIPF', [1.821], 50, 0.0001, 'GEOM', [0.5], 50),
 NULL
 ]:
@@ -117,7 +117,7 @@ NULL
 ## model selection
 # enumerate combinations of substitution/indel/rate variation models that define
 # your different types of sequences
-seqTypes := [[1,1,1], [2,2,1]]:
+seqTypes := [[1,1,1], [2,1,1]]:
 
 # supply an array of frequencies of types 1..n defined above for random assignment
 # supply an array of of length protStart with type assignments for each initial gene

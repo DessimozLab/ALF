@@ -3,7 +3,9 @@ module external AAMutateGamma;
 # Mutate a amino acid sequence according to gamma model.     #
 # Requires an array 'classes' that specifies the gamma class #
 # for each site.                                             #
-# DD 6 Feb. 2009                                             #
+# DD 6 Feb. 2009
+# 
+#   23 Aug. 2011: mutate in-place
 ##############################################################
 AAMutateGamma := proc(seq1:string, Pam:list(nonnegative), classes:array(posint))
 if not assigned(logPAM1) then
@@ -24,13 +26,13 @@ fi;
 #    error('what''s wrong with this?'):
     # now mutate
     len:=length(seq1);
-    seq2:=CreateString(len, 'X');
+#    seq2:=CreateString(len, 'X');
     for i to len do
         aa0:=AToInt(seq1[i]);
-        seq2[i]:=RandomAA(MP[classes[i], aa0]);
+        seq1[i]:=RandomAA(MP[classes[i], aa0]);
 #        seq2:=seq2.a;
     od;
-    seq2;
+    seq1;
 end:
 
 #######################################################

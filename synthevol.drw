@@ -178,6 +178,9 @@ if not assigned(realseed) then
         areaSet := parse(ReadRawFile(areaPath));
     fi:
 fi:
+if not assigned(specialAreas) then
+    specialAreas := false:
+fi:
 if not assigned(writeLog) then
     writeLog := true:
 fi:
@@ -212,24 +215,24 @@ if not assigned(seqTypes) then
     sm := length(substModels):
     if sm < 2 then
         if length(indelModels) = length(rateVarModels) then
-            seqTypes := [seq([sm,i,i], i=1..length(indelModels))]:
+            seqTypes := [seq([sm,i,i,'type'.i], i=1..length(indelModels))]:
         elif length(indelModels) = 1 then
-            seqTypes := [seq([sm,1,i], i=1..length(rateVarModels))]:
+            seqTypes := [seq([sm,1,i,'type'.i], i=1..length(rateVarModels))]:
         elif length(rateVarModels) = 1 then
-            seqTypes := [seq([sm,i,1], i=1..length(indelModels))]:
+            seqTypes := [seq([sm,i,1,'type'.i], i=1..length(indelModels))]:
         else
             error('number of indel models does not match the number of models for rate variation! '.
                   'Please specify seqTypes manually.'):
         fi:
     else
         if sm = length(indelModels) and sm = length(rateVarModels) then
-            seqTypes := [seq([i,i,i], i=1..sm)]:
+            seqTypes := [seq([i,i,i,'type'.i], i=1..sm)]:
         elif length(indelModels) = 1 and length(rateVarModels) = 1 then
-            seqTypes := [seq([i,1,1], i=1..sm)]:
+            seqTypes := [seq([i,1,1,'type'.i], i=1..sm)]:
         elif length(indelModels) = 1 and length(rateVarModels) = sm then
-            seqTypes := [seq([i,1,i], i=1..sm)]:
+            seqTypes := [seq([i,1,i,'type'.i], i=1..sm)]:
         elif length(indelModels) = sm and length(rateVarModels) = 1 then
-            seqTypes := [seq([i,i,1], i=1..sm)]:
+            seqTypes := [seq([i,i,1,'type'.i], i=1..sm)]:
         else
             error('number of substitution models does not match number of indel models and/or '.
                   'models for rate variationa! Pleas specify seqTypes manually.'):
@@ -291,7 +294,7 @@ printf('determining tree\n'):
 if treeType = 'Custom' then
     if not assigned(treeFile) and not assigned(tree) then
         error('no tree given'):
-    elif not assigned(tree) then
+    elif assigned(treeFile) then
         tree := treeFile:
     fi:
     tree := CheckTree(tree):
@@ -572,7 +575,7 @@ if realseed = true then # generates the first organism with real data
 #                evolution[1, i, 1] := makeAreas(seqLen, areas, mutRate, 
 #                                                amongSiteDistr, motifFreq);
                 evolution[1, i, 1] := makeAreas(seqLen, mutRate, 
-                                                rateVarModels[rateVarModelAssignments[i]]);
+                                                rateVarModels[seqTypes[seqTypeAssignments[i],3]]);
             fi:
         else
             evolution[1, i, 1] := [[1, seqLen, 1]]:
@@ -595,7 +598,7 @@ if realseed = true then # generates the first organism with real data
 #        evolution[1, i, 9, 1] := substModelAssignments[i]:
 #        evolution[1, i, 9, 2] := indelModelAssignments[i]:
 #        evolution[1, i, 9, 3] := rateVarModelAssignments[i]:
-        evolution[1, i, 9] := seqTypeAssignemnts[i]:
+        evolution[1, i, 9] := seqTypeAssignments[i]:
         evolution[1, i, 10] := []:
         if amongGeneDistr = 'Gamma' then
             evolution[1,i,10] := [[mutRate, max(1/DBL_MAX, Rand(GammaDist(aGAlpha))/aGAlpha)]]:

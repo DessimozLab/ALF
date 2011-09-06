@@ -1,0 +1,405 @@
+###### codon mutate ######
+########################################################
+# Some functions to mutate codon sequences.            #
+#                               Adrian Schneider, 2004 #
+#                                                      #
+# Changed by DD for ALF: mutate in-place, 23 Aug. 2011 #
+########################################################
+
+module external SE_CodonMutate, SE_NucleotideMutate, SE_AAMutate;
+
+# convert a list of strings to one large string
+list2string := proc(input:list(string)) option internal;
+    totchar := 0;
+    for s in input do
+        totchar := totchar + length(s);
+    od:
+    res := CreateString(totchar):
+    p := 0;
+    for i to length(input) do
+        for j to length(input[i]) do
+            res[p+j] := input[i,j];
+        od;
+        p := p + j -1;
+    od:
+    return(res);
+end:
+
+
+############################################################
+# Mutate a codon sequence. The logarithm of a 1-CodonPAM   #
+# mutation matrix, the codon frequencies and the           #
+# desired CodonPAM distance must be supplied.              #
+############################################################
+SE_CodonMutate:=proc(seq1:string,CodonPam:{positive, list(positive)};
+	DelType:{'ExpGaps'},(lnM1=CodonLogPAM1):matrix, classes:array(posint)) 
+if lnM1=CodonLogPAM1 and not assigned(CodonLogPAM1) then
+    error('CodonLogPAM1 is not assigned. Use CreateCodonMatrices().')
+fi;
+len:=length(seq1);
+if mod(len,3)<>0 then error('Sequence length must be a multiple of 3.') fi;
+if type(CodonPam, list(positive)) and assigned(classes) then
+    return(CodonMutateGamma(seq1, CodonPam, lnM1, classes))
+elif type(lnM1, list(list(list))) and assigned(classes) then
+    return(CodonMutateOmega(seq1, CodonPam, lnM1, classes)):
+elif type(CodonPam, list(positive)) or assigned(classes) then
+    error('for gamma model CodonMutate requires a list of distances and an array with the class assignment for each site'):
+fi:
+
+#MP:=remember(exp(CodonPam*lnM1));
+#for i from 2 to length(MP) do
+#MP[i]:=MP[i]+MP[i-1];
+#od;
+#MP:=transpose(MP);
+MP := remember(GetMatrix(CodonPam, lnM1)):
+
+#seq2:='';
+#seq2 := CreateString(len,'X'):
+for i to len/3 do
+	c0:=CodonToCInt(seq1[3*i-2..3*i]);
+        if CIntToInt(c0)=22 then c:=RandomStopCodon(MP[c0])
+        else c:=RandomCodon(MP[c0]) fi;
+#	seq2:=seq2.c;
+    seq1[3*i-2] := c[1]:
+    seq1[3*i-1] := c[2]:
+    seq1[3*i] := c[3]:
+od;
+seq1;
+end:
+
+##############################################################
+# Mutate a codon sequence using a M-series model with        #
+# multiple classes . Requires an array 'classes' that        #
+# specifies the class for each site.                   #
+# DD 17 Feb. 2009                                             #
+##############################################################
+CodonMutateOmega := proc(seq1:string, CodonPam:positive, lnM1:list(list(list)), classes:array(posint)) option internal;
+    # prepare matrices for the different gamma classes
+    # printf('codonmutateomega - classes(%d): %a\n', length(classes), classes):
+    lnM1Len := length(lnM1):
+    MP := CreateArray(1..length(lnM1),0):
+    for j to length(MP) do
+#        tmp:=remember(exp(CodonPam*lnM1[j]));
+#            for i from 2 to length(tmp) do
+#                tmp[i]:=tmp[i]+tmp[i-1];
+#            od;
+            #EnterProfile(Transpose):
+#            MP[j]:=transpose(tmp);
+            MP[j] := GetMatrix(CodonPam,lnM1[j]):
+            #ExitProfile(Transpose):
+    od:
+
+    # now mutate
+    len:=length(seq1);
+#    seq2 := CreateString(len,'X'):
+    for i to len/3 do
+        c0:=CodonToCInt(seq1[3*i-2..3*i]);
+        if CIntToInt(c0)=22 then c:=RandomStopCodon(MP[classes[i], c0])
+        else c:=RandomCodon(MP[classes[i], c0]) fi;
+        seq1[3*i-2] := c[1]:
+        seq1[3*i-1] := c[2]:
+        seq1[3*i] := c[3]:
+    od;
+    seq1;
+end:
+
+
+##############################################################
+# Mutate a codon sequence according to gamma model. Requires #
+# an array 'classes' that specifies the gamma class for each #
+# site.                                                      #
+# DD 6 Feb. 2009                                             #
+##############################################################
+CodonMutateGamma := proc(seq1:string, CodonPam:list(positive), lnM1:matrix(numeric), classes:array(posint)) option internal;
+    # prepare matrices for the different gamma classes
+    MP := CreateArray(1..length(CodonPam),0):
+    for j to length(MP) do
+        #EnterProfile(MutMatrixExp):
+#        tmp:=remember(exp(CodonPam[j]*lnM1));
+        #ExitProfile(MutMatrixExp):
+#        for i from 2 to length(tmp) do
+#            tmp[i]:=tmp[i]+tmp[i-1];
+#        od;
+        #EnterProfile(Transpose):
+#        MP[j]:=transpose(tmp);
+        MP[j] := GetMatrix(CodonPam[j], lnM1):
+        #ExitProfile(Transpose):
+    od:
+    
+    #EnterProfile(TheMutateLoop):
+    # now mutate
+    len:=length(seq1);
+#    seq2 := CreateString(len,'X'):
+    len := len/3:
+    for i to len do
+        c0:=CodonToCInt(seq1[3*i-2..3*i]);
+        if CIntToInt(c0)=22 then c:=RandomStopCodon(MP[classes[i], c0])
+        else c:=RandomCodon(MP[classes[i], c0]) fi;
+        seq1[3*i-2] := c[1]:
+        seq1[3*i-1] := c[2]:
+        seq1[3*i] := c[3]:
+    od;
+    #ExitProfile(TheMutateLoop):
+    seq1;
+end:
+
+
+##########################################################
+# Produce a random codon sequence (i.e. a DNA string)    #
+# with codons distributed according to the given         #
+# frequency vector. The last codon will be one of the    #
+# stop codons.                                           #
+##########################################################            
+RandomCodonSequence:=proc(len:posint, freq_:array(numeric)) option internal;
+freq:=CreateArray(1..length(freq_));
+freq[1]:=freq_[1];
+for i from 2 to 64 do freq[i] := freq_[i] + freq[i-1] od;
+seq:='';
+to len-1 do
+	seq:=seq.RandomCodon(freq);
+od;
+seq:=seq.RandomStopCodon(freq);
+end:
+
+
+##################################################
+# Return a random codon. The input is the vector #
+# with cumulated codon probabilities. (f[i]      #
+# gives the probability of a codon being on of   #
+# codon 1 to i.)                                 #
+##################################################
+RandomCodon:=proc(CumFreq:array(numeric)) option internal;
+do
+  ind:=SearchOrderedArray(Rand(),CumFreq) + 1;
+  if ind<=64 then
+  	c:=CIntToCodon(ind);
+  	if CodonToInt(c)<>22 then break fi;
+  fi;
+od;
+c;
+end:
+
+#######################################################
+# Return a random stop codon. The input is the vector #
+# with cumulated codon probabilities. (f[i] gives the #
+# probability of a codon being on of codon 1 to i.)   #
+#######################################################
+RandomStopCodon:=proc(CumFreq:array(numeric)) option internal;
+do
+  ind:=SearchOrderedArray(Rand(),CumFreq) + 1;
+  if ind<=64 then
+  	c:=CIntToCodon(ind);
+  	if CodonToInt(c)=22 then break fi;
+  fi;
+od;
+c;
+end:
+
+GetMatrix := proc(Pam:positive, lp1:matrix) option internal;
+    tmp := exp(Pam*lp1);
+    for i from 2 to length(tmp) do
+        tmp[i]:=tmp[i]+tmp[i-1];
+    od;
+    transpose(tmp);    
+end:
+
+###### nucleotide mutate ######
+# 23 Aug. 2011: changed to in-place mutate. DD
+SE_NucleotideMutate:=proc(seq1:string,time:{positive, list(positive)}; 
+                       (lnM1=Q):matrix, classes:array(posint), 
+                       (neutral=true):boolean)
+    if not assigned(lnM1) then
+        error('Q is not assigned.')
+    fi;
+    if type(time, list) and assigned(classes) then
+        return(NucleotideMutateGamma(seq1, time, lnM1, classes, neutral)):
+    elif type(time, list) or assigned(classes) then
+        error('for gamma model NucleotideMutate requires a list of distances '.
+              'and an array with the class assignment for each site'):
+    fi:
+    MP:=exp(time*lnM1);
+    for i from 2 to length(MP) do
+    MP[i]:=MP[i]+MP[i-1];
+    od;
+    MP:=transpose(MP);
+    len:=length(seq1);
+    #seq2:='';
+#    seq2 := CreateString(len,'X'):
+    if neutral then
+        for i to len do
+            n0:=NucToNInt(seq1[i]);
+            n:=RandomNucleotide(MP[n0]):
+            seq1[i] := n;
+        od;
+    else
+        for i to len by 3 do
+            c := CreateString(3,'X'):
+            do
+                n0 := NucToNInt(seq1[i]):
+                c[1] := RandomNucleotide(MP[n0]):
+                n0 := NucToNInt(seq1[i+1]):
+                c[2] := RandomNucleotide(MP[n0]):
+                n0 := NucToNInt(seq1[i+2]):
+                c[3] := RandomNucleotide(MP[n0]):
+                if CodonToInt(c) <> 22 then break fi:
+            od:
+            seq1[i] := c[1]:
+            seq1[i+1] := c[2]:
+            seq1[i+2] := c[3]:
+        od:
+    fi:
+    seq1;
+end:
+
+NucleotideMutateGamma:=proc(seq1:string,time:list(positive), lnM1:matrix, 
+                            classes:array(posint); (neutral=true):boolean)
+    option internal;
+    # prepare matrices for the different gamma classes
+    MP := CreateArray(1..length(time),0):
+    for i to length(MP) do
+        MP[i]:=exp(time[i]*lnM1);
+    od:
+    
+    for j to length(MP) do
+        for i from 2 to length(MP[j]) do
+        MP[j,i]:=MP[j,i]+MP[j,i-1];
+        od;
+        MP[j]:=transpose(MP[j]);
+    od:
+
+    # now mutate
+    len:=length(seq1);
+#    seq2:='';
+#    seq2 := CreateString(len,'X'):
+    if neutral then
+        for i to len do
+            n0:=NucToNInt(seq1[i]);
+            n:=RandomNucleotide(MP[classes[i], n0]):
+            seq1[i] := n;
+        od;
+    else
+        for i to len by 3 do
+            c := CreateString(3,'X'):
+            do
+                n0 := NucToNInt(seq1[i]):
+                c[1] := RandomNucleotide(MP[classes[(i+2)/3], n0]):
+                n0 := NucToNInt(seq1[i+1]):
+                c[2] := RandomNucleotide(MP[classes[(i+2)/3], n0]):
+                n0 := NucToNInt(seq1[i+2]):
+                c[3] := RandomNucleotide(MP[classes[(i+2)/3], n0]):
+                if CodonToInt(c) <> 22 then break fi:
+            od:
+            seq1[i] := c[1]:
+            seq1[i+1] := c[2]:
+            seq1[i+2] := c[3]:
+        od:    
+    fi:
+    seq1;
+end:
+
+
+#######################################################
+# Return a random nucleotide. The input is the vector #
+# with cumulated nucleotide probabilities. (f[i]      #
+# gives the probability of a nucleotide being on of   #
+# nucleotide 1 to i.)                                 #
+#######################################################
+RandomNucleotide:=proc(CumFreq:array(numeric)) option internal;
+    do
+        ind:=SearchOrderedArray(Rand(),CumFreq) + 1;
+        if ind<=4 then
+          	c:=NIntToNuc(ind);
+          	break;
+          fi;
+    od:
+    c;
+end:
+
+###### amino acid mutate ######
+SE_AAMutate := proc( seq1:string, PAM:{positive, list(positive)}; classes:array(posint))
+
+if type(PAM, list(positive)) and assigned(classes) then
+    return(AAMutateGamma(seq1, PAM, classes))
+elif type(logPAM1,array(array(numeric))) then
+     M := exp(PAM*logPAM1)
+elif type(NewLogPAM1,array(array(numeric))) then
+     M := exp(PAM*NewLogPAM1)
+elif not assigned(logPAM1) then
+     CreateDayMatrices();
+     M := exp(PAM*logPAM1)
+else error('logPAM1 should be the log of a 1-PAM matrix') fi;
+Flen := length (M);
+if Flen = 20 then
+     Px := IntToA; xP := AToInt
+else Px := IntToB; xP := BToInt fi;
+
+for i from 2 to Flen do M[i] := M[i] + M[i-1] od;
+M := transpose(M);
+#newseq := CreateString(length(seq1));
+
+for i to length(seq1) do
+    seq1[i] := Px( SearchOrderedArray( Rand(), M[xP(seq1[i])]) + 1 )
+od;
+
+seq1
+end:
+
+
+##############################################################
+# Mutate a amino acid sequence according to gamma model.     #
+# Requires an array 'classes' that specifies the gamma class #
+# for each site.                                             #
+# DD 6 Feb. 2009
+# 
+#   23 Aug. 2011: mutate in-place
+##############################################################
+AAMutateGamma := proc(seq1:string, Pam:list(nonnegative), classes:array(posint)) option internal;
+if not assigned(logPAM1) then
+    error('logPAM1 is not assigned. Use CreateDayMatrices().')
+fi;
+    # prepare matrices for the different gamma classes
+    MP := CreateArray(1..length(Pam),0):
+    for j to length(MP) do
+#        tmp:=remember(exp(Pam[j]*logPAM1));
+#        print(Pam[j]): print(tmp):
+#        for i from 2 to length(tmp) do
+#            tmp[i]:=tmp[i]+tmp[i-1];
+#        od;
+#        MP[j]:=transpose(tmp);
+        MP[j] := remember(GetMatrix(max(1/DBL_MAX, Pam[j]), logPAM1)):
+    od:
+#    for i to length(MP) do print(MP[i]): lprint() od:
+#    error('what''s wrong with this?'):
+    # now mutate
+    len:=length(seq1);
+#    seq2:=CreateString(len, 'X');
+    for i to len do
+        aa0:=AToInt(seq1[i]);
+        seq1[i]:=RandomAA(MP[classes[i], aa0]);
+#        seq2:=seq2.a;
+    od;
+    seq1;
+end:
+
+#######################################################
+# Return a random amino acid. The input is the vector #
+# with cumulated nucleotide probabilities. (f[i]      #
+# gives the probability of a nucleotide being on of   #
+# nucleotide 1 to i.)                                 #
+#######################################################
+RandomAA:=proc(CumFreq:array(numeric)) option internal;
+    do
+        r := Rand():
+        #print(r):
+        ind:=SearchOrderedArray(r,CumFreq) + 1;
+        #print(ind):
+        if ind<=20 then
+          	c:=IntToA(ind);
+          	break;
+          fi;
+    od:
+    c;
+end:
+
+
+end: #module

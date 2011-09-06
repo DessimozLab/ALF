@@ -26,9 +26,9 @@ DBout := proc()
             if (geneR[i, loc] < 0) then
                 loc := -loc;
             fi;
-            printf('<E><ID>G%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS><HGP>'.
+            printf('<E><ID>G%a</ID><LOC>%a</LOC><DE>%a, sequence type: %s</DE><OS>%a</OS><HGP>'.
                    '%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
-                evolution[i, j, 4], loc, evolution[i, j, 3], 
+                evolution[i, j, 4], loc, evolution[i, j, 3], seqTypes[evolution[i,j,9],4],
                 evolution[i, j, 5], evolution[i, j, 7], evolution[i,j,1], 
                 evolution[i, j, 2]);
             if (length(substModels) = 0 and 
@@ -58,8 +58,8 @@ DBoutFASTA := proc()
                 (substModels[seqTypes[evolution[i,j,9],1],'Type'] <> 'nuc' or 
                  not substModels[seqTypes[evolution[i,j,9],1],'NeutralDNA'])) then
                 OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'_aa.fa');
-                printf('>G%a_SE%03d\n%s\n\n', evolution[i, j, 4], i,
-                    evolution[i, j, 2]);
+                printf('>G%a_SE%03d, sequence type: %s\n%s\n\n', evolution[i, j, 4], i,
+                       seqTypes[evolution[i,j,9],4], evolution[i, j, 2]);
                 OpenWriting(previous);
             fi:
             if (length(substModels) = 0 and 
@@ -67,8 +67,8 @@ DBoutFASTA := proc()
                (length(substModels) > 0 and 
                 substModels[seqTypes[evolution[i,j,9],1],'Type'] <> 'aa') then
                 OpenAppending(wdir.dbdir.'SE'.sprintf('%03d', i).'_dna.fa');
-                printf('>G%a_SE%03d\n%s\n\n', evolution[i, j, 4], i,
-                    evolution[i, j, 6]);
+                printf('>G%a_SE%03d, sequence type: %s\n%s\n\n', evolution[i, j, 4], i,
+                       seqTypes[evolution[i,j,9],4], evolution[i, j, 6]);
                 OpenWriting(previous);
             fi:
         od;
@@ -104,9 +104,9 @@ DBoutAnc := proc(organism, parent, child, birth)
             if (geneR[child, loc] < 0) then
                 loc := -loc;
             fi;
-            printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a</DE><OS>%a</OS>'.
+            printf('<E><ID>%a</ID><LOC>%a</LOC><DE>%a, sequence type: %s</DE><OS>%a</OS>'.
                    '<HGP>%d</HGP><RATES>%a</RATES><SEQ>%s</SEQ>',
-                organism[j, 4], loc, organism[j, 3], organism[j, 5], organism[j, 7],
+                organism[j, 4], loc, organism[j, 3], seqTypes[organism[j,9],4], organism[j, 5], organism[j, 7],
                 organism[j,1], organism[j, 2]): 
             if (length(substModels) = 0 and 
                 (blocksize = 3 or organism[j,2] = 'AAA')) or 
@@ -126,8 +126,8 @@ DBoutAnc := proc(organism, parent, child, birth)
                 (substModels[seqTypes[organism[j,9],1],'Type'] <> 'nuc' or 
                  not substModels[seqTypes[organism[j,9],1],'NeutralDNA'])) then
                 OpenAppending(wdir.dbAncdir.orgname.'_aa.fa'):
-                printf('>G%a_%s\n%s\n\n', organism[j, 4], orgname,
-                    organism[j, 2]);
+                printf('>G%a_%s, sequence type: %s\n%s\n\n', organism[j, 4], orgname,
+                       seqTypes[organism[j,9],4], organism[j, 2]);
                 OpenWriting(previous);
             fi:
             if (length(substModels) = 0 and 
@@ -135,8 +135,8 @@ DBoutAnc := proc(organism, parent, child, birth)
                (length(substModels) > 0 and 
                 substModels[seqTypes[organism[j,9],1],'Type'] <> 'aa') then
                 OpenAppending(wdir.dbAncdir.orgname.'_dna.fa'):
-                printf('>G%a_%s\n%s\n\n', organism[j, 4], orgname,
-                    organism[j, 6]);
+                printf('>G%a_%s, sequence type: %s\n%s\n\n', organism[j, 4], orgname,
+                       seqTypes[organism[j,9],4], organism[j, 6]);
                 OpenWriting(previous);
             fi:
         od;
@@ -524,13 +524,19 @@ end:
 # than all current leaves of the tree. Hence, the insertion is reduced to 
 # combining an existing leaf with the one being inserted into an inner node.
 InsertNode := proc(t:Tree, n:list, msteps) option internal;
+#
+#    InsertNode_R(t,n,msteps):
+#end:
+#InsertNode_R := proc(t:Tree, n:list, msteps) option internal;
     label1 := sprintf('SE%03d/%05d', n[3], n[4]):
     label2 := sprintf('SE%03d/%05d', n[1], n[2]):
     if type(t, Leaf) then
-        if t[Label][1..11] = label1 then
-            return(Tree(t, n[5], Leaf(label2, msteps), n[6])):
-        elif n[6] = 'Fu' and t[Label, 1..11] = label2 then
+        if n[6] = 'Fu' and t[Label, 1..11] = label2 then
             return(Leaf(t[Label].sprintf('/Fu%05d-%g', n[4], n[5]), msteps)):
+        elif n[6] = 'Fu' and t[Label, 1..11] = label1 then
+            return(Leaf(t[Label].sprintf('/Fu%05d-%g', n[2], n[5]), msteps)):
+        elif t[Label][1..11] = label1 then
+            return(Tree(t, n[5], Leaf(label2, msteps), n[6])):
         else
             return(NULL):
         fi:

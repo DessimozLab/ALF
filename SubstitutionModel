@@ -83,7 +83,7 @@ SubstitutionModel := proc(Name:string, Params:list(anything),
             noeval(SubstitutionModel(Name, Params, f, false, 'codon', m, 3)):
         fi:
     else # nucleotide models
-        CreateNucleotideMatrix(Name, BaseFreqs, Params):
+        CreateNucleotideMatrices(Name, BaseFreqs, Params):
         f := copy(BaseFreqs):
         m := copy(DNALogPAM1):
         noeval(SubstitutionModel(Name, Params, f, NeutralDNA, 'nuc', m, 
