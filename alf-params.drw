@@ -155,6 +155,8 @@ targetFreqs := ['Random']: # creates random target frequencies for all leaf spec
 treeType := 'BDTree':       # BDTree, ToLSample, Custom
 mutRate := 100;        # PAM distance from origin to recent species (for random trees)
 scaleTree := false:          # scale tree to match Pam distance defined below (parameter mutRate)
+# treeLength := 100:          # if defined and scaleTree is true, the tree will be scaled to the given tree 
+                              # length
 birthRate := 0.01:            # b parameter (for BDTree)
 deathRate := 0.001:           # d parameter (for BDTree)
 NSpecies := 15:            # number of species in the tree (for BD and ToL)

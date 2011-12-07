@@ -101,7 +101,9 @@ Use a custom tree defined by \texttt{treeFile}.
 \item{\texttt{mutRate}} \hfill \\
 Distance from origin to species at the leaves (for random trees)
 \item{\texttt{scaleTree}} \hfill \\
-Set to \texttt{true}, if the distance from root to deepest leaf should be scaled to match \texttt{mutRate} (default \texttt{false}).
+Set to \texttt{true}, if the branch lengths of the tree should be scaled. When \texttt{treeLength} is defined as well, the sum of all branches will be scaled to match \texttt{treeLength}. Otherwise, the distance from root to deepest leaf is scaled to match \texttt{mutRate}. (default \texttt{false}).
+\item{\texttt{treeLength}} \hfill \\
+Sum of all branch lengths (only in conjunction with \texttt{scaleTree}).
 \item{\texttt{birthRate}} \hfill \\
 For \texttt{'BDTree'}: birth rate ($\lambda$)
 \item{\texttt{deathRate}} \hfill \\
