@@ -18,7 +18,7 @@ fi:
 printf('\n'):
 if not assigned(libsLoaded) then
     libsLoaded := true:
-    ReadProgram(SEbasedir.'AAMutateGamma.drw'):
+#    ReadProgram(SEbasedir.'AAMutateGamma.drw'):
     ReadProgram(SEbasedir.'KHG_Matrix.drw'):
     #ReadProgram(SEbasedir.'NucleotideMatrix.drw'):
     ReadProgram(SEbasedir.'SubstitutionModel'):

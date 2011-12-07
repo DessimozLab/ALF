@@ -117,7 +117,7 @@ NULL
 ## model selection
 # enumerate combinations of substitution/indel/rate variation models that define
 # your different types of sequences
-seqTypes := [[1,1,1], [2,1,1]]:
+seqTypes := [[1,1,1,'type1'], [2,1,1,'type2']]:
 
 # supply an array of frequencies of types 1..n defined above for random assignment
 # supply an array of of length protStart with type assignments for each initial gene
