@@ -233,7 +233,7 @@ simOutput := {
               'Newick',     # output trees in Newick format
               'MSA',        # MSAs of all related sequences
 #              'VP',         # pairwise evolutionary relationships (ortho/para/xenologs)
-#              'DarwinDB',   # output genomes as Darwin databases
+              'DarwinDB',   # output genomes as Darwin databases
               'Fasta',      # output genomes as Fasta files
               'Ancestral',  # output ancestral genomes
               NULL}:
