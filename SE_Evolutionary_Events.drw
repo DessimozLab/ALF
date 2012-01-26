@@ -1300,7 +1300,7 @@ addIndels := proc(org:posint, gene:posint, evolTime:nonnegative,
         # select type of event
         r := Rand():
         
-        if r <= (geneLen + 1) * aaGainRate / totalRate then
+        if r <= (geneLen + 1) * aaGainRate * rateFac / totalRate then
             # get length of insertion
             insLength := randGapLength(maxInsLength, insModel, 
                               insParams):
