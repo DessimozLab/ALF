@@ -694,7 +694,7 @@ WriteOrthologs := proc(trees, norgs)
     printf('HP := %A:\n', HPs):
     OpenWriting(previous):
 
-    CallSystem('tar -C '.wdir. '-czf '.wdir.'/VP.tgz --remove-files VP/'):
+    CallSystem('tar -C '.wdir. ' -czf '.wdir.'/VP.tgz --remove-files VP/'):
 end:
 
 
