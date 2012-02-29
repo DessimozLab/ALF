@@ -9,7 +9,7 @@
 Set(printgc=false);
 starttime := UTCTime();
 Set(gc=2e8): SetRandSeed(); # Set(quiet):
-SEbasedir :='/home/ddalquen/repos/simulator/';
+SEbasedir := getenv('DARWIN_REPOS_PATH').'/simulator/';
 if not assigned(paramfile) then
 	paramfile := 'alf-params.drw';
 	printf('paramfile not specified. use %s!!\n',paramfile);
