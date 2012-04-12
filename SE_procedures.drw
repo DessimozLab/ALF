@@ -779,7 +779,7 @@ end:
 
 ConvertToPam := proc(t:Tree) option internal;
     t[Height] := 100*t[Height]:
-    if not type(tree,Leaf) then
+    if not type(t,Leaf) then
         ConvertToPam(t[Right]):
         ConvertToPam(t[Left]):
     fi:

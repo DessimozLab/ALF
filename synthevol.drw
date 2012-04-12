@@ -248,7 +248,9 @@ if not assigned(seqTypeAssignments) then
 fi:
     
 if not unitIsPam then
-    mutRate := muteRate * 100:
+    if assigned(mutRate) then
+        mutRate := muteRate * 100:
+    fi:
     geneDuplRate := geneDuplRate / 100:
     geneLossRate := geneLossRate / 100:
     lgtRate := lgtRate / 100:
@@ -261,13 +263,17 @@ if not unitIsPam then
     indelModelsNew := CreateArray(1..length(indelModels),0):
     for i to length(indelModels) do
         IM := indelModels[i]:
-        indelModelsNew[i] := IndelModel(IM['GainRate']/100, IM['LossRate']/100, IM[3..-1]):
+        indelModelsNew[i] := IndelModel(IM['GainRate']/100, IM[2..4], IM['LossRate']/100, IM[6..-1]):
     od:
     indelModels := indelModelsNew:
     #aaGainRate := aaGainRate / 100:
     #aaLossRate := aaLossRate / 100:
-    life_neofunc := life_neofunc * 100:
-    life_subfunc := life_subfunc * 100:
+    if assigned(life_neofunc) then
+        life_neofunc := life_neofunc * 100:
+    fi:
+    if assigned(life_subfunc) then
+        life_subfunc := life_subfunc * 100:
+    fi:
     if assigned(treeLength) then treeLength := treeLength * 100 fi:
 fi:
 

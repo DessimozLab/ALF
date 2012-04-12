@@ -401,7 +401,8 @@ PerformLGT := proc(j:integer, evolTime:nonnegative)
     if length(donors) = 0 then return() fi:
     orgDonor := Rand(donors);
     # lgt - orthologous replacement
-    if Rand() < orthRep then
+    orthRepRand := Rand():
+    if orthRepRand < orthRep then
 #        printf('performing lgto\n'):
         do
             # finds donor (recipient is current organism j)
