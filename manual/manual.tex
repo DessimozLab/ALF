@@ -24,7 +24,8 @@ files and directories are created:
 install script (instructions below)
 \item[\texttt{bin/}] \hfill \\
        - binaries of the darwin engine for Mac OS X and Linux\hfill \\
-	   - starter scripts for darwin and ALF
+	   - starter scripts for darwin and ALF \hfill \\
+	   - script to convert Fasta to Darwin files
 \item[\texttt{lib/}] \hfill \\
        - the darwin library\hfill \\
 	   - the entire ALF source code is located in lib/simulator
@@ -130,7 +131,7 @@ Set to \texttt{false} if branch lengths are in substitutions per site. Set rate 
 The genome at the root of the tree can either consist of your own sequences or can be randomly generated. The following parameters set up the root genome.
 \begin{itemize}
 \item{\texttt{realorganism}} \hfill \\
- A string specifying the path to the Darwin DB with the sequence data. Use the ALF web interface to convert Fasta files into the Darwin DB format.
+ A string specifying the path to the Darwin DB with the sequence data. Use the script \texttt{fasta2darwin} in the \texttt{bin} directory to convert Fasta files into the Darwin DB format.
 
 \noindent \textbf{Example} (reads sequences from the file \texttt{se\_ECOLI\_core.db} in directory \texttt{realseed}):
 \begin{quote}

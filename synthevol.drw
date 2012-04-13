@@ -600,7 +600,7 @@ if realseed = true then # generates the first organism with real data
         if protseq = 'AAA' and ((length(substModels) > 0 and 
            substModels[sm, 'Type'] <> 'nuc') or 
            blocksize = 3) then
-            print(evolution[1,i,6]):
+            #print(evolution[1,i,6]):
             evolution[1, i, 2] := ProteinSeq(evolution[1, i, 6]):
         else
             evolution[1, i, 2] := protseq:
