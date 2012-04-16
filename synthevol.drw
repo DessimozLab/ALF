@@ -249,7 +249,7 @@ fi:
     
 if not unitIsPam then
     if assigned(mutRate) then
-        mutRate := muteRate * 100:
+        mutRate := mutRate * 100:
     fi:
     geneDuplRate := geneDuplRate / 100:
     geneLossRate := geneLossRate / 100:
