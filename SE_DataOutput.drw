@@ -363,6 +363,9 @@ end:
 CreateGeneTrees := proc(clsts, evol, lheights)
     trees := []:
     geneIDs := [seq(transpose(evol[i])[4], i=1..length(evol))]:
+
+    # function to output extended Newick format
+    nodeType2NHX := t -> sprint('[&&NHX:D=%s]',If(t[4]='D','Y','N') ); 
     
     # loop over all clusters
     for c to length(clsts) do
@@ -506,7 +509,7 @@ CreateGeneTrees := proc(clsts, evol, lheights)
             for c to length(trees) do
                 if trees[c] = 0 then next fi:
                 OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.nwk'):
-                printf('%A;\n\n', Tree_Newick(trees[c])):
+                printf('%A;\n\n', Tree_Newick(trees[c],'NHXfield'=nodeType2NHX)):
                 OpenWriting(previous):
             od;
         fi:
