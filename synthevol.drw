@@ -352,6 +352,8 @@ if scaleTree then
     fi:
 fi:
     
+#DrawTree(tree, ArcRadial, OrderLeaves=LeftHeavy, Legend, Title = 'original tree'):
+#TimedCallSystem('mv '.wdir.'/temp.ps '.wdir.'/OriginalTree.ps', 2);
 
 if enableGCAmelioration then
     if length(substModels) = length(targetFreqs) then
@@ -949,6 +951,21 @@ fi:
 if simOutput intersect {'Newick'} <> {} then
     OpenWriting(wdir.'RealTree.nwk'):
     printf('%s;\n', Tree_Newick(treeEvo)):
+    OpenWriting(previous):
+fi:
+if treeType = 'Custom' then
+    labelso := []:
+    labelss := []:
+    for l in Leaves(tree) do
+        labelso := append(labelso, l['Label']):
+    od:
+    for l in Leaves(treeEvo) do
+        labelss := append(labelss, l['Label']):
+    od:
+    OpenWriting(wdir.'/speciesMapping.txt'):
+    for i to length(labelso) do
+        printf('%s\t%s\n', labelso[i], labelss[i]):
+    od:
     OpenWriting(previous):
 fi:
 lprint('...real genome tree saved.');
