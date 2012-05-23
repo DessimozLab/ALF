@@ -365,7 +365,7 @@ CreateGeneTrees := proc(clsts, evol, lheights)
     geneIDs := [seq(transpose(evol[i])[4], i=1..length(evol))]:
 
     # function to output extended Newick format
-    nodeType2NHX := t -> sprint('[&&NHX:D=%s]',If(t[4]='D','Y','N') ); 
+    nodeType2NHX := t -> sprintf('[&&NHX:D=%s]',If(t[4]='D','Y','N') ); 
     
     # loop over all clusters
     for c to length(clsts) do
