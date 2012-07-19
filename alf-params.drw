@@ -159,7 +159,7 @@ scaleTree := false:          # scale tree to match Pam distance defined below (p
                               # length
 birthRate := 0.01:            # b parameter (for BDTree)
 deathRate := 0.001:           # d parameter (for BDTree)
-NSpecies := 15:            # number of species in the tree (for BD and ToL)
+NSpecies := 5:            # number of species in the tree (for BD and ToL)
 ultrametric := false:     # for BDTree: should resulting tree be ultrametric
 
 treeFile := 'tree.drw': # path to tree file with tree in darwin or Newick format OR a darwin tree structure
@@ -220,6 +220,10 @@ fissionRate := 0;      # rate of gene fissions without prior duplication
 fusionRate := 0;       # rate of gene fusions occuring without prior duplication of fused genes
   numberFusion := 3:   # maximum number of genes fused in one fusion event
 ###
+
+### parameters for adding ambiguities to the final sequences
+ambiguousCharMean := 0.1:
+ambiguousCharVar := 0.009:
 
 # simulation name
 mname := 'test_simulation';

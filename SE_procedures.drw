@@ -805,3 +805,55 @@ NucToCodonFreqs := proc(bf:list(nonnegative))
     tf
 end:
 lprint('Procedures for Synthetic Evolution sucessfully loaded');
+
+
+AddAmbiguities := proc()
+    global evolution, substModels, seqTypes, livingOrgs:
+    if length(substModels) > 0 then
+        for i to livingOrgs do
+            for j to length(evolution[i]) do
+                substModel := substModels[seqTypes[evolution[i,j,9],1]]:
+                if substModel[Type] = 'aa' then
+                    seqIndex := 2:
+                else
+                    seqIndex := 6:
+                fi:
+                s := evolution[i,j,seqIndex]:
+
+#                printf('old sequence length: %d\n', length(s)):
+
+                do
+                    nx := round(Rand(Normal(ambiguousCharMean, ambiguousCharVar)) * length(s)):
+                    if nx >= 0 then break fi: 
+                od:
+                posx := Rand(1..length(s)-nx+1):
+#                print(posx):
+                sx := CreateString(nx, 'X'):
+                evolution[i,j,seqIndex] := s[1..posx-1].sx.s[posx+nx..-1]:
+#                printf('new sequence length: %d\n', length(evolution[i,j,seqIndex])):
+                if substModel[Blocksize] = 3 then
+                    evolution[i,j,2] := ProteinSeq(evolution[i,j,6]):
+                fi:
+            od:
+        od:
+    else
+        for i to livingOrgs do
+            for j to length(evolution[i]) do
+                s := evolution[i,j,6]:
+
+#                printf('old sequence length: %d\n', length(s)):
+
+                do
+                    n := round(Rand(Normal(ambiguousCharMean, ambiguousCharVar)) * length(s)):
+                    if nx >= 0 then break fi:
+                od:
+                posx := Rand(1..length(s)-nx+1):
+                sx := CreateString(nx, 'X'):
+                evolution[i,j,6] := s[1..posx-1].sx.s[posx+nx..-1]:
+#                printf('new sequence length: %d\n', length(evolution[i,j,6])):
+            od:
+        od:
+    fi:
+    NULL
+end:
+
