@@ -83,6 +83,9 @@ IndelModel(0.00005,'ZIPF', [1.821], 50),
 #IndelModel(0.00005, 'ZIPF', [1.821], 50, 0.0001, 'GEOM', [0.5], 50),
 NULL
 ]:
+# use gap placement of Dawg (i.e. assume each sequence is part of a longer sequence and allow gaps to continue beyond a 
+# sequence). This will lead to a uniform distribution of gaps within the sequence. If set to false, gaps will be constrained to begin and end inside the sequence. This will lead to fewer gaps on both ends of sequences. Default: true
+DawgPlacement := true:
 ###
 
 ### parameters for among site rate variability
