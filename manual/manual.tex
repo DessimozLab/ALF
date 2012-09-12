@@ -325,6 +325,8 @@ A list with probabilities defining a custom indel distribution. Should be \textt
 \item{\texttt{gainMaxLen}/\texttt{lossMaxLen}} \hfill \\
 maximal length of indels
 \end{itemize}
+\item{\texttt{DawgPlacement}} \hfill \\
+If \texttt{true} (default), each sequence is assumed to be part of a larger sequence and gaps can extend beyond either end of the sequence. This leads to a uniform distribution of gaps within the sequence. If \texttt{false}, gaps will be constrained to begin and end inside the sequence. This will lead to fewer gaps on both ends of the sequence.
 \end{itemize}
 
 \subsubsection{Rate Variation Among Sites}
