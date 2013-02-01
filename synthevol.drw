@@ -558,8 +558,8 @@ if realseed = true then # generates the first organism with real data
             remArr := append(remArr, i): 
             next
         fi:
-        if substModels[sm, 'Type'] <> 'nuc' or
-           substModels[sm,'Blocksize'] = 3 then
+        if dnaseq <> '' and (substModels[sm, 'Type'] <> 'nuc' or
+           substModels[sm,'Blocksize'] = 3) then
             while CodonToA(dnaseq[-3..-1]) = '$' do
                 dnaseq := dnaseq[1..-4]: # remove stop codons at end of sequence
             od:
@@ -722,7 +722,6 @@ else
     Nprot := protStart:
     maxID := length(evolution[1]);    # highest unique gene ID number
 fi:
-
 Naa := round(Naa/Nprot):
 
 clusters := [seq([], maxID)]: # gene families
