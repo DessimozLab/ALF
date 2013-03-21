@@ -255,6 +255,7 @@ PerformGeneDuplication := proc(org:integer, evolTime:nonnegative;
     geneSourceIndex := Rand(1..length(evolution[org]) - ndupl + 1); 
     idArr := transpose(evolution[org])[4]:
     k := 0:
+
     while k < ndupl do
 #        printf('k: %d, ndupl: %d\n', k, ndupl):
         geneSource := SearchArray(abs(geneR[org,geneSourceIndex+k]), idArr):
@@ -275,6 +276,43 @@ PerformGeneDuplication := proc(org:integer, evolTime:nonnegative;
             k := k + 1:
         fi:
     od:
+
+    if simOutput intersect {'Dup'} <> {} then
+        aaFile := CreateArray(1..ndupl, ''):
+        dnaFile := CreateArray(1..ndupl, ''):
+        dbFile := CreateArray(1..ndupl, ''):
+        orgname := sprintf('SE%03d_%g', org, evolTime):
+
+        for k from 0 to ndupl-1 do
+            geneSource := SearchArray(abs(geneR[org, geneSourceIndex+k]), idArr):
+            dbFile[k+1] := CreateDBEntry(evolution[org], geneSource, geneR[org], orgname):
+            fastaEntries := CreateFASTAEntries(evolution[org], geneSource, orgname):
+            aaFile[k+1] := fastaEntries[1]:
+            dnaFile[k+1] := fastaEntries[2]:
+        od:
+        dbFile := ConcatStrings(dbFile):
+        aaFile := ConcatStrings(aaFile):
+        dnaFile := ConcatStrings(dnaFile):
+
+        if simOutput intersect {'DarwinDB'} <> {} then
+            OpenAppending(wdir.'/'.dbAncdir.'/'.sprintf('SE%03d', org).'_dup.db'):
+            printf('%s', dbFile):
+            OpenWriting(previous);
+        fi:
+        if simOutput intersect {'Fasta'} then
+            if aaFile <> '' then
+                OpenAppending(wdir.'/'.dbAncdir.'/'.sprintf('SE%03d', org).'_dup_aa.fa'):
+                printf('%s', aaFile):
+                OpenWriting(previous):
+            fi:
+            if dnaFile <> '' then
+                OpenAppending(wdir.'/'.dbAncdir.'/'.sprintf('SE%03d', org).'_dup_dna.fa'):
+                printf('%s', dnaFile):
+                OpenWriting(previous):
+            fi:
+        fi:
+    fi:
+    
 
     for k from 0 to ndupl - 1 do
         geneSource := SearchArray(abs(geneR[org,geneSourceIndex+k]), idArr):
