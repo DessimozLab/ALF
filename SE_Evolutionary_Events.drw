@@ -299,7 +299,7 @@ PerformGeneDuplication := proc(org:integer, evolTime:nonnegative;
             printf('%s', dbFile):
             OpenWriting(previous);
         fi:
-        if simOutput intersect {'Fasta'} then
+        if simOutput intersect {'Fasta'} <> {} then
             if aaFile <> '' then
                 OpenAppending(wdir.'/'.dbAncdir.'/'.sprintf('SE%03d', org).'_dup_aa.fa'):
                 printf('%s', aaFile):

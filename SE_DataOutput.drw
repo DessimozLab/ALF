@@ -128,7 +128,7 @@ DBoutAnc := proc(organism, parent, child, birth)
         fi:
         dnaFile := ConcatStrings(dnaFile):
         if dnaFile <> '' then
-            OpenWriting(wdir.dbAncdir.org.'_dna.fa');
+            OpenWriting(wdir.dbAncdir.orgname.'_dna.fa');
             printf('%s', dnaFile):
             OpenWriting(previous):
         fi:
