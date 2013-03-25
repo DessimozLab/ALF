@@ -243,6 +243,7 @@ simOutput := {
               'DarwinDB',   # output genomes as Darwin databases
               'Fasta',      # output genomes as Fasta files
               'Ancestral',  # output ancestral genomes
+              'Dup',        # output ancestral sequences at time of gene duplications
               NULL}:
 
 # directories for file storage
