@@ -37,7 +37,7 @@ GenRandomTree := proc(D_all, nSpecies;(minDist=5):nonnegative,
     T := RemoveXtra(T):
 end:
 
-RemoveXtra := proc(tree:Tree):
+RemoveXtra := proc(tree:Tree)
     if type(tree,Leaf) then
         return(Leaf(tree[Label], abs(tree[Height]))):
     else
@@ -46,3 +46,71 @@ RemoveXtra := proc(tree:Tree):
         return(Tree(lt, abs(tree[Height]), rt)):
     fi:
 end:
+
+module external GetUltrametricTree, AddHeterogeniousRates;
+
+GetUltrametricTree := proc(tree:Tree)
+    t := copy(tree):
+    r := table():
+    GetUltrametricTree_R(t):
+    
+    ExtractRates(tree, t, r, []):
+    [t, r]
+end:
+
+GetUltrametricTree_R := proc(tree:Tree) option internal:
+    if type(tree['Left'], Leaf) then
+        lheight := tree['Left', 'Height'] - tree['Height']:
+    else
+        lheight := GetUltrametricTree_R(tree['Left']) + tree['Left', 'Height'] - tree['Height']:
+    fi:
+    if type(tree['Right'], Leaf) then
+        rheight := tree['Right', 'Height'] - tree['Height']:
+    else
+        rheight := GetUltrametricTree_R(tree['Right']) + tree['Right', 'Height'] - tree['Height']:
+    fi:
+
+    mheight := (lheight + rheight) / 2:
+    
+    lfac := (tree['Height'] + mheight) / (tree['Height'] + lheight):
+    rfac := (tree['Height'] + mheight) / (tree['Height'] + rheight):
+    ScaleTreeHeight_(tree['Left'], lfac):
+    ScaleTreeHeight_(tree['Right'], rfac):
+    
+    mheight
+end:
+
+ScaleTreeHeight_ := proc(tree:Tree, factor:float) option internal;
+    tree[Height] := tree[Height] * factor:
+    if not type(tree, Leaf) then
+        ScaleTreeHeight_(tree[Left], factor):
+        ScaleTreeHeight_(tree[Right], factor):
+    fi:
+end:
+
+AddHeterogeniousRates := proc(t:Tree; (remTrunk=true):boolean)
+    newTree := AddDeviation(t, remTrunk):
+    r := table():
+    
+    ExtractRates(t, newTree, r, []):
+    
+    [newTree, r]
+end:
+
+ExtractRates := proc(t:Tree, newTree:Tree, rates:table, key:list) option internal:
+    oldlh := t['Left', 'Height'] - t['Height']:
+    newlh := newTree['Left', 'Height'] - newTree['Height']:
+    rates[append(key, 'Left')] := oldlh / newlh:
+    if not type(t['Left'], Leaf) then
+        ExtractRates(t['Left'], newTree['Left'], rates, append(key, 'Left')):
+    fi:
+
+    oldrh := t['Right', 'Height'] - t['Height']:
+    newrh := newTree['Right', 'Height'] - newTree['Height']:
+    rates[append(key, 'Right')] := oldrh / newrh:
+    if not type(t['Right'], Leaf) then
+        ExtractRates(t['Right'], newTree['Right'], rates, append(key, 'Right')):
+    fi:
+end:
+
+end: #module
