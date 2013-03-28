@@ -165,7 +165,12 @@ deathRate := 0.001:           # d parameter (for BDTree)
 NSpecies := 5:            # number of species in the tree (for BD and ToL)
 ultrametric := false:     # for BDTree: should resulting tree be ultrametric
 
-treeFile := 'tree.drw': # path to tree file with tree in darwin or Newick format OR a darwin tree structure
+#treeFile := 'tree.drw': # path to tree file with tree in darwin or Newick format OR a darwin tree structure.
+                        # if used with ratesFile, this tree should be ultrametric.
+#treeFile := Tree(Leaf(S1,1),0,Tree(Leaf(S2,1),0.5,Leaf(S3,1))):
+#ratesFile := 'rates.drw': # path to tree file with tree in darwin or Newick format OR a darwin tree structure. 
+                          # Simulation will use the branch lengths of this tree as rates on the tree given with treeFile
+#ratesFile := Tree(Tree(Leaf(S1,80),30,Leaf(S3,50)),0,Leaf(S2,40)):
 # unitIsPam := true:   # set to false if branch lengths are in substitutions per site, set rate parameters accordingly.
 ###
 

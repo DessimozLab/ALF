@@ -316,13 +316,18 @@ if treeType = 'Custom' then
         ConvertToPam(tree):
     fi:
     CheckBranchLengths(tree):
+
     NSpecies := 0:
     for l in Leaves(tree) do NSpecies := NSpecies + 1 od:
 elif treeType = 'BDTree' then
     tree := BirthDeathTree(birthRate, deathRate, NSpecies, mutRate):
     if not ultrametric then
         # create deviation using method defined in Guindon and Gascuel, 2003
-        tree := AddDeviation(tree):
+        origTree := copy(tree):
+        res := AddHeterogeniousRates(tree, false):
+        tree := origTree:
+        origTree := res[1]:
+        branchRates := res[2]:
     fi:
 elif treeType = 'ToLSample' then
     if not assigned(treeFile) and not assigned(tree) then
@@ -359,12 +364,32 @@ if scaleTree then
     fi:
 fi:
 
-# separate rates from topology
-origTree := copy(tree):
-#printf('original: %A\n', tree):
-res := GetUltrametricTree(tree):
-tree := res[1]:
-branchRates := res[2]:
+if treeType = 'Custom' and assigned(ratesFile) then
+    origTree := copy(tree):
+    ratesTree := CheckTree(ratesFile):
+    if not unitIsPam then
+        ConvertToPam(ratesTree):
+    fi:
+    CheckBranchLengths(ratesTree):
+    if NSpecies = 3 then
+        if type(ratesTree['Left'], Leaf) then
+            assert(type(tree['Left'], Leaf) and tree['Left','Label'] = ratesTree['Left','Label']):
+        else
+            assert(type(tree['Right'],Leaf) and tree['Right','Label'] = ratesTree['Left','Label']):
+        fi:
+    elif NSpecies > 3 then
+        assert(max(RobinsonFoulds([tree, ratesTree])) = 0):
+    fi:
+    branchRates := GetRates(tree, ratesTree):
+
+elif not treeType = 'BDTree' then
+    # separate rates from topology
+    origTree := copy(tree):
+    #printf('original: %A\n', tree):
+    res := GetUltrametricTree(tree):
+    tree := res[1]:
+    branchRates := res[2]:
+fi:
 speciesRates := CreateArray(1..NSpecies,1):
 #printf('new: %A\n', tree):
 #DrawTree(tree, ArcRadial, OrderLeaves=LeftHeavy, Legend, Title = 'original tree'):

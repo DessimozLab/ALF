@@ -47,7 +47,7 @@ RemoveXtra := proc(tree:Tree)
     fi:
 end:
 
-module external GetUltrametricTree, AddHeterogeniousRates;
+module external GetUltrametricTree, AddHeterogeniousRates, GetRates;
 
 GetUltrametricTree := proc(tree:Tree)
     t := copy(tree):
@@ -96,6 +96,12 @@ AddHeterogeniousRates := proc(t:Tree; (remTrunk=true):boolean)
     ExtractRates(t, newTree, r, []):
     
     [newTree, r]
+end:
+
+GetRates := proc(t:Tree, rT:Tree)
+    r := table():
+    ExtractRates(t, rT, r, []):
+    r
 end:
 
 ExtractRates := proc(t:Tree, newTree:Tree, rates:table, key:list) option internal:
