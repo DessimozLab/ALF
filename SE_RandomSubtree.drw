@@ -52,6 +52,7 @@ module external GetUltrametricTree, AddHeterogeniousRates;
 GetUltrametricTree := proc(tree:Tree)
     t := copy(tree):
     r := table():
+    r[[]] := 1:
     GetUltrametricTree_R(t):
     
     ExtractRates(tree, t, r, []):

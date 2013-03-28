@@ -689,38 +689,40 @@ end:
 ###########################
 # tree-related procedures #
 ###########################
-ListTimePoints := proc(tree:Tree, prefix:string)
+ListTimePoints := proc(tree:Tree, rates:table; (prefix='1'):string, (index=[]):list)
     if type(tree, Leaf) then
         res := copy([[],[]]):
     else
-    	lt := ListTimePoints(tree[Left], prefix.'.1'):
-    	rt := ListTimePoints(tree[Right], prefix.'.2'):
+        lindex := append(index, 'Left'):
+        rindex := append(index, 'Right'):
+    	lt := ListTimePoints(tree[Left], rates, prefix.'.1', lindex):
+    	rt := ListTimePoints(tree[Right], rates, prefix.'.2', rindex):
     	if length(tree) > 3 then
     		if tree[xtra][1] = 'S' then
-	    		res := [[[prefix, tree[Height], tree[xtra][2]], op(lt[1]), 
+	    		res := [[[prefix, tree[Height], rates[lindex], rates[rindex], tree[xtra][2]], op(lt[1]), 
 	    		         op(rt[1])], [op(lt[2]), op(rt[2])]]:
 	    	elif tree[xtra][1] = 'D' then
-	    		res := [[op(lt[1]), op(rt[1])], [[prefix, tree[Height], 
+	    		res := [[op(lt[1]), op(rt[1])], [[prefix, tree[Height], rates[lindex], rates[rindex],
 	    		                                  tree[xtra][2]], op(lt[2]), 
 	    		                                 op(rt[2])]]:
 	        else
-                res := [[[prefix, tree[Height]], op(lt[1]), op(rt[1])],[]]:
+                res := [[[prefix, tree[Height], rates[lindex], rates[rindex]], op(lt[1]), op(rt[1])],[]]:
 	    	fi:
    		else
-	        res := [[[prefix, tree[Height]], op(lt[1]), op(rt[1])],[]]:
+	        res := [[[prefix, tree[Height], rates[lindex], rates[rindex]], op(lt[1]), op(rt[1])],[]]:
 	    fi:
     fi:
     res
 end:
     
-EnumerateBranches := proc(tree:Tree, specPts, gc:boolean)
-	branches := append(EnumerateBranches_R(tree[Left], tree[Height], gc), 
-	                   op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
+EnumerateBranches := proc(tree:Tree, specPts, gc:boolean, rates:table)
+	branches := append(EnumerateBranches_R(tree[Left], tree[Height], gc, rates, ['Left']), 
+	                   op(EnumerateBranches_R(tree[Right], tree[Height], gc, rates, ['Right']))):
 	branches := sort(branches, x->x[1]):
 	if gc then
-        res := copy([[1, 0, specPts[1, 2], tree[-1]]]):
+        res := copy([[1, 0, specPts[1, 2], 1, tree[-1]]]):
     else
-        res := copy([[1, 0, specPts[1, 2]]]):
+        res := copy([[1, 0, specPts[1, 2], 1]]):
     fi:
 	n := 2:
 	for i to length(specPts) do
@@ -731,22 +733,22 @@ EnumerateBranches := proc(tree:Tree, specPts, gc:boolean)
 	res
 end:
 
-EnumerateBranches_R := proc(tree:Tree, start:nonnegative, gc:boolean)
-	if type(tree, Leaf) then 
-	    if gc then
-	        return([[start, tree[Height], tree[-1]]]):
-	    else
-	        return([[start, tree[Height]]]):
-	    fi:
+EnumerateBranches_R := proc(tree:Tree, start:nonnegative, gc:boolean, rates:table, index:list)
+    if gc then
+        res := [[start, tree[Height], rates[index], tree[-1]]]:
+    else
+        res := [[start, tree[Height], rates[index]]]:
+    fi:
+	
+    if type(tree, Leaf) then 
+	    return(res):
 	fi:
-	res := EnumerateBranches_R(tree[Left], tree[Height], gc):
-	if gc then
-	    res := append(res, [start, tree[Height], tree[-1]], 
-	                  op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
-	else
-	    res := append(res, [start, tree[Height]], 
-	                  op(EnumerateBranches_R(tree[Right], tree[Height], gc))):
-	fi:
+
+	lres := EnumerateBranches_R(tree[Left], tree[Height], gc, rates, append(index, 'Left')):
+    rres := EnumerateBranches_R(tree[Right], tree[Height], gc, rates, append(index, 'Right')):
+
+    res := append(res, op(lres), op(rres)):
+    res
 end:
 
 # prevent branches of length 0 by adding a small value
@@ -766,14 +768,35 @@ CheckBranchLengths_R := proc(tree:Tree, inc:nonnegative) option internal;
     tree[Right][Height] := tree[Right][Height] + rinc:
 end:
 
-UpdateTreeLGT := proc(t:Tree)
-    for i to length(t[-1]) do
-        t[-1,i,3] := t[Height] - t[-1,i,3]:
-    od:
-    if not type(t,Leaf) then
-        UpdateTreeLGT(t[Left]):
-        UpdateTreeLGT(t[Right]):
+UpdateTreeLGT := proc(t:Tree, orig:Tree)
+#    for i to length(t[-1]) do
+#        t[-1,i,3] := t[Height] - t[-1,i,3]:
+#    od:
+#    if not type(t,Leaf) then
+#        UpdateTreeLGT(t[Left]):
+#        UpdateTreeLGT(t[Right]):
+#    fi:
+    UpdateTreeLGT_R(t, orig, 0, 0):
+    NULL
+end:
+
+UpdateTreeLGT_R := proc(newT:Tree, origT:Tree, snew, sorig)
+    nblen := newT['Height'] - snew:
+    oblen := origT['Height'] - sorig:
+    if nblen = oblen then
+        fac := 1:
+    else
+        fac := oblen / nblen:
     fi:
+    
+    for i to length(newT[-1]) do
+        newT[-1,i,3] := (newT['Height'] - newT[-1,i,3]) * fac:
+    od:
+    if not type(newT, Leaf) then
+        UpdateTreeLGT_R(newT['Left'], origT['Left'], newT['Height'], origT['Height']):
+        UpdateTreeLGT_R(newT['Right'], origT['Right'], newT['Height'], origT['Height']):
+    fi:
+    newT['Height'] := origT['Height']:
     NULL
 end:
 

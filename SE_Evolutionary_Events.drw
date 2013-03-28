@@ -705,9 +705,9 @@ AdaptAreas := proc(org, gene, curm:posint, newm:posint)
     fi:
 end:
 
-PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
+PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative, lrate:nonnegative, rrate:nonnegative)
     global evolution, geneR, livingOrgs, spec, treeData, treeEvo, GCratio, 
-           specModels, writeLog, curTargetFreqs, enableGCAmelioration;
+           specModels, writeLog, curTargetFreqs, enableGCAmelioration, speciesRates;
     evoLen := length(evolution[orgSource]): i := 1:
     while i <= evoLen do
         seqmutation(orgSource, i, evolTime);
@@ -725,7 +725,6 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
     if enableGCAmelioration then
         curTargetFreqs[livingOrgs] := curTargetFreqs[orgSource]:
     fi:
-    # updates history in gene descriptions
     if assigned(specModels) then
         curSpecModels := transpose(specModels[1]):
         if curSpecModels <> [] then
@@ -735,6 +734,7 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
         specModels := specModels[2..-1]:
     fi:
     for l to length(evolution[livingOrgs]) do
+        # updates history in gene descriptions
         evolution[livingOrgs, l, 5] := evolution[orgSource, l, 5].'-('.
                                         string(evolTime).')'.livingOrgs;
         evolution[livingOrgs, l, 3] := evolution[orgSource, l, 3].'-('.
@@ -780,8 +780,10 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
                 r := Rand():
                 curm := evolution[livingOrgs,l,9]:
                 for m to length(seqTypes) do
-                    if r <= modelSwitchS[evolution[livingOrgs, l, 9], m] then
-                        if m <>  evolution[livingOrgs, l, 9] then
+                    if r <= modelSwitchS[curm, m] then
+                        if m <>  curm then
+                            printf('model switch during speciation for gene %d of '.
+                                   'species %d: %d -> %d\n', l, livingOrgs, curm, m):
                             evolution[livingOrgs, l, 9] := m:
                             AdaptAreas(livingOrgs,l, seqTypes[curm,1], seqTypes[m,1]):
                         fi:
@@ -796,6 +798,11 @@ PerformSpeciation := proc(orgSource:integer, evolTime:nonnegative)
     # creates a new leaf in the real tree
     treeData := append(treeData, []);
     d := evolTime;
+    
+    # update rates
+    speciesRates[orgSource] := lrate:
+    speciesRates[livingOrgs] := rrate:
+
     if treeData[orgSource] = [] then
         printf('something interesting is happening here...\n'):
         treeEvo[] := Tree(Leaf(orgSource, d, []),
@@ -824,11 +831,11 @@ end:
 # mutates gene k of organism org for a certain amount of time steps, 15.12.06
 seqmutation := proc(org: posint, gene:posint, curT:nonnegative)
     global evolution, substModels, prevTargetFreqs, curTargetFreqs, 
-           enableGCAmelioration, geneR;
+           enableGCAmelioration, geneR, speciesRates;
     # apply rate modifications from duplications
     rateFac := curT - evolution[org,gene,11]:
     if rateFac <= 0 then return() fi:
-    rateF := 1:
+    rateF := speciesRates[org]:
     for i from length(evolution[org,gene,10]) to 1 by -1 do
         rateF := rateF * evolution[org,gene,10,i,2]:
         # remove rate modifier if it exceeds its lifetime

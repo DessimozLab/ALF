@@ -358,7 +358,15 @@ if scaleTree then
               'bifurcating and all branches have a non-zero height.'):
     fi:
 fi:
-    
+
+# separate rates from topology
+origTree := copy(tree):
+#printf('original: %A\n', tree):
+res := GetUltrametricTree(tree):
+tree := res[1]:
+branchRates := res[2]:
+speciesRates := CreateArray(1..NSpecies,1):
+#printf('new: %A\n', tree):
 #DrawTree(tree, ArcRadial, OrderLeaves=LeftHeavy, Legend, Title = 'original tree'):
 #TimedCallSystem('mv '.wdir.'/temp.ps '.wdir.'/OriginalTree.ps', 2);
 
@@ -394,7 +402,7 @@ if not webRequest then
 fi:
 
 # build list of speciation time points and nodes from the tree
-res := ListTimePoints(tree, '1'):
+res := ListTimePoints(tree, branchRates):
 timePts := res[1]:
 timePts := sort(timePts, timePts->timePts[2]):
 for i to length(timePts) do
@@ -420,8 +428,8 @@ od:
 
 tptransp := transpose(timePts):
 specTime := tptransp[2]:
-specIndex := tptransp[1]:
-if length(tptransp) = 3 then specModels := tptransp[3]: fi: # model switches
+#specIndex := tptransp[1]:
+if length(tptransp) = 5 then specModels := tptransp[5]: fi: # model switches
 
 # if there's a list of duplication time points prepare it
 # TODO: implement this kind of duplication (for version 2?)
@@ -457,8 +465,9 @@ else
     dupIndex := []:
 fi:
 
-branches := EnumerateBranches(tree, timePts, enableGCAmelioration):
+branches := EnumerateBranches(tree, timePts, enableGCAmelioration, branchRates):
 branches := sort(branches, x->x[3]):
+#print(branches):
 
 leafHeights := CreateArray(1..NSpecies, 0):
 for j to length(branches) do
@@ -783,11 +792,12 @@ for i to length(branches) do
     else
         totalRate := ngenes[branches[i,1]] * rateSum:
     fi:
+    totalRate := totalRate * branches[i,4]:
     curT := branches[i,2]:
     if enableGCAmelioration then
         curInd := floor(curT/10)+1:
         events[curInd] := append(events[curInd], 
-                                 [curT, branches[i,1], 'GC', branches[i, 4], branches[i,3]]):
+                                 [curT, branches[i,1], 'GC', branches[i, 5], branches[i,3]]):
     fi:    
 
     if totalRate > 0 then
@@ -823,8 +833,8 @@ for i to length(branches) do
                 events[curInd] := append(events[curInd], 
                                          [curT, branches[i,1], 'D', numg]):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + numg:
-                totalRate := totalRate + rateSum 
-                                + If(seind > 1, lgtRate + lgtGRate,0):
+                totalRate := totalRate + numg * (rateSum 
+                                + If(seind > 1, lgtRate + lgtGRate,0)) * branches[i,4]:
                 totD := totD + 1:
             elif event = 2 then
                 # gene loss
@@ -832,15 +842,15 @@ for i to length(branches) do
                 events[curInd] := append(events[curInd],
                                          [curT, branches[i,1], 'L', numg]):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] - numg:
-                totalRate := totalRate - rateSum
-                                - If(seind > 1, lgtRate + lgtGRate,0):
+                totalRate := totalRate - numg * (rateSum
+                                + If(seind > 1, lgtRate + lgtGRate,0)) * branches[i,4]:
             elif event = 7 then
                 # lgt
                 events[curInd] := append(events[curInd],
                                          [curT, branches[i,1], 'LGT']):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
-                totalRate := totalRate + rateSum
-                                + If(seind > 1, lgtRate + lgtGRate,0):
+                totalRate := totalRate + (rateSum
+                                + If(seind > 1, lgtRate + lgtGRate,0)) * branches[i,4]:
                 totL := totL + 1:
             elif event = 8 then
                 # group lgt
@@ -849,22 +859,22 @@ for i to length(branches) do
                                          [curT, branches[i,1], 'LGTG', numg]):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + numg:
                 totalRate := totalRate + numg * (rateSum
-                                + If(seind > 1, lgtRate + lgtGRate,0)):
+                                + If(seind > 1, lgtRate + lgtGRate,0)) * branches[i,4]:
                 totL := totL + numg:
             elif event = 3 then
                 # fusion
                 events[curInd] := append(events[curInd],
                                          [curT, branches[i,1], 'FU']):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] - 1:
-                totalRate := totalRate - rateSum
-                                - If(seind > 1, lgtRate + lgtGRate,0):
+                totalRate := totalRate - (rateSum
+                                + If(seind > 1, lgtRate + lgtGRate,0)) * branches[i,4]:
             elif event = 4 then
                 # fission
                 events[curInd] := append(events[curInd],
                                          [curT, branches[i,1], 'FI']):
                 ngenes[branches[i,1]] := ngenes[branches[i,1]] + 1:
-                totalRate := totalRate + rateSum
-                                + If(seind > 1, lgtRate + lgtGRate,0):
+                totalRate := totalRate + (rateSum
+                                + If(seind > 1, lgtRate + lgtGRate,0)) * branches[i,4]:
             elif event = 5 then
                 # inversion
                 events[curInd] := append(events[curInd],
@@ -887,7 +897,7 @@ od:
 
 for i to length(timePts) do
     curInd := floor(timePts[i,2]/10)+1:
-    events[curInd] := append(events[curInd], [timePts[i,2], timePts[i,1], 'S']):
+    events[curInd] := append(events[curInd], [timePts[i,2], timePts[i,1], 'S', timePts[i,3], timePts[i,4]]):
 od:
 
 for i to length(events) do
@@ -923,7 +933,7 @@ for i to length(events) do
             PerformTranslocation(events[i,j,2]):
         elif cure = 'S' then
             # speciation
-            PerformSpeciation(events[i,j,2], events[i,j,1]):
+            PerformSpeciation(events[i,j,2], events[i,j,1], events[i,j,4], events[i,j,5]):
         elif cure = 'GC' then
             # change of GC target content
             PerformNewGCTarget(events[i,j,2], events[i,j,1], events[i,j,4]):
@@ -945,7 +955,7 @@ for i to length(branchesSet) do
                                     branchesSet[i,3],
                                     treeEvo[op(treeData[branchesSet[i,1]])][3]); 
 od:
-UpdateTreeLGT(treeEvo):
+UpdateTreeLGT(treeEvo, origTree):
 DrawTree(treeEvo, ArcRadial, OrderLeaves=LeftHeavy, Legend, 
     Title = 'synthetic evolution');
 TimedCallSystem('mv '.wdir.'/temp.ps '.wdir.'/RealTree.ps', 2);
