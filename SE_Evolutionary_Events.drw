@@ -286,7 +286,7 @@ PerformGeneDuplication := proc(org:integer, evolTime:nonnegative;
         for k from 0 to ndupl-1 do
             geneSource := SearchArray(abs(geneR[org, geneSourceIndex+k]), idArr):
             dbFile[k+1] := CreateDBEntry(evolution[org], geneSource, geneR[org], orgname):
-            fastaEntries := CreateFASTAEntries(evolution[org], geneSource, orgname):
+            fastaEntries := CreateFASTAEntries(evolution[org], geneSource, geneR[org], orgname):
             aaFile[k+1] := fastaEntries[1]:
             dnaFile[k+1] := fastaEntries[2]:
         od:

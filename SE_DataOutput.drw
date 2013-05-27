@@ -37,13 +37,13 @@ DBoutFASTA := proc()
                (length(substModels) > 0 and 
                 (substModels[seqTypes[org[j,9],1],'Type'] <> 'nuc' or 
                  not substModels[seqTypes[org[j,9],1],'NeutralDNA'])) then
-                aaFile[j] := CreateFASTAEntry(org,j,2,orgname):
+                aaFile[j] := CreateFASTAEntry(org,j,geneR[i],2,orgname):
             fi:
             if (length(substModels) = 0 and 
                 (blocksize = 3 or org[j,2] = 'AAA')) or 
                (length(substModels) > 0 and 
                 substModels[seqTypes[org[j,9],1],'Type'] <> 'aa') then
-                dnaFile[j] := CreateFASTAEntry(org,j,6,orgname):
+                dnaFile[j] := CreateFASTAEntry(org,j,geneR[i],6,orgname):
             fi:
         od;
         aaFile := ConcatStrings(aaFile):
@@ -62,27 +62,31 @@ DBoutFASTA := proc()
     lprint('\n\n.fasta files written...\n\n');
 end:
 
-CreateFASTAEntries := proc(org, gene, orgname)
+CreateFASTAEntries := proc(org, gene, geneOrder, orgname)
     aaEntry := dnaEntry := '':
     if (length(substModels) = 0 and 
         (blocksize = 3 or org[gene,2] <> 'AAA')) or 
        (length(substModels) > 0 and 
         (substModels[seqTypes[org[gene,9],1],'Type'] <> 'nuc' or 
          not substModels[seqTypes[org[gene,9],1],'NeutralDNA'])) then
-        aaEntry := CreateFASTAEntry(org,gene,2,orgname):
+        aaEntry := CreateFASTAEntry(org,gene,geneOrder,2,orgname):
     fi:
     if (length(substModels) = 0 and 
         (blocksize = 3 or org[gene,2] = 'AAA')) or 
        (length(substModels) > 0 and 
         substModels[seqTypes[org[gene,9],1],'Type'] <> 'aa') then
-        dnaEntry := CreateFASTAEntry(org,gene,6,orgname):
+        dnaEntry := CreateFASTAEntry(org,gene,geneOrder,6,orgname):
     fi:
     [aaEntry, dnaEntry]:
 end:
 
-CreateFASTAEntry := proc(org, gene, seqField, orgname)
-    fastaEntry := sprintf('>G%a_%s, sequence type: %s\n%s\n\n', org[gene, 4], orgname,
-                       seqTypes[org[gene, 9], 4], org[gene, seqField]);
+CreateFASTAEntry := proc(org, gene, geneOrder, seqField, orgname)
+    loc := SearchArray(org[gene, 4], abs(geneOrder));
+    if (geneOrder[loc] < 0) then
+        loc := -loc;
+    fi;
+    fastaEntry := sprintf('>G%a_%s, sequence type: %s, locus: %d\n%s\n\n', org[gene, 4], orgname,
+                       seqTypes[org[gene, 9], 4], loc, org[gene, seqField]);
 end:
 
 # DB output for the ancestral sequences
@@ -111,13 +115,13 @@ DBoutAnc := proc(organism, parent, child, birth)
                (length(substModels) > 0 and 
                 (substModels[seqTypes[organism[j,9],1],'Type'] <> 'nuc' or 
                  not substModels[seqTypes[organism[j,9],1],'NeutralDNA'])) then
-                aaFile[j] := CreateFASTAEntry(organism, j, 2, orgname):
+                aaFile[j] := CreateFASTAEntry(organism, j, geneR[child], 2, orgname):
             fi:
             if (length(substModels) = 0 and 
                 (blocksize = 3 or organism[j,2] = 'AAA')) or 
                (length(substModels) > 0 and 
                 substModels[seqTypes[organism[j,9],1],'Type'] <> 'aa') then
-                dnaFile[j] := CreateFASTAEntry(organism, j, 6, orgname):
+                dnaFile[j] := CreateFASTAEntry(organism, j, geneR[child], 6, orgname):
             fi:
         od;
         aaFile := ConcatStrings(aaFile):
