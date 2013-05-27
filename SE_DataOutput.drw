@@ -12,7 +12,7 @@ DBout := proc()
         PrintDBHeader(orgname):
         # entry output
         for j to length(org) do
-            printf('%A\n%A\n',org[j,4], geneR[i]):
+            #printf('%A\n%A\n',org[j,4], geneR[i]):
             printf('%s', CreateDBEntry(org, j, geneR[i], orgname)):
         od;
         OpenWriting(previous);
