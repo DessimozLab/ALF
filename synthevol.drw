@@ -952,10 +952,10 @@ for i to length(events) do
             PerformFission(events[i,j,2], events[i,j,1]):
         elif cure = 'IV' then
             # inversion
-            PerformInversion(events[i,j,2]):
+            PerformInversion(events[i,j,2], events[i,j,1]):
         elif cure = 'TL' then
             # translocation
-            PerformTranslocation(events[i,j,2]):
+            PerformTranslocation(events[i,j,2], events[i,j,1]):
         elif cure = 'S' then
             # speciation
             PerformSpeciation(events[i,j,2], events[i,j,1], events[i,j,4], events[i,j,5]):

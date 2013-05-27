@@ -378,11 +378,11 @@ PerformGeneDuplication := proc(org:integer, evolTime:nonnegative;
     if Rand() < transDupl then
         place := Rand(1..length(geneR[org]) - 1 - ndupl);
         transLoc(org, place, SearchArray(evolution[org, -ndupl, 4], 
-            abs(geneR[org])), ndupl);
+            abs(geneR[org])), ndupl, evolTime);
     else
         place := geneSourceIndex+ndupl-1:
         transLoc(org, place, SearchArray(evolution[org, -ndupl, 4], 
-            abs(geneR[org])), ndupl);
+            abs(geneR[org])), ndupl, evolTime);
     fi;
     # gene fission
     if ndupl = 1 and Rand() < fissionDupl then
@@ -522,7 +522,7 @@ PerformLGT := proc(j:integer, evolTime:nonnegative)
         # gene rearrangement
         geneR[j] := append(geneR[j], maxID);
         place := Rand(0..length(geneR[j]) - 1);
-        transLoc(j, place, length(geneR[j]), 1);
+        transLoc(j, place, length(geneR[j]), 1, evolTime);
     
     if not type(treeEvo[op(treeData[orgDonor])], Leaf) then
         error(treeEvo[op(treeData[orgDonor])], 
@@ -599,7 +599,7 @@ PerformLGTG := proc(org:integer, evolTime:nonnegative, lgtSize)
     
     # gene rearrangement
     place := Rand(0..length(geneR[org]) - lgtSize + 1);
-    transLoc(org, place, length(geneR[org]) - lgtSize + 1, lgtSize);
+    transLoc(org, place, length(geneR[org]) - lgtSize + 1, lgtSize, evolTime);
 
     if not type(treeEvo[op(treeData[orgDonor])], Leaf) then
         error(treeEvo[op(treeData[orgDonor])], 
@@ -645,11 +645,12 @@ PerformFission := proc(j:integer, evolTime:nonnegative)
     geneFission(j, r, evolTime):
 end:
 
-PerformInversion := proc(j:integer)
+PerformInversion := proc(j:integer, evolTime:nonnegative)
     global geneR, invSize;
     #printf('performing inversion\n'):
     iSize := Rand(1..invSize);
     target := Rand(1..length(geneR[j]) - iSize + 1);
+    printf('time %g: inversion in organism %d. affected gene(s): %a\n', evolTime, j, geneR[j,target..target+iSize-1]):
     if iSize = 1 then
         geneR[j, target] := -geneR[j, target];
     else
@@ -658,20 +659,20 @@ PerformInversion := proc(j:integer)
     # inverted translocation
     if Rand() < invtrans then
         place := Rand(0..length(geneR[j]) - iSize);
-        transLoc(j, place, target, iSize);
+        transLoc(j, place, target, iSize, evolTime);
     fi;
 #    if length(evolution[j]) <> length(geneR[j]) then
 #        error(org, 'length mismatch after inversion!'):
 #    fi:
 end:
 
-PerformTranslocation := proc(org:integer)
+PerformTranslocation := proc(org:integer, evolTime:nonnegative)
     global geneR, transSize;
     #printf('performing translocation\n'):
     tSize := Rand(1..transSize);
     target := Rand(1..length(geneR[org]) - tSize + 1);
     place := Rand(0..length(geneR[org]) - tSize);
-    transLoc(org, place, target, tSize);
+    transLoc(org, place, target, tSize, evolTime);
 #    if length(evolution[org]) <> length(geneR[org]) then
 #        error(org, 'length mismatch after translocation!'):
 #    fi:
@@ -1250,7 +1251,7 @@ geneFission := proc(org:posint, gene:posint, etime:nonnegative)
     # add new gene to the data structures
     evolution[org] := append(evolution[org], newGene):
     geneR[org] := append(geneR[org], evolution[org, -1, 4]):
-    transLoc(org, g, SearchArray(evolution[org, -1, 4], abs(geneR[org])), 1);
+    transLoc(org, g, SearchArray(evolution[org, -1, 4], abs(geneR[org])), 1, evolTime);
 
 #    if length(evolution[org]) <> length(geneR[org]) then
 #        error(org, 'length mismatch!'):

@@ -18,7 +18,7 @@ end:
 
 
 # performs the translocation of a single gene or a gene group
-transLoc := proc(org: posint, place: integer, target: posint, tSize: posint)
+transLoc := proc(org: posint, place: integer, target: posint, tSize: posint, evolTime:nonnegative)
     global geneR;
     if place >= target then
         thePlace := place + tSize:
@@ -32,7 +32,7 @@ transLoc := proc(org: posint, place: integer, target: posint, tSize: posint)
             op(geneR[org, place+1..target-1]),
             op(geneR[org, target+tSize..-1])];
     fi;
-    printf('performed translocation of size %d in organism %d. source: %d, destination: %d\n', tSize, org, target, place):
+    printf('time %g: translocation of size %d in organism %d. source: %d, destination: %d\n', evolTime, tSize, org, target, place):
 end:
 
 
