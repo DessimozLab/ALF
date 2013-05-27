@@ -537,7 +537,7 @@ CreateGeneTrees := proc(clsts, evol, lheights)
             for c to length(trees) do
                 if trees[c] = 0 then next fi:
                 OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.nwk'):
-                printf('%A;\n\n', Tree_Newick(trees[c],'NHXfield'=nodeType2NHX)):
+                printf('%s;\n\n', Tree_Newick(trees[c],'NHXfield'=nodeType2NHX)):
                 OpenWriting(previous):
             od;
         fi:
