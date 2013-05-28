@@ -382,7 +382,7 @@ PerformGeneDuplication := proc(org:integer, evolTime:nonnegative;
     else
         place := geneSourceIndex+ndupl-1:
         transLoc(org, place, SearchArray(evolution[org, -ndupl, 4], 
-            abs(geneR[org])), ndupl, evolTimei, false);
+            abs(geneR[org])), ndupl, evolTime, false);
     fi;
     # gene fission
     if ndupl = 1 and Rand() < fissionDupl then
@@ -1251,7 +1251,7 @@ geneFission := proc(org:posint, gene:posint, etime:nonnegative)
     # add new gene to the data structures
     evolution[org] := append(evolution[org], newGene):
     geneR[org] := append(geneR[org], evolution[org, -1, 4]):
-    transLoc(org, g, SearchArray(evolution[org, -1, 4], abs(geneR[org])), 1, evolTime; false);
+    transLoc(org, g, SearchArray(evolution[org, -1, 4], abs(geneR[org])), 1, evolTime, false);
 
 #    if length(evolution[org]) <> length(geneR[org]) then
 #        error(org, 'length mismatch!'):
