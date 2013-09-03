@@ -328,6 +328,12 @@ elif treeType = 'BDTree' then
         tree := origTree:
         origTree := res[1]:
         branchRates := res[2]:
+    else
+        origTree := copy(tree):
+        res := GetUltrametricTree(tree):
+        tree := origTree:
+        origTree := res[1]:
+        branchRates := res[2]:
     fi:
 elif treeType = 'ToLSample' then
     if not assigned(treeFile) and not assigned(tree) then
@@ -492,7 +498,6 @@ fi:
 
 branches := EnumerateBranches(tree, timePts, enableGCAmelioration, branchRates):
 branches := sort(branches, x->x[3]):
-#print(branches):
 
 leafHeights := CreateArray(1..NSpecies, 0):
 for j to length(branches) do

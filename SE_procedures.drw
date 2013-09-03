@@ -693,8 +693,8 @@ ListTimePoints := proc(tree:Tree, rates:table; (prefix='1'):string, (index=[]):l
     if type(tree, Leaf) then
         res := copy([[],[]]):
     else
-        lindex := append(index, 'Left'):
-        rindex := append(index, 'Right'):
+        lindex := append(copy(index), 'Left'):
+        rindex := append(copy(index), 'Right'):
     	lt := ListTimePoints(tree[Left], rates, prefix.'.1', lindex):
     	rt := ListTimePoints(tree[Right], rates, prefix.'.2', rindex):
     	if length(tree) > 3 then
@@ -716,6 +716,12 @@ ListTimePoints := proc(tree:Tree, rates:table; (prefix='1'):string, (index=[]):l
 end:
     
 EnumerateBranches := proc(tree:Tree, specPts, gc:boolean, rates:table)
+
+#    m := n := 0:
+#    for i in Indices(rates) do m := m+1 od:
+#    for i in Leaves(tree) do n := n+1 od:
+#    printf('rates:%d\tleaves:%d\n',m,n):
+
 	branches := append(EnumerateBranches_R(tree[Left], tree[Height], gc, rates, ['Left']), 
 	                   op(EnumerateBranches_R(tree[Right], tree[Height], gc, rates, ['Right']))):
 	branches := sort(branches, x->x[1]):
@@ -734,6 +740,7 @@ EnumerateBranches := proc(tree:Tree, specPts, gc:boolean, rates:table)
 end:
 
 EnumerateBranches_R := proc(tree:Tree, start:nonnegative, gc:boolean, rates:table, index:list)
+
     if gc then
         res := [[start, tree[Height], rates[index], tree[-1]]]:
     else
@@ -744,8 +751,8 @@ EnumerateBranches_R := proc(tree:Tree, start:nonnegative, gc:boolean, rates:tabl
 	    return(res):
 	fi:
 
-	lres := EnumerateBranches_R(tree[Left], tree[Height], gc, rates, append(index, 'Left')):
-    rres := EnumerateBranches_R(tree[Right], tree[Height], gc, rates, append(index, 'Right')):
+	lres := EnumerateBranches_R(tree[Left], tree[Height], gc, rates, append(copy(index), 'Left')):
+    rres := EnumerateBranches_R(tree[Right], tree[Height], gc, rates, append(copy(index), 'Right')):
 
     res := append(res, op(lres), op(rres)):
     res

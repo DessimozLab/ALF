@@ -107,16 +107,18 @@ end:
 ExtractRates := proc(t:Tree, newTree:Tree, rates:table, key:list) option internal:
     oldlh := t['Left', 'Height'] - t['Height']:
     newlh := newTree['Left', 'Height'] - newTree['Height']:
-    rates[append(key, 'Left')] := oldlh / newlh:
+    newlk := append(copy(key), 'Left'):
+    rates[newlk] := oldlh / newlh:
     if not type(t['Left'], Leaf) then
-        ExtractRates(t['Left'], newTree['Left'], rates, append(key, 'Left')):
+        ExtractRates(t['Left'], newTree['Left'], rates, newlk):
     fi:
 
     oldrh := t['Right', 'Height'] - t['Height']:
     newrh := newTree['Right', 'Height'] - newTree['Height']:
-    rates[append(key, 'Right')] := oldrh / newrh:
+    newrk := append(copy(key), 'Right'):
+    rates[newrk] := oldrh / newrh:
     if not type(t['Right'], Leaf) then
-        ExtractRates(t['Right'], newTree['Right'], rates, append(key, 'Right')):
+        ExtractRates(t['Right'], newTree['Right'], rates, newrk):
     fi:
 end:
 
