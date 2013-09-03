@@ -60,32 +60,36 @@ GetUltrametricTree := proc(tree:Tree)
 end:
 
 GetUltrametricTree_R := proc(tree:Tree) option internal:
+    leftb := tree['Left', 'Height'] - tree['Height']:
+    rightb := tree['Right', 'Height'] - tree['Height']:
     if type(tree['Left'], Leaf) then
-        lheight := tree['Left', 'Height'] - tree['Height']:
+        lheight := leftb:
     else
-        lheight := GetUltrametricTree_R(tree['Left']) + tree['Left', 'Height'] - tree['Height']:
+        lheight := GetUltrametricTree_R(tree['Left']) + leftb:
     fi:
     if type(tree['Right'], Leaf) then
-        rheight := tree['Right', 'Height'] - tree['Height']:
+        rheight := rightb:
     else
-        rheight := GetUltrametricTree_R(tree['Right']) + tree['Right', 'Height'] - tree['Height']:
+        rheight := GetUltrametricTree_R(tree['Right']) + rightb:
     fi:
-
+    
     mheight := (lheight + rheight) / 2:
     
-    lfac := (tree['Height'] + mheight) / (tree['Height'] + lheight):
-    rfac := (tree['Height'] + mheight) / (tree['Height'] + rheight):
-    ScaleTreeHeight_(tree['Left'], lfac):
-    ScaleTreeHeight_(tree['Right'], rfac):
-    
+#    lfac := (tree['Height'] + mheight) / (tree['Height'] + lheight):
+#    rfac := (tree['Height'] + mheight) / (tree['Height'] + rheight):
+    lfac := mheight / lheight:
+    rfac := mheight / rheight:
+    ScaleTreeHeight_(tree['Left'], lfac, tree['Height']):
+    ScaleTreeHeight_(tree['Right'], rfac, tree['Height']):
+
     mheight
 end:
 
-ScaleTreeHeight_ := proc(tree:Tree, factor:float) option internal;
-    tree[Height] := tree[Height] * factor:
+ScaleTreeHeight_ := proc(tree:Tree, factor:float, offset:nonnegative) option internal;
+    tree[Height] := (tree[Height] - offset) * factor + offset:
     if not type(tree, Leaf) then
-        ScaleTreeHeight_(tree[Left], factor):
-        ScaleTreeHeight_(tree[Right], factor):
+        ScaleTreeHeight_(tree[Left], factor, offset):
+        ScaleTreeHeight_(tree[Right], factor, offset):
     fi:
 end:
 
