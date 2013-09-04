@@ -1,0 +1,24 @@
+
+
+            >>       >=>       >=======> 
+           >>=>      >=>       >=>       
+          >> >=>     >=>       >=>       
+         >=>  >=>    >=>       >=====>   
+        >=====>>=>   >=>       >=>       
+       >=>      >=>  >=>       >=>       
+      >=>        >=> >=======> >=>       
+
+      Stand-alone version
+      Daniel Dalquen, Maria Anisimova, Gaston Gonnet and Christophe Dessimoz
+
+      (c) CBRG, ETH Zurich, August 2011
+
+      Version [VERSION]
+
+      Please cite:
+
+      Dalquen et al., "ALF - A Simulation Framework for Genome Evolution",
+      Mol Biol Evol 29(4):1115-1123. 2012
+      http://mbe.oxfordjournals.org/content/29/4/1115
+
+
