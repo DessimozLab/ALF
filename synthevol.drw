@@ -323,11 +323,25 @@ elif treeType = 'BDTree' then
     tree := BirthDeathTree(birthRate, deathRate, NSpecies, mutRate):
     if not ultrametric then
         # create deviation using method defined in Guindon and Gascuel, 2003
-        origTree := copy(tree):
-        res := AddHeterogeniousRates(tree, false):
-        tree := origTree:
-        origTree := res[1]:
-        branchRates := res[2]:
+        #origTree := copy(tree):
+        #res := AddHeterogeniousRates(tree, false):
+        #tree := origTree:
+        #origTree := res[1]:
+        #branchRates := res[2]:
+        tree := AddDeviation(tree):
+    #else
+        #origTree := copy(tree):
+        #res := GetUltrametricTree(tree):
+        #tree := origTree:
+        #branchRates := res[2]:
+
+        #if scaleTree then
+        #    if assigned(treeLength) then
+        #        tree := origTree := ScaleTreeLength(tree, treeLength):
+        #    else
+        #        tree := origTree := ScaleTree(tree, mutRate):
+        #    fi:
+        #fi:
     fi:
 elif treeType = 'ToLSample' then
     if not assigned(treeFile) and not assigned(tree) then
@@ -382,8 +396,9 @@ if treeType = 'Custom' and assigned(ratesFile) then
     fi:
     branchRates := GetRates(tree, ratesTree):
 
-elif not treeType = 'BDTree' then
-    # separate rates from topology
+#elif not treeType = 'BDTree' then
+else
+# separate rates from topology
     origTree := copy(tree):
     #printf('original: %A\n', tree):
     res := GetUltrametricTree(tree):
@@ -492,7 +507,6 @@ fi:
 
 branches := EnumerateBranches(tree, timePts, enableGCAmelioration, branchRates):
 branches := sort(branches, x->x[3]):
-#print(branches):
 
 leafHeights := CreateArray(1..NSpecies, 0):
 for j to length(branches) do
