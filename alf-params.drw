@@ -216,9 +216,9 @@ lgtGRate := 0.00005;	       # rate that lateral gene transfer of groups occurs
 ###
 
 ### parameters for genome rearrangement
-invers := 0.00;	       # rate that gene inversion occurs
+invers := 0.001;	       # rate that gene inversion occurs
   invSize := 1;        # number of genes which are inversed in one go
-transloc := 0.00;	       # rate that gene translocation occurs
+transloc := 0.001;	       # rate that gene translocation occurs
   transSize := 1;      # number of genes which are translocated in one go
 invtrans := 0.10;	       # rate that inversed translocation occurs
 ###

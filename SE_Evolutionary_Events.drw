@@ -650,7 +650,7 @@ PerformInversion := proc(j:integer, evolTime:nonnegative)
     #printf('performing inversion\n'):
     iSize := Rand(1..invSize);
     target := Rand(1..length(geneR[j]) - iSize + 1);
-    printf('time %g: inversion in organism %d. affected gene(s): %a\n', evolTime, j, geneR[j,target..target+iSize-1]):
+    printf('time %g: inversion in organism %d. affected gene(s): %a\n', evolTime, j, [seq(target+itgt,itgt=0..iSize-1)]):
     if iSize = 1 then
         geneR[j, target] := -geneR[j, target];
     else
@@ -1157,9 +1157,12 @@ geneFission := proc(org:posint, gene:posint, etime:nonnegative)
 
     g := SearchArray(evolution[org,gene,4],geneR[org]):
     # can't break gene with just one site
-    if evolution[org,gene,1,-1,2] = 1 then return() fi:
-    printf('time %0004.4g: performing gene fission on gene %d of species %d\n', etime, gene, org):
     seqmutation(org, gene, etime):
+    if evolution[org,gene,1,-1,2] = 1 then
+        printf('warning, fission of gene %d in organism %d cancelled, because sequence length is < 2!\n', gene, org):
+        return()
+    fi:
+    printf('time %0004.4g: performing gene fission on gene %d of species %d\n', etime, gene, org):
     seqType := seqTypes[evolution[org,gene,9]]:
     if length(substModels) > 0 then
         substModel := substModels[seqType[1]]:
