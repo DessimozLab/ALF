@@ -395,9 +395,10 @@ PerformGeneDuplication := proc(org:integer, evolTime:nonnegative;
         geneFusion(org, place+g, place+g+1, evolTime):
     fi:
 
-#    if length(evolution[org]) <> length(geneR[org]) then
-#        error(org, 'length mismatch after duplication!'):
-#    fi:
+    if length(evolution[org]) <> length(geneR[org]) then
+        printlevel := 10:
+        error(org, 'length mismatch after duplication!'):
+    fi:
 end:
 
 PerformGeneLoss := proc(j:integer, evolTime:nonnegative; (nloss=1):posint)
@@ -428,9 +429,10 @@ PerformGeneLoss := proc(j:integer, evolTime:nonnegative; (nloss=1):posint)
             error('species '.j.' contains no sequences anymore!'): 
         fi:
     od:
-#    if length(evolution[org]) <> length(geneR[org]) then
-#        error(org, 'length mismatch after loss!'):
-#    fi:
+    if length(evolution[org]) <> length(geneR[org]) then
+        printlevel := 10:
+        error(org, 'length mismatch after loss!'):
+    fi:
 end:
 
 PerformLGT := proc(j:integer, evolTime:nonnegative)
@@ -538,9 +540,10 @@ PerformLGT := proc(j:integer, evolTime:nonnegative)
     treeEvo[op(treeData[j])][3] := append(treeEvo[op(treeData[j])][3], 
                                           ['LGT'.lgtNum, 'end', evolTime]):
     lgtNum := lgtNum + 1:
-#    if length(evolution[org]) <> length(geneR[org]) then
-#        error(org, 'length mismatch after lgt!'):
-#    fi:
+    if length(evolution[org]) <> length(geneR[org]) then
+        printlevel := 10:
+        error(org, 'length mismatch after lgt!'):
+    fi:
 end:
 
 PerformLGTG := proc(org:integer, evolTime:nonnegative, lgtSize)
@@ -615,9 +618,10 @@ PerformLGTG := proc(org:integer, evolTime:nonnegative, lgtSize)
     treeEvo[op(treeData[org])][3] := append(treeEvo[op(treeData[org])][3], 
                                             ['LGT'.lgtNum, 'end', evolTime]):
     lgtNum := lgtNum + 1:
-#    if length(evolution[org]) <> length(geneR[org]) then
-#        error(org, 'length mismatch after lgtg!'):
-#    fi:
+    if length(evolution[org]) <> length(geneR[org]) then
+        printlevel := 10:
+        error(org, 'length mismatch after lgtg!'):
+    fi:
 end:
 
 GetDonorOrgs := proc(evolTime:nonnegative)
@@ -633,6 +637,10 @@ PerformFusion := proc(j:integer, evolTime:nonnegative; (nfuse=1):posint)
     for k to nfuse do
         geneFusion(j, fusionGene, fusionGene+1, evolTime):
     od:
+    if length(evolution[j]) <> length(geneR[j]) then
+        printlevel := 10:
+        error(j, 'length mismatch after lgtg!'):
+    fi:
 end:
 
 PerformFission := proc(j:integer, evolTime:nonnegative)
@@ -643,6 +651,10 @@ PerformFission := proc(j:integer, evolTime:nonnegative)
         if i < 10 or evolution[j,r,1,-1,2] > 1 then break fi:
     od:
     geneFission(j, r, evolTime):
+    if length(evolution[j]) <> length(geneR[j]) then
+        printlevel := 10:
+        error(j, 'length mismatch after lgtg!'):
+    fi:
 end:
 
 PerformInversion := proc(j:integer, evolTime:nonnegative)
@@ -661,9 +673,10 @@ PerformInversion := proc(j:integer, evolTime:nonnegative)
         place := Rand(0..length(geneR[j]) - iSize);
         transLoc(j, place, target, iSize, evolTime);
     fi;
-#    if length(evolution[j]) <> length(geneR[j]) then
-#        error(org, 'length mismatch after inversion!'):
-#    fi:
+    if length(evolution[j]) <> length(geneR[j]) then
+        printlevel := 10:
+        error(org, 'length mismatch after inversion!'):
+    fi:
 end:
 
 PerformTranslocation := proc(org:integer, evolTime:nonnegative)
@@ -673,9 +686,10 @@ PerformTranslocation := proc(org:integer, evolTime:nonnegative)
     target := Rand(1..length(geneR[org]) - tSize + 1);
     place := Rand(0..length(geneR[org]) - tSize);
     transLoc(org, place, target, tSize, evolTime);
-#    if length(evolution[org]) <> length(geneR[org]) then
-#        error(org, 'length mismatch after translocation!'):
-#    fi:
+    if length(evolution[org]) <> length(geneR[org]) then
+        printlevel := 10:
+        error(org, 'length mismatch after translocation!'):
+    fi:
 end:
 
 AdaptAreas := proc(org, gene, curm:posint, newm:posint)
@@ -1039,6 +1053,10 @@ geneFusion := proc(org:posint, g1:posint, g2:posint, etime:nonnegative)
     fi:
     seqmutation(org, gene1, etime):
     seqmutation(org, gene2, etime):
+    if evolution[org, gene1,4] <> g1 or evolution[org,gene2,4] <> g2 then
+        printf('warning: gene %d to be fused was deleted. aborting fusion event!\n', If(evolution[org,gene1,4] <> g1,g1,g2)):
+        return():
+    fi:
     l1 := length(evolution[org,gene1,1]):
     offset := evolution[org,gene1,1,l1,2]:
     l2 := evolution[org,gene2,1,-1,2]:
@@ -1137,9 +1155,10 @@ geneFusion := proc(org:posint, g1:posint, g2:posint, etime:nonnegative)
             op(evolution[org][oldGene + 1..-1])];
     fi;
     
-#    if length(evolution[org]) <> length(geneR[org]) then
-#        error(org, 'length mismatch!'):
-#    fi:
+    if length(evolution[org]) <> length(geneR[org]) then
+        printlevel := 10:
+        error(org, 'length mismatch after gene fusion!'):
+    fi:
     
 end:
 
@@ -1256,9 +1275,10 @@ geneFission := proc(org:posint, gene:posint, etime:nonnegative)
     geneR[org] := append(geneR[org], evolution[org, -1, 4]):
     transLoc(org, g, SearchArray(evolution[org, -1, 4], abs(geneR[org])), 1, evolTime, false);
 
-#    if length(evolution[org]) <> length(geneR[org]) then
-#        error(org, 'length mismatch!'):
-#    fi:
+    if length(evolution[org]) <> length(geneR[org]) then
+        printlevel := 10:
+        error(org, 'length mismatch after fission!'):
+    fi:
 
 end:
 
