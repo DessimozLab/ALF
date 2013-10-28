@@ -1052,12 +1052,12 @@ geneFusion := proc(org:posint, g1:posint, g2:posint, etime:nonnegative)
         fi:
     fi:
 
-    if evolution[org, gene1,4] <> geneR[org,g1] or evolution[org,gene2,4] <> geneR[org,g2] then
+    if evolution[org, gene1,4] <> abs(geneR[org,g1]) or evolution[org,gene2,4] <> abs(geneR[org,g2]) then
         error(org, g1,g2,gene1, gene2,'something went wrong...\n'):
     fi:
     seqmutation(org, gene1, etime):
     seqmutation(org, gene2, etime):
-    if evolution[org, gene1,4] <> geneR[org, g1] or evolution[org,gene2,4] <> geneR[org, g2] then
+    if evolution[org, gene1,4] <> abs(geneR[org, g1]) or evolution[org,gene2,4] <> abs(geneR[org, g2]) then
         printf('warning: gene %d to be fused was deleted. aborting fusion event!\n', If(evolution[org,gene1,4] <> g1,g1,g2)):
         return():
     fi:
