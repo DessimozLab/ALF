@@ -9,9 +9,9 @@
 # CUSTOM: Params[1]: indelVector (list of probabilities: indelVector[i] = P(indel of length i) )
 
 IndelModel := proc(GainRate:nonnegative; GainModel:{'ZIPF', 'GEOM', 'NEGBIN', 'QG', 'CUSTOM', 'NONE'},
-                   GainParams:{list(numeric), list(list(numeric))},GainMaxLen:posint,
+                   GainParams:{list(numeric), list(list(numeric))},GainMaxLen:{0,posint},
                    LossRate:nonnegative, LossModel:{'ZIPF', 'GEOM', 'NEGBIN', 'QG', 'CUSTOM', 'NONE'},
-                   LossParams:{list(numeric), list(list(numeric))}, LossMaxLen:posint)
+                   LossParams:{list(numeric), list(list(numeric))}, LossMaxLen:{0,posint})
 
     if nargs = 1 and GainRate > 0 then
         error('Too few arguments for indel model')
