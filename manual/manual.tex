@@ -570,6 +570,17 @@ A string specifying the name of the simulation. ALF will create a directory of t
 If you are interested in getting reproducible results, put \texttt{SetRand(}$seed$\texttt{);} on the very first line of the parameter file, where $seed$ is an arbitrary integer number.
 \end{itemize}
 
+\section{The Evolutionary History of a Gene}
+The Darwin database files hold information about all evolutionary events that affected a gene. For each gene, the \texttt{<DE>} tag contains a string composed of the following elements:
+\begin{itemize}
+\item{\texttt{a-(x)b}} speciation at time x of species a into species b
+\item{\texttt{-(gDx)a}} gene duplication of gene g at time x in species a
+\item{\texttt{-a(gLx)b}} LGT (novel acquisition) of gene g at time x from donor species a into recipient species b
+\item{\texttt{-a(gLox)b}} LGT (orthologous replacement) of gene g at time x from donor species into recipient species b
+\item{\texttt{-(gFix)a}} gene fission of gene g at time x in species a
+\item{\texttt{-(gFux)a}} gene fusion of gene g with the current gene at time x in species a
+\end{itemize}
+
 \section{Performance / Memory Usage}
 %Table \ref{tab.performance} lists execution time and memory usage for a number of example simulations.
 
