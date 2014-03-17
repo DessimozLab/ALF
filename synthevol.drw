@@ -590,7 +590,7 @@ if realseed = true then # generates the first organism with real data
             next
         fi:
         dnaseq := ReplaceString('U','T',SearchTag('DNA', Entry(i)));
-        if substModels[sm, 'Type'] <> 'aa' and
+        if length(substModels) > 0 and substModels[sm, 'Type'] <> 'aa' and
            (length(SearchAllString('R',dnaseq)) > 0 or
            length(SearchAllString('Y',dnaseq)) > 0 or
            length(SearchAllString('S',dnaseq)) > 0 or
@@ -606,14 +606,14 @@ if realseed = true then # generates the first organism with real data
             remArr := append(remArr, i): 
             next
         fi:
-        if dnaseq <> '' and (substModels[sm, 'Type'] <> 'nuc' or
-           substModels[sm,'Blocksize'] = 3) then
+        if dnaseq <> '' and ((length(substModels) = 0 and blocksize = 3) or (length(substModels) > 0 and (substModels[sm, 'Type'] <> 'nuc' or
+           substModels[sm,'Blocksize'] = 3))) then
             while CodonToA(dnaseq[-3..-1]) = '$' do
                 dnaseq := dnaseq[1..-4]: # remove stop codons at end of sequence
             od:
         fi:
         if protseq = 'AAA' or 
-           substModels[sm,'Type'] <> 'aa' then
+           (length(substModels) > 0 and substModels[sm,'Type'] <> 'aa') then
             if length(substModels) = 0 then
                 seqLen := length(dnaseq)/blocksize:
             else

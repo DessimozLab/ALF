@@ -1040,7 +1040,7 @@ geneFusion := proc(org:posint, g1:posint, g2:posint, etime:nonnegative)
     printf('time %0004.4g: performing gene fusion on genes %d and %d of species %d\n', 
             etime, gene1, gene2, org):
     if length(substModels) = 0 then 
-        simType := If(blocksize = 3 or evolution[org,g,2] = 'AAA', 'nuc', 'aa'):
+        simType := If(blocksize = 3 or evolution[org,gene1,2] = 'AAA', 'nuc', 'aa'):
     else
         substModel1 := substModels[seqTypes[evolution[org, gene1, 9],1]]:
         substModel2 := substModels[seqTypes[evolution[org, gene2, 9],1]]:
