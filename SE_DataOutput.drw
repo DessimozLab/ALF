@@ -13,7 +13,8 @@ DBout := proc()
         # entry output
         for j to length(org) do
             #printf('%A\n%A\n',org[j,4], geneR[i]):
-            printf('%s', CreateDBEntry(org, j, geneR[i], orgname)):
+            #printf('%s', CreateDBEntry(org, j, geneR[i], orgname)):
+            PrintDBEntry(org, j, geneR[i], orgname):
         od;
         OpenWriting(previous);
     od;
@@ -27,37 +28,45 @@ DBoutFASTA := proc()
         TimedCallSystem('mkdir -p '.wdir.dbdir, 2);
     fi;
     for i to livingOrgs do
-        aaFile := CreateArray(1..length(evolution[i]), ''):
-        dnaFile := CreateArray(1..length(evolution[i]), ''):
+        #aaFile := CreateArray(1..length(evolution[i]), ''):
+        #dnaFile := CreateArray(1..length(evolution[i]), ''):
         orgname := sprintf('SE%03d', i):
         org := evolution[i]:
-    for j to length(org) do
+        OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'_aa.fa'):
+        for j to length(org) do
             if (length(substModels) = 0 and 
                 (blocksize = 3 or org[j,2] <> 'AAA')) or 
                (length(substModels) > 0 and 
                 (substModels[seqTypes[org[j,9],1],'Type'] <> 'nuc' or 
                  not substModels[seqTypes[org[j,9],1],'NeutralDNA'])) then
-                aaFile[j] := CreateFASTAEntry(org,j,geneR[i],2,orgname):
+                #aaFile[j] := CreateFASTAEntry(org,j,geneR[i],2,orgname):
+                PrintFASTAEntry(org, j, geneR[i], 2, orgname):
             fi:
+        od:
+        OpenWriting(previous):
+        OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'_dna.fa'):
+        for j to length(org) do
             if (length(substModels) = 0 and 
                 (blocksize = 3 or org[j,2] = 'AAA')) or 
                (length(substModels) > 0 and 
                 substModels[seqTypes[org[j,9],1],'Type'] <> 'aa') then
-                dnaFile[j] := CreateFASTAEntry(org,j,geneR[i],6,orgname):
+                #dnaFile[j] := CreateFASTAEntry(org,j,geneR[i],6,orgname):
+                PrintFASTAEntry(org, j, geneR[i], 6, orgname):
             fi:
         od;
-        aaFile := ConcatStrings(aaFile):
-        if aaFile <> '' then
-            OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'_aa.fa');
-            printf('%s', aaFile):
-            OpenWriting(previous):
-        fi:
-        dnaFile := ConcatStrings(dnaFile):
-        if dnaFile <> '' then
-            OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'_dna.fa');
-            printf('%s', dnaFile):
-            OpenWriting(previous):
-        fi:
+        OpenWriting(previous):
+        #aaFile := ConcatStrings(aaFile):
+        #if aaFile <> '' then
+        #    OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'_aa.fa');
+        #    printf('%s', aaFile):
+        #    OpenWriting(previous):
+        #fi:
+        #dnaFile := ConcatStrings(dnaFile):
+        #if dnaFile <> '' then
+        #    OpenWriting(wdir.dbdir.'SE'.sprintf('%03d', i).'_dna.fa');
+        #    printf('%s', dnaFile):
+        #    OpenWriting(previous):
+        #fi:
     od;
     lprint('\n\n.fasta files written...\n\n');
 end:
@@ -85,8 +94,22 @@ CreateFASTAEntry := proc(org, gene, geneOrder, seqField, orgname)
     if (geneOrder[loc] < 0) then
         loc := -loc;
     fi;
-    fastaEntry := sprintf('>G%a_%s, sequence type: %s, locus: %d\n%s\n\n', org[gene, 4], orgname,
-                       seqTypes[org[gene, 9], 4], loc, org[gene, seqField]);
+    fastaEntry := CreateArray(1..3,''):
+    fastaEntry[1] := sprintf('>G%a_%s, sequence type: %s, locus: %d\n', org[gene, 4], orgname,
+                       seqTypes[org[gene, 9], 4], loc):
+    fastaEntry[2] := org[gene, seqField]:
+    fastaEntry[3] := '\n\n':
+    ConcatStrings(fastaEntry):
+end:
+
+PrintFASTAEntry := proc(org, gene, geneOrder, seqField, orgname)
+    loc := SearchArray(org[gene, 4], abs(geneOrder));
+    if (geneOrder[loc] < 0) then
+        loc := -loc;
+    fi;
+    printf('>G%a_%s, sequence type: %s, locus: %d\n', org[gene, 4], orgname,
+                       seqTypes[org[gene, 9], 4], loc):
+    printf('%s\n\n', org[gene, seqField]):
 end:
 
 # DB output for the ancestral sequences
@@ -102,40 +125,49 @@ DBoutAnc := proc(organism, parent, child, birth)
         PrintDBHeader(orgname):
         # entry output
         for j to length(organism) do
-            printf('%s', CreateDBEntry(organism, j, geneR[child], orgname)):
+            #printf('%s', CreateDBEntry(organism, j, geneR[child], orgname)):
+            PrintDBEntry(organism, j, geneR[child], orgname):
         od;
         OpenWriting(previous);
     fi:
     if simOutput intersect {'Fasta'} <> {} then
-        aaFile := CreateArray(1..length(organism), ''):
-        dnaFile := CreateArray(1..length(organism), ''):
+        #aaFile := CreateArray(1..length(organism), ''):
+        #dnaFile := CreateArray(1..length(organism), ''):
+        OpenWriting(wdir.dbAncdir.orgname.'_aa.fa'):
         for j to length(organism) do
             if (length(substModels) = 0 and 
                 (blocksize = 3 or organism[j,2] <> 'AAA')) or 
                (length(substModels) > 0 and 
                 (substModels[seqTypes[organism[j,9],1],'Type'] <> 'nuc' or 
                  not substModels[seqTypes[organism[j,9],1],'NeutralDNA'])) then
-                aaFile[j] := CreateFASTAEntry(organism, j, geneR[child], 2, orgname):
+                #aaFile[j] := CreateFASTAEntry(organism, j, geneR[child], 2, orgname):
+                PrintFASTAEntry(organism, j, geneR[child], 2, orgname):
             fi:
+        od:
+        OpenWriting(previous):
+        OpenWriting(wdir.dbAncdir.orgname.'_dna.fa'):
+        for j to length(organism) do
             if (length(substModels) = 0 and 
                 (blocksize = 3 or organism[j,2] = 'AAA')) or 
                (length(substModels) > 0 and 
                 substModels[seqTypes[organism[j,9],1],'Type'] <> 'aa') then
-                dnaFile[j] := CreateFASTAEntry(organism, j, geneR[child], 6, orgname):
+                #dnaFile[j] := CreateFASTAEntry(organism, j, geneR[child], 6, orgname):
+                PrintFASTAEntry(organism, j, geneR[child], 6, orgname):
             fi:
         od;
-        aaFile := ConcatStrings(aaFile):
-        if aaFile <> '' then
-            OpenWriting(wdir.dbAncdir.orgname.'_aa.fa');
-            printf('%s', aaFile):
-            OpenWriting(previous):
-        fi:
-        dnaFile := ConcatStrings(dnaFile):
-        if dnaFile <> '' then
-            OpenWriting(wdir.dbAncdir.orgname.'_dna.fa');
-            printf('%s', dnaFile):
-            OpenWriting(previous):
-        fi:
+        OpenWriting(previous):
+        #aaFile := ConcatStrings(aaFile):
+        #if aaFile <> '' then
+        #    OpenWriting(wdir.dbAncdir.orgname.'_aa.fa');
+        #    printf('%s', aaFile):
+        #    OpenWriting(previous):
+        #fi:
+        #dnaFile := ConcatStrings(dnaFile):
+        #if dnaFile <> '' then
+        #    OpenWriting(wdir.dbAncdir.orgname.'_dna.fa');
+        #    printf('%s', dnaFile):
+        #    OpenWriting(previous):
+        #fi:
 
     fi:
 end:
@@ -155,24 +187,36 @@ PrintDBHeader := proc(orgname)
           'RATES; INDEL</FIELDS>\n');
 end:
 
-CreateDBEntry := proc(org, gene, geneOrder, orgname)
+PrintDBEntry := proc(org, gene, geneOrder, orgname)
     loc := SearchArray(org[gene, 4], abs(geneOrder));
     if (geneOrder[loc] < 0) then
         loc := -loc;
     fi;
-    dbEntry := CreateArray(1..3,''):
-    dbEntry[1] := sprintf('<E><ID>G%a_%s</ID><LOC>%a</LOC><DE>%a, sequence type: %s</DE><OS>%a</OS>'.
-           '<HGP>%d</HGP><RATES>%a</RATES><INDEL>%a</INDEL><SEQ>%s</SEQ>',
+    #dbEntry := CreateArray(1..6,''):
+    #dbEntry[1] := sprintf(
+    printf('<E><ID>G%a_%s</ID><LOC>%a</LOC><DE>%a, sequence type: %s</DE><OS>%a</OS>'.
+           '<HGP>%d</HGP><RATES>%a</RATES><INDEL>%a</INDEL><SEQ>',
         org[gene, 4], orgname, loc, org[gene, 3], seqTypes[org[gene,9],4], org[gene, 5], org[gene, 7],
-        org[gene,1], org[gene, 8], org[gene, 2]): 
+        org[gene,1], org[gene, 8]):
+    #dbEntry[2] := 
+    printf('%s',org[gene, 2]):
     if (length(substModels) = 0 and 
         (blocksize = 3 or org[gene,2] = 'AAA')) or 
        (length(substModels) > 0 and 
         substModels[seqTypes[org[gene,9],1],'Type'] <> 'aa') then
-        dbEntry[2] := sprintf('<DNA>%s</DNA>', org[gene, 6]);
+        #dbEntry[3] := 
+        printf('</SEQ><DNA>'):
+        #dbEntry[4] := 
+        printf('%s',org[gene, 6]);
+        #dbEntry[5] := 
+        printf('</DNA>'):
+    else
+        #dbEntry[3] := 
+        printf('</SEQ>'):
     fi:
-    dbEntry[3] := sprintf('</E>\n'):
-    dbEntry := ConcatStrings(dbEntry):
+    #dbEntry[6] := sprintf(
+    printf('</E>\n'):
+    #dbEntry := ConcatStrings(dbEntry):
 end:
 
 CreateRealMSA := proc(cls, evol, tree)
