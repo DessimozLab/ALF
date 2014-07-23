@@ -748,8 +748,6 @@ GetOrthologs := proc(t:Tree, HPs:list(list(list)),
     global evolution;
     if type(t, Leaf) then return(NULL) fi:
     
-    norgs := length(VPs):
-
     lleaves := GetLeafLabels(t[Left], t[xtra]):
     rleaves := GetLeafLabels(t[Right], t[xtra]):
     
@@ -790,8 +788,9 @@ end:
 
 GetLeafLabels := proc(t:Tree, ev:string)
     if type(t,Leaf) then
-        o := atoi(t[Label, 3..5]):
-        g := atoi(t[Label,7..-1]):
+        tmp := SearchDelim('/',t[Label]);
+        o := atoi(tmp[1, 3..-1]):
+        g := atoi(tmp[2]):
         return([[o, g, ev]]):
     else
         return(append(GetLeafLabels(t[Left], If(t[xtra] = 'LL' or 
