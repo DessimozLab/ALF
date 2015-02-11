@@ -1408,7 +1408,7 @@ MeanGapLength := proc(distr:{'ZIPF', 'QG', 'NEGBIN', 'GEOM', 'CUSTOM'},
         r := params[1]: q := params[2]:
         normFac := NBNormalizationFactor(maxLength, r, q):
         for i to maxLength do
-            m := m + i * ((r+i-2)!/((i-1)!*(r+1)!)*(1-q)^r*q^(i-1))/normFac:
+            m := m + i * ((r+i-2)!/((i-1)!*(r-1)!)*(1-q)^r*q^(i-1))/normFac:
         od:
     elif distr = 'GEOM' then
         normFac := ExpNormalizationFactor(maxLength, params[1]):

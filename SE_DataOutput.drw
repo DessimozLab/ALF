@@ -192,32 +192,46 @@ PrintDBEntry := proc(org, gene, geneOrder, orgname)
     if (geneOrder[loc] < 0) then
         loc := -loc;
     fi;
-    #dbEntry := CreateArray(1..6,''):
-    #dbEntry[1] := sprintf(
     printf('<E><ID>G%a_%s</ID><LOC>%a</LOC><DE>%a, sequence type: %s</DE><OS>%a</OS>'.
            '<HGP>%d</HGP><RATES>%a</RATES><INDEL>%a</INDEL><SEQ>',
         org[gene, 4], orgname, loc, org[gene, 3], seqTypes[org[gene,9],4], org[gene, 5], org[gene, 7],
         org[gene,1], org[gene, 8]):
-    #dbEntry[2] := 
     printf('%s',org[gene, 2]):
     if (length(substModels) = 0 and 
         (blocksize = 3 or org[gene,2] = 'AAA')) or 
        (length(substModels) > 0 and 
         substModels[seqTypes[org[gene,9],1],'Type'] <> 'aa') then
-        #dbEntry[3] := 
-        printf('</SEQ><DNA>'):
-        #dbEntry[4] := 
-        printf('%s',org[gene, 6]);
-        #dbEntry[5] := 
-        printf('</DNA>'):
+        printf('</SEQ><DNA>%s</DNA></E>\n', org[gene, 6]):
     else
-        #dbEntry[3] := 
-        printf('</SEQ>'):
+        printf('</SEQ></E>\n'):
     fi:
-    #dbEntry[6] := sprintf(
-    printf('</E>\n'):
-    #dbEntry := ConcatStrings(dbEntry):
 end:
+
+CreateDBEntry := proc(org, gene, geneOrder, orgname)
+    loc := SearchArray(org[gene, 4], abs(geneOrder));
+    if (geneOrder[loc] < 0) then
+        loc := -loc;
+    fi;
+    dbEntry := CreateArray(1..5,''):
+    dbEntry[1] := sprintf('<E><ID>G%a_%s</ID><LOC>%a</LOC><DE>%a, sequence type: %s</DE><OS>%a</OS>'.
+           '<HGP>%d</HGP><RATES>%a</RATES><INDEL>%a</INDEL><SEQ>',
+        org[gene, 4], orgname, loc, org[gene, 3], seqTypes[org[gene,9],4], org[gene, 5], org[gene, 7],
+        org[gene,1], org[gene, 8]):
+    dbEntry[2] := org[gene, 2]:
+    if (length(substModels) = 0 and 
+        (blocksize = 3 or org[gene,2] = 'AAA')) or 
+       (length(substModels) > 0 and 
+        substModels[seqTypes[org[gene,9],1],'Type'] <> 'aa') then
+        dbEntry[3] := '</SEQ><DNA>':
+        dbEntry[4] := org[gene, 6];
+        dbEntry[5] := '</DNA></E>\n':
+    else
+        dbEntry[3] := '</SEQ></E>\n':
+    fi:
+    dbEntry := ConcatStrings(dbEntry):
+
+end:
+
 
 CreateRealMSA := proc(cls, evol, tree)
     global substModels:

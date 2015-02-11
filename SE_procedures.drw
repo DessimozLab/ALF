@@ -391,7 +391,7 @@ end:
 NBNormalizationFactor := proc(maxLen, r, q)
     res := 0:
     for L to maxLen do
-        res := res + ((r+L-2)!/((L-1)!*(r+1)!)*(1-q)^r*q^(L-1)):
+        res := res + ((r+L-2)!/((L-1)!*(r-1)!)*(1-q)^r*q^(L-1)):
     od:
     res
 end:

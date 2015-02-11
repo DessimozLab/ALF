@@ -57,7 +57,7 @@ CreateNucleotideMatrix := proc(model: string, baseFreqs:list(nonnegative),
     for i to 4 do
         Q[i,i] := -sum(Q[i]):
     od:
-    
+
     CreateDayMatrices(transpose(Q), baseFreqs, type='Nucleotide'):
 
     NM := DM;
