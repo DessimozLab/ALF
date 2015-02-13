@@ -405,6 +405,9 @@ else
     tree := res[1]:
     branchRates := res[2]:
 fi:
+
+#print(branchRates):
+
 speciesRates := CreateArray(1..NSpecies,1):
 #printf('new: %A\n', tree):
 #DrawTree(tree, ArcRadial, OrderLeaves=LeftHeavy, Legend, Title = 'original tree'):
@@ -1076,7 +1079,24 @@ for i to livingOrgs do
 od:
 
 # create gene trees
-geneTrees := CreateGeneTrees(clusters, evolution, leafHeights):
+unpruned := CreateGeneTrees(clusters, evolution, leafHeights):
+geneTrees := CreateArray(1..length(unpruned), 0):
+
+# store orthologs for each pair of genes
+if simOutput intersect {'VP'} <> {} then
+    WriteOrthologs(unpruned, livingOrgs):
+    lprint('...pairwise relationships written.'):
+fi:
+
+CallSystem('mkdir '.wdir.'/GeneTrees/'):
+for i to length(unpruned) do
+    if unpruned[i] = 0 then next fi:
+    pruned := CreatePrunedGeneTree(unpruned[i], clusters[i], leafHeights):
+    if simOutput intersect {'GeneTrees'} <> {} then
+        StoreTree(pruned, i, wdir.'/GeneTrees/'):
+    fi:
+    geneTrees[i] := pruned:
+od:
 lprint('...gene trees written.'):
 
 # create MSAs
@@ -1085,12 +1105,6 @@ for i to length(clusters) do
     CreateRealMSA(clusters[i], evolution, geneTrees[i]):
 od:
 lprint('...real MSAs written.'):
-fi:
-
-# store orthologs for each pair of genes
-if simOutput intersect {'VP'} <> {} then
-    WriteOrthologs(geneTrees, livingOrgs):
-    lprint('...pairwise relationships written.'):
 fi:
 
 # logfile footer, DB output, GenomeSummaries

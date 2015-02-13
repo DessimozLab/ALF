@@ -449,18 +449,20 @@ end:
 #   msteps: the maximum number of simulation steps (for defining the depth of
 #           the leaves
 CreateGeneTrees := proc(clsts, evol, lheights)
-    trees := []:
+#    trees := []:
+    unpruned := []:
     geneIDs := [seq(transpose(evol[i])[4], i=1..length(evol))]:
 
-    # function to output extended Newick format
-    nodeType2NHX := t -> sprintf('[&&NHX:D=%s]',If(t[4]='D','Y','N') ); 
-    
     # loop over all clusters
     for c to length(clsts) do
         cls := sort(clsts[c],x->x[1]):
         #printf('processing cluster%A\n', cls):
         
-        if length(cls) = 0 then trees := append(trees, 0): next fi:
+        if length(cls) = 0 then
+#            trees := append(trees, 0):
+            unpruned := append(unpruned, 0):
+            next
+        fi:
         
         # create a list of leaf nodes containing for each node the org/gene id 
         # of the current gene as well
@@ -566,51 +568,82 @@ CreateGeneTrees := proc(clsts, evol, lheights)
                                If(gind=0,1000,evolution[nodes[i,1], gind, 11]));
             nodes[i] := [nodes[i,1], If(gind = 0, nodes[i,2], gind)];
         od:
-        
-        # remove genes that were lost during evolution
-        remnodes := {op(nodes)} minus 
-           {seq([cls[i,1], evolution[cls[i,1], cls[i,2], 4]],i=1..length(cls))}:
 
-        for i to length(remnodes) do
-            nt := RemoveNode(tree, sprintf('SE%03d/%05d', remnodes[i,1], 
-                                                          remnodes[i,2])):
-            tree := If(nt=NULL,NULL,nt[1]):
-        od:
-        
-        # correct leaf heights
-        tree := CorrectLeafHeights(tree, lheights):
-        
-        trees := append(trees, tree):
+        unpruned := append(unpruned, copy(tree)):
+#        # remove genes that were lost during evolution
+#        remnodes := {op(nodes)} minus 
+#           {seq([cls[i,1], evolution[cls[i,1], cls[i,2], 4]],i=1..length(cls))}:
+#
+#        for i to length(remnodes) do
+#            nt := RemoveNode(tree, sprintf('SE%03d/%05d', remnodes[i,1], 
+#                                                          remnodes[i,2])):
+#            tree := If(nt=NULL,NULL,nt[1]):
+#        od:
+#        
+#        # correct leaf heights
+#        tree := CorrectLeafHeights(tree, lheights):
+#        
+#        trees := append(trees, tree):
     od:
     
-    # store tree
-    if simOutput intersect {'GeneTrees'} <> {} then
-        # create output directory for gene trees
-        CallSystem('mkdir '.wdir.'/GeneTrees/'):
-        if simOutput intersect {'DarwinTree'} <> {} then
-            for c to length(trees) do
-                if trees[c] = 0 then next fi:
-                OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.drw'):
-                printf('%A\n\n', trees[c]):
-                OpenWriting(previous):
-            od:
-        fi:
-        if simOutput intersect {'Newick'} <> {} then
-            for c to length(trees) do
-                if trees[c] = 0 then next fi:
-                OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.nwk'):
-                printf('%s;\n\n', Tree_Newick(trees[c],'NHXfield'=nodeType2NHX)):
-                OpenWriting(previous):
-            od;
-        fi:
-#        if not type(tree, Leaf) then
-#            DrawTree(tree, InternalNodes=ShowNodeType, CrossReference):
-#            CallSystem('mv '.wdir.'/temp.ps '.wdir.'/GeneTrees/GeneTree'.c.
-#                                                                         '.ps'):
+#    # store tree
+#    if simOutput intersect {'GeneTrees'} <> {} then
+#        # create output directory for gene trees
+#        CallSystem('mkdir '.wdir.'/GeneTrees/'):
+#        if simOutput intersect {'DarwinTree'} <> {} then
+#            for c to length(trees) do
+#                if trees[c] = 0 then next fi:
+#                OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.drw'):
+#                printf('%A\n\n', trees[c]):
+#                OpenWriting(previous):
+#            od:
 #        fi:
-    fi:
+#        if simOutput intersect {'Newick'} <> {} then
+#            for c to length(trees) do
+#                if trees[c] = 0 then next fi:
+#                OpenWriting(wdir.'/GeneTrees/GeneTree'.c.'.nwk'):
+#                printf('%s;\n\n', Tree_Newick(trees[c],'NHXfield'=nodeType2NHX)):
+#                OpenWriting(previous):
+#            od;
+#        fi:
+#    fi:
 
-    return(trees):
+    return(unpruned):
+end:
+# remove genes that were lost during evolution
+CreatePrunedGeneTree := proc(t:Tree, clst, lheights)
+    tree := t:
+    nodes := []:
+    for l in Leaves(t) do
+        nodes := append(nodes, l['Label'])
+    od:
+    remnodes := {op(nodes)} minus {seq(sprintf('SE%03d/%05d', n[1], evolution[n[1], n[2], 4]), n=clst)}:
+    for i to length(remnodes) do
+        nt := RemoveNode(tree, remnodes[i]):
+        tree := If(nt=NULL,NULL,nt[1]):
+    od:
+
+    tree := CorrectLeafHeights(tree, lheights):
+
+    tree
+end:
+
+StoreTree := proc(t:Tree, c:posint, path:string)
+    
+    # function to output extended Newick format
+    nodeType2NHX := t -> sprintf('[&&NHX:D=%s]',If(t[4]='D','Y','N') ); 
+
+    if simOutput intersect {'DarwinTree'} <> {} then
+        OpenWriting(path.'/GeneTree'.c.'.drw'):
+        printf('%A\n\n', t):
+        OpenWriting(previous):
+    fi:
+    if simOutput intersect {'Newick'} <> {} then
+        OpenWriting(path.'/GeneTree'.c.'.nwk'):
+        nwkt := Tree_Newick(t,'NHXfield'=nodeType2NHX):
+        printf('%s;\n\n', nwkt):
+        OpenWriting(previous):
+    fi:
 end:
 
 # insert a new leaf node n into tree t. The method assumes that n is younger
@@ -819,10 +852,11 @@ GetOrthologs := proc(t:Tree, HPs:list(list(list)),
             rg := rleaves[j,2]:
             rg := idArr[ro,rg]:
             re := rleaves[j,3]:
-            
+    
             ev := le:
             if re[1] = 'L' then ev := re fi:
             
+            if lg = unassigned or rg = unassigned then next fi:
             if ev = 'S' then
                 OPs[lo,ro,lg] := append(OPs[lo,ro,lg], rg):
                 OPs[ro,lo,rg] := append(OPs[ro,lo,rg], lg):
