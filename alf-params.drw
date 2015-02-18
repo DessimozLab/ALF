@@ -226,12 +226,12 @@ invtrans := 0.10;	       # rate that inversed translocation occurs
 ### parameters for gene fusion/fission
 fissionRate := 0;      # rate of gene fissions without prior duplication
 fusionRate := 0;       # rate of gene fusions occuring without prior duplication of fused genes
-  numberFusion := 3:   # maximum number of genes fused in one fusion event
+  numberFusion := 2:   # maximum number of genes fused in one fusion event
 ###
 
 ### parameters for adding ambiguities to the final sequences
-ambiguousCharMean := 0.1:
-ambiguousCharVar := 0.009:
+#ambiguousCharMean := 0.1:
+#ambiguousCharVar := 0.009:
 
 # simulation name
 mname := 'test_simulation';
@@ -240,11 +240,11 @@ mname := 'test_simulation';
 # - at least one output format (DarwinDB/Fasta) has to be selected
 # - at least one output format (DarwinTree/Newick) has to be selected
 simOutput := {
-#              'GeneTrees',  # all gene trees
+              'GeneTrees',  # all gene trees
               'DarwinTree', # output trees in Darwin format
               'Newick',     # output trees in Newick format
               'MSA',        # MSAs of all related sequences
-#              'VP',         # pairwise evolutionary relationships (ortho/para/xenologs)
+              'VP',         # pairwise evolutionary relationships (ortho/para/xenologs)
               'DarwinDB',   # output genomes as Darwin databases
               'Fasta',      # output genomes as Fasta files
               'Ancestral',  # output ancestral genomes
