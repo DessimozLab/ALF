@@ -7,7 +7,6 @@ GetAllDistMatrix := proc(; (t=BestDimlessTree):Tree)
     return(Tree_matrix(t));
 end:
 
-
 GenRandomTree := proc(D_all, nSpecies;(minDist=5):nonnegative, 
                       (maxDist=300):nonnegative)
     n := length(D_all);
@@ -53,8 +52,14 @@ GetUltrametricTree := proc(tree:Tree)
     t := copy(tree):
     r := table():
     r[[]] := 1:
+
+    dl := FindDeepestLeaf(t):
+    for l in Leaves(t) do l['Height'] := dl od:
+
+    #print(t):
+
     GetUltrametricTree_R(t):
-    
+    #print(t):
     ExtractRates(tree, t, r, []):
     [t, r]
 end:
@@ -79,10 +84,40 @@ GetUltrametricTree_R := proc(tree:Tree) option internal:
 #    rfac := (tree['Height'] + mheight) / (tree['Height'] + rheight):
     lfac := mheight / lheight:
     rfac := mheight / rheight:
+    #printf('lfac: %g, rfac: %g\n', lfac, rfac):
     ScaleTreeHeight_(tree['Left'], lfac, tree['Height']):
     ScaleTreeHeight_(tree['Right'], rfac, tree['Height']):
 
     mheight
+end:
+
+foo := proc(t)
+    if type(t, Leaf) then
+        printf('L %2.20f\n', t['Height']):
+    else
+        printf('%2.20f\n', t['Height']):
+        foo(t['Left']): foo(t['Right']):
+    fi:
+end:
+
+RebalanceTree := proc(t:Tree) option internal:
+    lh := FindDeepestLeaf(t['Left']) - t['Height']:
+    rh := FindDeepestLeaf(t['Right']) - t['Height']:
+
+    mh := (lh + rh) / 2:
+
+    lfac := mh / lh:
+    rfac := mh / rh:
+    ScaleTreeHeight_(t['Left'], lfac, t['Height']):
+    ScaleTreeHeight_(t['Right'], rfac, t['Height']):
+end:
+
+FindDeepestLeaf := proc(t:Tree) option internal:
+    if type(t, Leaf) then return(t[Height]): fi:
+
+    lh := FindDeepestLeaf(t['Left']):
+    rh := FindDeepestLeaf(t['Right']):
+    return(max(lh, rh)):
 end:
 
 ScaleTreeHeight_ := proc(tree:Tree, factor:float, offset:nonnegative) option internal;
@@ -110,8 +145,10 @@ end:
 
 ExtractRates := proc(t:Tree, newTree:Tree, rates:table, key:list) option internal:
     oldlh := t['Left', 'Height'] - t['Height']:
+    #printf('t[left]: %g, t: %g\n', t['Left', 'Height'], t['Height']):
     newlh := newTree['Left', 'Height'] - newTree['Height']:
     newlk := append(copy(key), 'Left'):
+    #printf('newlk: %a, oldlh: %g, newlh: %g\n', newlk, oldlh, newlh):
     rates[newlk] := oldlh / newlh:
     if not type(t['Left'], Leaf) then
         ExtractRates(t['Left'], newTree['Left'], rates, newlk):
@@ -120,6 +157,7 @@ ExtractRates := proc(t:Tree, newTree:Tree, rates:table, key:list) option interna
     oldrh := t['Right', 'Height'] - t['Height']:
     newrh := newTree['Right', 'Height'] - newTree['Height']:
     newrk := append(copy(key), 'Right'):
+    #printf('newrk: %a, oldrh: %g, newrh: %g\n', newrk, oldrh, newrh):
     rates[newrk] := oldrh / newrh:
     if not type(t['Right'], Leaf) then
         ExtractRates(t['Right'], newTree['Right'], rates, newrk):
