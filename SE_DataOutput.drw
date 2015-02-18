@@ -569,7 +569,7 @@ CreateGeneTrees := proc(clsts, evol, lheights)
             nodes[i] := [nodes[i,1], If(gind = 0, nodes[i,2], gind)];
         od:
 
-        unpruned := append(unpruned, copy(tree)):
+        unpruned := append(unpruned, tree):
 #        # remove genes that were lost during evolution
 #        remnodes := {op(nodes)} minus 
 #           {seq([cls[i,1], evolution[cls[i,1], cls[i,2], 4]],i=1..length(cls))}:
@@ -720,14 +720,14 @@ RemoveNode := proc(t:Tree, l:string) option internal:
         lablenTL := length(t[Left, Label]):
         # check whether it should be deleted
         if t[Left, Label,1..min(lablenL, lablenTL)] = l then
-            if type(t[Right], Leaf) then
+            #if type(t[Right], Leaf) then
                 return([t[Right], t[xtra]]):
-            else
-                if t[Right,xtra] = 'L' then
-                    t[Right,xtra] := 'LL':
-                fi:
-                return([t[Right], 0]):
-            fi:
+            #else
+            #    if t[Right,xtra] = 'L' then
+            #        t[Right,xtra] := 'LL':
+            #    fi:
+            #    return([t[Right], 0]):
+            #fi:
         fi:
     else
         # if left subtree is not a leaf, try to remove leaf in there
