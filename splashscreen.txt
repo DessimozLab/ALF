@@ -11,7 +11,7 @@
       Stand-alone version
       Daniel Dalquen, Maria Anisimova, Gaston Gonnet and Christophe Dessimoz
 
-      (c) CBRG, ETH Zurich, August 2011
+      (c) CBRG, ETH Zurich, 2011 - 2015
 
       Version [VERSION]
 
