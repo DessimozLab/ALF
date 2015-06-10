@@ -601,7 +601,7 @@ PerformLGTG := proc(org:integer, evolTime:nonnegative, lgtSize)
     od:
     
     # gene rearrangement
-    place := Rand(0..length(geneR[org]) - lgtSize + 1);
+    place := Rand(0..length(geneR[org]) - lgtSize);
     transLoc(org, place, length(geneR[org]) - lgtSize + 1, lgtSize, evolTime, false);
 
     if not type(treeEvo[op(treeData[orgDonor])], Leaf) then

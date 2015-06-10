@@ -21,7 +21,7 @@ IndelModel := proc(GainRate:nonnegative; GainModel:{'ZIPF', 'GEOM', 'NEGBIN', 'Q
         if (GainModel = 'ZIPF' and lparam <> 1) or (GainModel = 'GEOM' and lparam <> 1) or
            (GainModel = 'NEGBIN' and lparam <> 2) or (GainModel = 'QG' and lparam <> 2) or
            (GainModel = 'CUSTOM' and lparam <> 1) then
-            error('Number of parameters don''nt match selected insertion model!'):
+            error('Number of parameters don''t match selected insertion model!'):
         fi
     fi:
     if assigned(LossModel) and assigned(LossParams) then
@@ -29,7 +29,7 @@ IndelModel := proc(GainRate:nonnegative; GainModel:{'ZIPF', 'GEOM', 'NEGBIN', 'Q
         if (LossModel = 'ZIPF' and lparam <> 1) or (LossModel = 'GEOM' and lparam <> 1) or
            (LossModel = 'NEGBIN' and lparam <> 2) or (LossModel = 'QG' and lparam <> 2) or
            (LossModel = 'CUSTOM' and lparam <> 1) then
-            error('Number of parameters don''nt match selected deletion model!'):
+            error('Number of parameters don''t match selected deletion model!'):
         fi
     elif assigned(LossModel) or assigned(LossParams) then
         error('incomplete definition of deletion model!'):
