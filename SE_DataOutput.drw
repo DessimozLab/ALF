@@ -907,12 +907,19 @@ ReadTreeFile := proc(fileName:string)
         error('tree must consist of more than just a leaf'):
     else
         #assume newick format
-        t := traperror(ParseNewickTree(tree, 
-                                       'InternalLabels'=ReadNewickAnnotation)):
+        t := traperror(ParseNewickTree(tree)):
         if t = lasterror then
             error('could not parse tree. assumed tree in newick format but '.
                   'encountered an error: '.lasterror.'. make sure to include '.
                   'branch lengths in the tree description.'):
+        else
+            t2 := traperror(ParseNewickTree(tree,
+                                       'InternalLabels'=ReadNewickAnnotation)):
+            if t2 = lasterror then
+                printf('warning: labels of internal nodes have been ignored\n'):
+            else
+                t := t2:
+            fi:
         fi:
     fi:
     t
@@ -944,10 +951,17 @@ end:
 
 CheckTree := proc(tree:{Tree, string})
     if type(tree, string) then
-        t := traperror(ParseNewickTree(tree, 
-                                       'InternalLabels'=ReadNewickAnnotation)):
+        t := traperror(ParseNewickTree(tree)):
         if t = lasterror then
             t := ReadTreeFile(tree):
+        else
+            t2 := traperror(ParseNewickTree(tree,
+                                       'InternalLabels'=ReadNewickAnnotation)):
+            if t2 = lasterror then
+                printf('warning: labels of internal nodes have been ignored\n'):
+            else
+                t := t2:
+            fi:
         fi:
     elif type(tree, Leaf) then
         error('tree must consist of more than just a leaf'):
