@@ -98,7 +98,7 @@ CreateFASTAEntry := proc(org, gene, geneOrder, seqField, orgname)
     fastaEntry[1] := sprintf('>G%a_%s, sequence type: %s, locus: %d\n', org[gene, 4], orgname,
                        seqTypes[org[gene, 9], 4], loc):
     fastaEntry[2] := org[gene, seqField]:
-    fastaEntry[3] := '\n\n':
+    fastaEntry[3] := '\n':
     ConcatStrings(fastaEntry):
 end:
 
@@ -109,7 +109,7 @@ PrintFASTAEntry := proc(org, gene, geneOrder, seqField, orgname)
     fi;
     printf('>G%a_%s, sequence type: %s, locus: %d\n', org[gene, 4], orgname,
                        seqTypes[org[gene, 9], 4], loc):
-    printf('%s\n\n', org[gene, seqField]):
+    printf('%s\n', org[gene, seqField]):
 end:
 
 # DB output for the ancestral sequences
@@ -370,7 +370,7 @@ CreateRealMSA := proc(cls, evol, tree)
         OpenWriting(previous):
         eval(outfile2):
     od:
-    printf('\n\n'):
+    printf('\n'):
     OpenWriting(previous):
     
     if simType <> 'aa' and blockSize = 3 then
@@ -395,7 +395,7 @@ CreateRealMSA := proc(cls, evol, tree)
             OpenWriting(previous):
             eval(outfile2):
         od:
-        printf('\n\n'):
+        printf('\n'):
         OpenWriting(previous):
     fi:
 end:
