@@ -909,9 +909,8 @@ ReadTreeFile := proc(fileName:string)
         #assume newick format
         t := traperror(ParseNewickTree(tree)):
         if t = lasterror then
-            error('could not parse tree. assumed tree in newick format but '.
-                  'encountered an error: '.lasterror.'. make sure to include '.
-                  'branch lengths in the tree description.'):
+            printf('Assumed tree in Newick format but encountered an error:\n%s\n', lasterror):
+            error('could not parse tree.', tree):
         else
             t2 := traperror(ParseNewickTree(tree,
                                        'InternalLabels'=ReadNewickAnnotation)):
