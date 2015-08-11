@@ -2,40 +2,60 @@
 
 DARWIN_PATH=$(dirname $0)
 
-pfile="alf-params.drw"
-wdir="./"
-
 if [ $# -lt 1 ]
 then
-    echo "usage: fasta2darwin <fasta file> [<5 letter code>] [--dna]"
+    echo "usage: fasta2darwin <fasta file> [-c <5 letter code>] [-o <output file> [-d]"
+    echo "use option -d if your input consists of nucleotide sequences"
     exit 0
 fi
 
-if [ $# -ge 2 -a  "$2" != "--dna" ]
-then
-    code=$2
-else
-    code=ROOTG
-fi
+inF=$1
+wdir=$(dirname $1)
+gname=$(basename $1)
+gname=${gname%\.*}
+outF=${wdir}/${gname}.db
+code=ROOTG
+dna="false"
 
-if [[ "$@" = *--dna* ]]
-then
-    dna="true"
-else
-    dna="false"
-fi
+shift 1
+while getopts ":c:o:d" opt; do
+    case $opt in
+        c)
+            if [[ ${OPTARG:0:1} == "-" ]]; then
+                echo "the optional parameter -c requires a five letter species code as argument"
+                exit 1
+            fi
+            code=$OPTARG
+            ;;
+        o)
+            if [[ ${OPTARG:0:1} == "-" ]]; then
+                echo "the optional parameter -o requires an output file as argument"
+                exit 1
+            fi
+            outF=$OPTARG
+            ;;
+        d)
+            dna="true"
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            exit 1
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument" >&2
+            exit 1
+            ;;
+    esac
+done
 
 echo "
       Set(printgc=false):
       fasta := '$1':
-      dir := '$(dirname $1)':
-      gname := '$(basename $1)':
-      gname := gname[1..SearchString('.',gname)]: 
-      input := ReadFastaWithNames('$1'):
+      input := ReadFastaWithNames('$inF'):
       code := '$code':
       dna := ${dna}:
 
-      OpenWriting(dir.'/'.gname.'.db');
+      OpenWriting('$outF');
       printf('<5LETTERNAME>%s</5LETTERNAME>\n', code);
       print('<OS>Unknown</OS>');
       print('<KINGDOM>Unknown</KINGDOM>');
@@ -48,15 +68,19 @@ echo "
       for i to length(input[1]) do
           s := uppercase(input[1,i]):
           # minimal check of sequences
+          bad := false:
           for j to length(s) do
               aa := AToInt(s[j]);
-              if aa < 1 or aa > 21 then
+              if (aa < 1 or aa > 21) and not (dna and s[j] = 'U') then
+                  printf('dna: %a, s[j]: %s\n', dna, s[j]):
+                  bad := true:
                   OpenWriting(previous);
-                  error(printf('Unknown character: %s (in %s, %s)',
-                      s[j], input[2,i], gname));
-                  quit;
+                  printf('Unknown character: %s (in %s, %s). Skipping sequence.\n', s[j], input[2,i], '$gname'):
+                  OpenAppending('$outF'):
+                  break;
               fi;
           od;
+          if bad then next fi:
           if dna then
               printf('<E><ID>%s</ID><SEQ>AAA</SEQ><DNA>%s</DNA></E>\n',
                      ReplaceString('\t','',input[2,i]) , s);
