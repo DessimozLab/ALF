@@ -249,6 +249,7 @@ simOutput := {
               'Fasta',      # output genomes as Fasta files
               'Ancestral',  # output ancestral genomes
               'Dup',        # output ancestral sequences at time of gene duplications
+#              'PhylipAl',     # 
               NULL}:
 
 # directories for file storage
