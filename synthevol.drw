@@ -581,7 +581,7 @@ if realseed = true then # generates the first organism with real data
     geneR := append(geneR, CreateArray(1..DB[TotEntries]));
     remArr := []:
     for i to DB[TotEntries] do
-        protseq := SearchTag('SEQ', Entry(i));
+        protseq := copy(SearchTag('SEQ', Entry(i)));
         sm := seqTypes[seqTypeAssignments[i],1]:
         if length(SearchAllString('O',protseq)) > 0 or
            length(SearchAllString('U',protseq)) > 0 or
@@ -592,7 +592,7 @@ if realseed = true then # generates the first organism with real data
             remArr := append(remArr, i):
             next
         fi:
-        dnaseq := ReplaceString('U','T',SearchTag('DNA', Entry(i)));
+        dnaseq := ReplaceString('U','T',copy(SearchTag('DNA', Entry(i))));
         if length(substModels) > 0 and substModels[sm, 'Type'] <> 'aa' and
            (length(SearchAllString('R',dnaseq)) > 0 or
            length(SearchAllString('Y',dnaseq)) > 0 or
