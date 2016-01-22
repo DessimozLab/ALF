@@ -39,6 +39,8 @@ dupsOnLevel := [];
 #fi;
 if amongGeneDistr = 'Custom' then
     customRates := parse(ReadRawFile(aGPath)):
+elif amongGeneDistr = 'Gamma' and type(aGAlpha, numeric) then
+    aGAlpha := copy([aGAlpha, 1/aGAlpha]):
 fi:
     
 # assign variables for features that are turned off
@@ -674,7 +676,7 @@ if realseed = true then # generates the first organism with real data
         evolution[1, i, 9] := seqTypeAssignments[i]:
         evolution[1, i, 10] := []:
         if amongGeneDistr = 'Gamma' then
-            evolution[1,i,10] := [[mutRate, max(1/DBL_MAX, Rand(GammaDist(aGAlpha))/aGAlpha)]]:
+            evolution[1,i,10] := [[mutRate, max(1/DBL_MAX, Rand(GammaDist(aGAlpha[1]))*aGAlpha[2])]]:
         elif amongGeneDistr = 'Custom' then
             evolution[1, i, 10] := [[mutRate, customRates[i]]]:            
         fi:
@@ -765,7 +767,7 @@ else
         evolution[1, i, 9] := seqTypeAssignments[i]:
         evolution[1, i, 10] := []:
         if amongGeneDistr = 'Gamma' then
-            evolution[1,i,10] := [[mutRate, Rand(GammaDist(aGAlpha))/aGAlpha]]:            
+            evolution[1,i,10] := [[mutRate, max(1/DBL_MAX, Rand(GammaDist(aGAlpha[1]))*aGAlpha[2])]]:
         fi:
         evolution[1, i, 11] := 0:
         geneR[1, i] := i;
