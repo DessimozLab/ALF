@@ -35,6 +35,11 @@ SubstitutionModel := proc(Name:string, Params:list(anything),
             f := copy(AF);
             m := copy(logPAM1):
             return(noeval(SubstitutionModel(Name, [], f, false, 'aa', m, 1))):
+        elif Name = 'Ordered' or Name = 'Disordered' then
+            CreateDayMatrices(Name[1..3]):
+            f := copy(AF);
+            m := copy(logPAM1):
+            return(noeval(SubstitutionModel(Name[1..3], [], f, false, 'aa', m, 1))):
         elif Name = 'JC' then #Jukes-Cantor
             return(SubstitutionModel('TN93', [1,1,1], [0.25,0.25,0.25,0.25], 
                                      true)):
