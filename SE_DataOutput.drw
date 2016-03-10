@@ -738,7 +738,7 @@ CreatePrunedGeneTree := proc(t:Tree, clst, lheights)
     tree := t:
     nodes := []:
     for l in Leaves(t) do
-        nodes := append(nodes, l['Label'])
+        nodes := append(nodes, l['Label',1..11])
     od:
     remnodes := {op(nodes)} minus {seq(sprintf('SE%03d/%05d', n[1], evolution[n[1], n[2], 4]), n=clst)}:
     for i to length(remnodes) do
