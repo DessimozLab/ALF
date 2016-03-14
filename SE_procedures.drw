@@ -722,13 +722,15 @@ EnumerateBranches := proc(tree:Tree, specPts, gc:boolean, rates:table)
 #    for i in Leaves(tree) do n := n+1 od:
 #    printf('rates:%d\tleaves:%d\n',m,n):
 
-	branches := append(EnumerateBranches_R(tree[Left], tree[Height], gc, rates, ['Left']), 
-	                   op(EnumerateBranches_R(tree[Right], tree[Height], gc, rates, ['Right']))):
+
+	branches := append(EnumerateBranches_R(tree[Left], tree[Height], gc, rates, ['Left'], '1.1'),
+	                   op(EnumerateBranches_R(tree[Right], tree[Height], gc, rates, ['Right'], '1.2'))):
 	branches := sort(branches, x->x[1]):
+
 	if gc then
-        res := copy([[1, 0, specPts[1, 2], 1, tree[-1]]]):
+        res := copy([[1, 0, specPts[1, 2], 1, tree[-1], '1']]):
     else
-        res := copy([[1, 0, specPts[1, 2], 1]]):
+        res := copy([[1, 0, specPts[1, 2], 1, '1']]):
     fi:
 	n := 2:
 	for i to length(specPts) do
@@ -739,20 +741,20 @@ EnumerateBranches := proc(tree:Tree, specPts, gc:boolean, rates:table)
 	res
 end:
 
-EnumerateBranches_R := proc(tree:Tree, start:nonnegative, gc:boolean, rates:table, index:list)
+EnumerateBranches_R := proc(tree:Tree, start:nonnegative, gc:boolean, rates:table, index:list; (prefix='1'):string)
 
     if gc then
-        res := [[start, tree[Height], rates[index], tree[-1]]]:
+        res := [[start, tree[Height], rates[index], tree[-1], prefix]]:
     else
-        res := [[start, tree[Height], rates[index]]]:
+        res := [[start, tree[Height], rates[index], prefix]]:
     fi:
 	
     if type(tree, Leaf) then 
 	    return(res):
 	fi:
 
-	lres := EnumerateBranches_R(tree[Left], tree[Height], gc, rates, append(copy(index), 'Left')):
-    rres := EnumerateBranches_R(tree[Right], tree[Height], gc, rates, append(copy(index), 'Right')):
+	lres := EnumerateBranches_R(tree[Left], tree[Height], gc, rates, append(copy(index), 'Left'), prefix.'.1'):
+    rres := EnumerateBranches_R(tree[Right], tree[Height], gc, rates, append(copy(index), 'Right'), prefix.'.2'):
 
     res := append(res, op(lres), op(rres)):
     res

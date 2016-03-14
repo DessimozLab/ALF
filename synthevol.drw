@@ -449,7 +449,7 @@ fi:
 # build list of speciation time points and nodes from the tree
 res := ListTimePoints(tree, branchRates):
 timePts := res[1]:
-timePts := sort(timePts, timePts->timePts[2]):
+timePts := sort(timePts, x->x[2]):
 for i to length(timePts) do
     curprefix1 := timePts[i,1].'.1';
     curprefix2 := timePts[i,1].'.2';
@@ -464,12 +464,9 @@ for i to length(timePts) do
         fi:
     od:
 od:
-
 for i to length(timePts) do
     timePts[i,1] := atoi(timePts[i,1]):
 od:
-
-#print(timePts):
 
 tptransp := transpose(timePts):
 specTime := tptransp[2]:
@@ -511,7 +508,7 @@ else
 fi:
 
 branches := EnumerateBranches(tree, timePts, enableGCAmelioration, branchRates):
-branches := sort(branches, x->x[3]):
+branches := sort(branches, x->[x[3],x[-1]]):
 
 leafHeights := CreateArray(1..NSpecies, 0):
 for j to length(branches) do
